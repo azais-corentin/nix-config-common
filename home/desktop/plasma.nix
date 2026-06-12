@@ -144,6 +144,15 @@
           };
         };
 
+        # Disable the top-left hot corner (default: Overview). KWin's overview
+        # effect defaults BorderActivate to ElectricTopLeft (7); 9 = ElectricNone,
+        # which is what the Screen Edges KCM writes when the corner is cleared.
+        programs.plasma.configFile."kwinrc"."Effect-overview"."BorderActivate" = 9;
+
+        # Don't ask for confirmation when deleting files (KIO-wide: Dolphin, file
+        # dialogs). Captured from live kiorc on the desktop host.
+        programs.plasma.configFile."kiorc"."Confirmations"."ConfirmDelete" = false;
+
         # AZERTY top-row digits (unshifted): & é " '
         programs.plasma.shortcuts.kwin."Switch to Desktop 1" = "Meta+&";
         programs.plasma.shortcuts.kwin."Switch to Desktop 2" = "Meta+é";
