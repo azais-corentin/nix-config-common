@@ -1,0 +1,170 @@
+# plasma-manager scaffold. Active only when the host actually runs Plasma 6
+# (integrated eval reads osConfig.host.desktop; standalone HM falls back to
+# "plasma6", making the import site itself the opt-in).
+#
+# `overrideConfig = false` keeps the module non-destructive: it merges into the
+# existing kdeglobals / kwinrc / appletsrc rather than rewriting them.
+#
+# The monitor layout (kwinoutputconfig.json) is consumer-supplied via the
+# `plasma.kwinOutputConfig` option: KWin rewrites this file at runtime, so it is
+# materialized as a writable copy rather than a read-only /nix/store symlink.
+{
+  lib,
+  config,
+  osConfig ? { },
+  ...
+}:
+{
+  options.plasma.kwinOutputConfig = lib.mkOption {
+    type = lib.types.nullOr lib.types.package;
+    default = null;
+    description = "Rendered kwinoutputconfig.json to materialize into ~/.config.";
+  };
+
+  config = lib.mkIf ((osConfig.host.desktop or "plasma6") == "plasma6") (
+    lib.mkMerge [
+      {
+        programs.plasma.enable = true;
+        programs.plasma.overrideConfig = false;
+
+        # Disable Baloo, the KDE file indexer/search.
+        programs.plasma.configFile."baloofilerc"."Basic Settings"."Indexing-Enabled" = false;
+
+        # KDE "Data and Storage Sizes": 0 = IEC (KiB/MiB/GiB). Written explicitly
+        # so the result is IEC even if a stale non-default value already exists.
+        programs.plasma.configFile."kdeglobals"."Locale"."BinaryUnitDialect" = 0;
+
+        # KDE/Plasma natively themes Qt; stylix's home qt target is redundant and
+        # only supports the qtct platform, so disable it on Plasma.
+        stylix.targets.qt.enable = false;
+
+        programs.plasma.hotkeys.commands."launch-ghostty" = {
+          name = "Launch Ghostty";
+          comment = "Open the Ghostty terminal";
+          key = "Meta+Return";
+          command = "ghostty";
+        };
+
+        programs.plasma.hotkeys.commands."launch-firefox" = {
+          name = "Launch Firefox";
+          comment = "Open Firefox";
+          key = "Meta+Z";
+          command = "firefox";
+        };
+
+        programs.plasma.hotkeys.commands."launch-vscode" = {
+          name = "Launch VS Code";
+          comment = "Open Visual Studio Code";
+          key = "Meta+C";
+          command = "code";
+        };
+
+        programs.plasma.hotkeys.commands."launch-spotify" = {
+          name = "Launch Spotify";
+          comment = "Open Spotify";
+          key = "Meta+S";
+          command = "spotify";
+        };
+
+        # Open each launcher target maximized on first show. `apply = "initially"`
+        # (the plasma-manager default) lets the user unmaximize later.
+        programs.plasma.window-rules = [
+          {
+            description = "Ghostty: start maximized";
+            match.window-class = {
+              value = "ghostty";
+              type = "substring";
+            };
+            apply = {
+              maximizehoriz = true;
+              maximizevert = true;
+            };
+          }
+          {
+            description = "Firefox: start maximized";
+            match.window-class = {
+              value = "firefox";
+              type = "substring";
+            };
+            apply = {
+              maximizehoriz = true;
+              maximizevert = true;
+            };
+          }
+          {
+            description = "VS Code: start maximized";
+            match.window-class = {
+              value = "Code";
+              type = "substring";
+            };
+            apply = {
+              maximizehoriz = true;
+              maximizevert = true;
+            };
+          }
+          {
+            description = "Spotify: start maximized";
+            match.window-class = {
+              value = "spotify";
+              type = "substring";
+            };
+            apply = {
+              maximizehoriz = true;
+              maximizevert = true;
+            };
+          }
+        ];
+
+        programs.plasma.shortcuts.kwin."Window Close" = "Meta+Q";
+        programs.plasma.shortcuts.plasmashell."manage activities" = [ ];
+
+        # Keep the numpad in digit mode from session start.
+        programs.plasma.input.keyboard = {
+          numlockOnStartup = "on";
+          repeatDelay = 500;
+          repeatRate = 50;
+        };
+
+        programs.plasma.kwin = {
+          virtualDesktops = {
+            rows = 1;
+            names = [
+              "Default"
+              "Nix"
+              "Desktop 3"
+              "Desktop 4"
+            ];
+          };
+
+          effects.shakeCursor.enable = true;
+
+          effects.desktopSwitching = {
+            animation = "slide";
+            navigationWrapping = true;
+          };
+        };
+
+        # AZERTY top-row digits (unshifted): & é " '
+        programs.plasma.shortcuts.kwin."Switch to Desktop 1" = "Meta+&";
+        programs.plasma.shortcuts.kwin."Switch to Desktop 2" = "Meta+é";
+        programs.plasma.shortcuts.kwin."Switch to Desktop 3" = "Meta+\"";
+        programs.plasma.shortcuts.kwin."Switch to Desktop 4" = "Meta+'";
+
+        # Move the active window to a virtual desktop. AZERTY top-row digits with Alt.
+        programs.plasma.shortcuts.kwin."Window to Desktop 1" = "Meta+Alt+&";
+        programs.plasma.shortcuts.kwin."Window to Desktop 2" = "Meta+Alt+é";
+        programs.plasma.shortcuts.kwin."Window to Desktop 3" = "Meta+Alt+\"";
+        programs.plasma.shortcuts.kwin."Window to Desktop 4" = "Meta+Alt+'";
+      }
+
+      # Materialize the monitor layout as a writable copy (KWin rewrites it at
+      # runtime; a read-only symlink into /nix/store would silently fail).
+      (lib.mkIf (config.plasma.kwinOutputConfig != null) {
+        home.activation.kwinoutputconfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          run install -Dm644 ${config.plasma.kwinOutputConfig} \
+            "$HOME/.config/kwinoutputconfig.json"
+        '';
+      })
+    ]
+  );
+}
