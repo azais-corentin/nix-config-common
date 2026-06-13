@@ -52,8 +52,8 @@
         smol = "anthropic/claude-haiku-4-5";
         slow = "anthropic/claude-opus-4-8";
         vision = "anthropic/claude-opus-4-8";
-        plan = "anthropic/claude-fable-5";
-        designer = "anthropic/claude-fable-5";
+        plan = "anthropic/claude-opus-4-8";
+        designer = "anthropic/claude-opus-4-8";
         commit = "anthropic/claude-sonnet-4-6";
         task = "anthropic/claude-sonnet-4-6";
       };
