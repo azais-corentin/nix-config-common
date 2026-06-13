@@ -53,6 +53,7 @@
         "nix.serverSettings".nixd.formatting.command = [ (lib.getExe pkgs.nixfmt) ];
         "telemetry.telemetryLevel" = "off";
         "update.mode" = "none";
+        "lldb.suppressUpdateNotifications" = true;
         "scm.defaultViewMode" = "tree";
         "scm.repositories.selectionMode" = "multiple";
         "json.schemaDownload.trustedDomains" = {
