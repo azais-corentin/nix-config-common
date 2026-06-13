@@ -38,6 +38,21 @@
         # only supports the qtct platform, so disable it on Plasma.
         stylix.targets.qt.enable = false;
 
+        # Pin the Plasma color scheme to the stylix-generated one. plasma-manager's
+        # apply_themes startup script runs `plasma-apply-colorscheme` at session
+        # start, writing General.ColorScheme into ~/.config/kdeglobals — the top of
+        # the KConfig cascade. Needed because `plasma-apply-lookandfeel --apply
+        # stylix` does not refresh stale kdedefaults when LookAndFeelPackage is
+        # already "stylix". Slug mirrors stylix modules/kde/hm.nix colorschemeSlug
+        # (alphabetic chars of the scheme name; "untitled" for the unnamed shared
+        # palette). Requires the stylix HM module to be imported by the consumer
+        # (true for both nix-config and nix-config-work).
+        programs.plasma.workspace.colorScheme = lib.mkIf config.stylix.enable (
+          lib.concatStrings (
+            lib.filter lib.isString (builtins.split "[^a-zA-Z]" config.lib.stylix.colors.scheme)
+          )
+        );
+
         programs.plasma.hotkeys.commands."launch-ghostty" = {
           name = "Launch Ghostty";
           comment = "Open the Ghostty terminal";
