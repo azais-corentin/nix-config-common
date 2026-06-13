@@ -168,6 +168,18 @@
         # dialogs). Captured from live kiorc on the desktop host.
         programs.plasma.configFile."kiorc"."Confirmations"."ConfirmDelete" = false;
 
+        # Display and brightness (PowerDevil, AC/desktop profile). Written as raw
+        # powerdevilrc keys rather than programs.plasma.powerdevil.AC.* because
+        # plasma-manager asserts turnOffDisplay.idleTimeoutWhenLocked must be unset
+        # when idleTimeout = "never" — and we want exactly "never + locked 1 min".
+        # Sentinels match plasma-manager's own createPowerDevilConfig: -1 = "never".
+        programs.plasma.configFile."powerdevilrc"."AC/Display" = {
+          DimDisplayWhenIdle = false; # Dim automatically: Never
+          DimDisplayIdleTimeoutSec = -1; # paired sentinel for dim disabled
+          TurnOffDisplayIdleTimeoutSec = -1; # Turn off screen: Never
+          TurnOffDisplayIdleTimeoutWhenLockedSec = 60; # When locked: 1 minute
+        };
+
         # AZERTY top-row digits (unshifted): & é " '
         programs.plasma.shortcuts.kwin."Switch to Desktop 1" = "Meta+&";
         programs.plasma.shortcuts.kwin."Switch to Desktop 2" = "Meta+é";
