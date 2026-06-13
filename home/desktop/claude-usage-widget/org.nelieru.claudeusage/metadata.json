@@ -1,0 +1,14 @@
+{
+    "KPlugin": {
+        "Id": "org.nelieru.claudeusage",
+        "Name": "Claude Usage",
+        "Description": "Anthropic Claude subscription usage (5h / 7d windows) via oh-my-pi",
+        "Icon": "office-chart-bar",
+        "Authors": [{ "Name": "nelieru" }],
+        "Category": "System Information",
+        "Version": "1.0.0",
+        "License": "MIT"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

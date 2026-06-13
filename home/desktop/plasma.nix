@@ -10,6 +10,7 @@
 # materialized as a writable copy rather than a read-only /nix/store symlink.
 {
   lib,
+  pkgs,
   config,
   osConfig ? { },
   ...
@@ -191,6 +192,40 @@
         programs.plasma.shortcuts.kwin."Window to Desktop 2" = "Meta+Alt+é";
         programs.plasma.shortcuts.kwin."Window to Desktop 3" = "Meta+Alt+\"";
         programs.plasma.shortcuts.kwin."Window to Desktop 4" = "Meta+Alt+'";
+
+        # Claude usage plasmoid; installed on every Plasma host and pinned into the
+        # shared panel below. Source vendored at ./claude-usage-widget.
+        home.packages = [ (pkgs.callPackage ./claude-usage-widget { }) ];
+
+        # Regional formats (French) with an English UI. Hardcoded fr_FR (matches both
+        # hosts) so the shared config is self-contained — no osConfig dependency.
+        programs.plasma.configFile."plasma-localerc"."Formats" = {
+          LC_NUMERIC = "fr_FR.UTF-8";
+          LC_TIME = "fr_FR.UTF-8";
+          LC_MONETARY = "fr_FR.UTF-8";
+          LC_MEASUREMENT = "fr_FR.UTF-8";
+          LC_PAPER = "fr_FR.UTF-8";
+        };
+
+        # Declarative panel: bottom, floating, 46px. plasma-manager applies this via a
+        # desktop script that DELETES plasma-org.kde.plasma.desktop-appletsrc and
+        # recreates containments — it re-runs only when this declaration changes.
+        programs.plasma.panels = [
+          {
+            location = "bottom";
+            floating = true;
+            height = 46;
+            widgets = [
+              "org.kde.plasma.kickoff"
+              "org.kde.plasma.icontasks"
+              "org.kde.plasma.marginsseparator"
+              "org.kde.plasma.systemtray"
+              "org.nelieru.claudeusage"
+              "org.kde.plasma.digitalclock"
+              "org.kde.plasma.showdesktop"
+            ];
+          }
+        ];
       }
 
       # Materialize the monitor layout as a writable copy (KWin rewrites it at
