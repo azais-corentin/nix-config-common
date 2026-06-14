@@ -218,9 +218,9 @@
             widgets = [
               "org.kde.plasma.kickoff"
               "org.kde.plasma.icontasks"
+              "org.nelieru.claudeusage"
               "org.kde.plasma.marginsseparator"
               "org.kde.plasma.systemtray"
-              "org.nelieru.claudeusage"
               "org.kde.plasma.digitalclock"
               "org.kde.plasma.showdesktop"
             ];
