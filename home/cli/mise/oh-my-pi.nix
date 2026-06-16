@@ -25,7 +25,9 @@
         separator = "powerline-thin";
         sessionAccent = true;
         showHookStatus = true;
+        transparent = true;
       };
+      compaction.dropUseless = true;
       terminal.showImages = true;
       images = {
         autoResize = true;
