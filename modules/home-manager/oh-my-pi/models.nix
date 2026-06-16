@@ -29,6 +29,7 @@ let
     "azure-openai-responses"
     "anthropic-messages"
     "google-generative-ai"
+    "google-gemini-cli"
     "google-vertex"
   ];
   effortEnum = t.enum [
@@ -82,6 +83,7 @@ let
     allowsSyntheticReasoningContentForToolCalls = mkOpt t.bool "Synthetic reasoning content is allowed for tool calls.";
     requiresAssistantContentForToolCalls = mkOpt t.bool "Tool calls must include assistant content.";
     supportsToolChoice = mkOpt t.bool "Provider supports tool_choice.";
+    supportsForcedToolChoice = mkOpt t.bool "Provider supports forcing a specific tool via tool_choice.";
     disableReasoningOnForcedToolChoice = mkOpt t.bool "Disable reasoning when tool choice is forced.";
     disableReasoningOnToolChoice = mkOpt t.bool "Disable reasoning whenever tool_choice is set.";
     thinkingFormat = mkOpt (t.enum [
@@ -181,6 +183,7 @@ let
     compat = mkOpt compatType "OpenAI-compat quirk flags.";
     contextPromotionTarget = mkOpt t.str "Model id to promote to on context overflow.";
     omitMaxOutputTokens = mkOpt t.bool "Omit the max-output-tokens field from requests.";
+    supportsTools = mkOpt t.bool "Whether the model supports tool calls.";
   };
 
   modelType = subType (

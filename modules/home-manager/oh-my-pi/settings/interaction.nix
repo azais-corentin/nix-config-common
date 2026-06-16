@@ -64,15 +64,35 @@ in
     enabled = mkOpt t.bool "Enable speech-to-text input via microphone.";
     language = mkOpt t.str "Spoken language code (default: en).";
     modelName = mkOpt (t.enum [
-      "tiny"
-      "tiny.en"
-      "base"
-      "base.en"
-      "small"
-      "small.en"
-      "medium"
-      "medium.en"
-      "large"
-    ]) "Whisper model size.";
+      "fast"
+      "balanced"
+      "turbo"
+      "parakeet"
+    ]) "Speech-to-text model.";
+  };
+
+  magicKeywords = mkSection "Magic keyword triggers in user input." {
+    enabled = mkOpt t.bool "Enable magic-keyword detection.";
+    ultrathink = mkOpt t.bool "`ultrathink` keyword bumps the thinking level.";
+    orchestrate = mkOpt t.bool "`orchestrate`/`parallel` keyword encourages subagent fan-out.";
+    workflow = mkOpt t.bool "Enable workflow magic keywords.";
+  };
+
+  paste = mkSection "Paste handling." {
+    largeMenuThreshold = mkOpt num "Pasted line count above which the large-paste menu appears.";
+  };
+
+  collab = mkSection "Realtime collaboration relay." {
+    relayUrl = mkOpt t.str "Collab relay server URL.";
+    displayName = mkOpt t.str "Display name shown to other collaborators.";
+  };
+
+  share = mkSection "Session sharing." {
+    serverUrl = mkOpt t.str "Share server URL.";
+    redactSecrets = mkOpt t.bool "Redact secrets before sharing a session.";
+  };
+
+  features = mkSection "Experimental feature flags." {
+    unexpectedStopDetection = mkOpt t.bool "Use a small model to detect when the assistant says it will continue but stops without tool calls, and auto-prompt it to continue.";
   };
 }

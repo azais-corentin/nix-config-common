@@ -11,6 +11,7 @@ in
 {
   plan = mkSection "Plan mode." {
     enabled = mkOpt t.bool "Enable plan mode for read-only exploration before execution.";
+    defaultOnStartup = mkOpt t.bool "Enter plan mode by default on startup.";
   };
 
   goal = mkSection "Goal mode." {
@@ -42,12 +43,12 @@ in
         "ai"
       ]) "Commit message style for nested repo changes.";
     };
-    eager = mkOpt t.bool "Encourage the agent to delegate work to subagents unless changes are trivial.";
-    simple = mkOpt (t.enum [
+    eager = mkOpt (t.enum [
       "default"
-      "schema-free"
-      "independent"
-    ]) "How much shared structure the task tool accepts.";
+      "preferred"
+      "always"
+    ]) "How eagerly to delegate work to subagents.";
+    batch = mkOpt t.bool "Allow the task tool to spawn multiple subagents in one batched call.";
     maxConcurrency = mkOpt num "Concurrent limit for subagents (0 = unlimited).";
     enableLsp = mkOpt t.bool "Allow subagents spawned via the task tool to use the lsp tool.";
     maxRecursionDepth = mkOpt num "How many levels deep subagents can spawn their own subagents (-1 = unlimited).";
@@ -71,6 +72,8 @@ in
     enableClaudeProject = mkOpt t.bool "Load Claude project skills.";
     enablePiUser = mkOpt t.bool "Load pi user skills.";
     enablePiProject = mkOpt t.bool "Load pi project skills.";
+    enableAgentsUser = mkOpt t.bool "Load skills from ~/.agents/.";
+    enableAgentsProject = mkOpt t.bool "Load skills from .agents/.";
     customDirectories = mkOpt (t.listOf t.str) "Additional skill directories to scan.";
     ignoredSkills = mkOpt (t.listOf t.str) "Skill names to ignore.";
     includeSkills = mkOpt (t.listOf t.str) "Skill names to force-include.";

@@ -12,6 +12,21 @@ let
     "qwen2.5-1.5b"
     "lfm2-1.2b"
   ];
+
+  kokoroVoices = [
+    "af_heart"
+    "af_bella"
+    "af_nicole"
+    "af_aoede"
+    "af_kore"
+    "af_sarah"
+    "am_michael"
+    "am_fenrir"
+    "am_puck"
+    "bf_emma"
+    "bm_george"
+    "bm_fable"
+  ];
 in
 {
   secrets = mkSection "Secret handling." {
@@ -110,6 +125,13 @@ in
       "parallel"
       "jina"
     ]) "Reader backend priority for the fetch/read URL tool.";
+    tts = mkOpt (t.enum [
+      "auto"
+      "local"
+      "xai"
+    ]) "Backend for the tts tool: local on-device (Kokoro) or xAI Grok Voice.";
+    unexpectedStopModel = mkOpt (t.enum tinyMemoryModels) "Classifier model for unexpected-stop detection.";
+    webSearchExclude = mkOpt (t.listOf t.str) "Web-search provider ids to exclude from auto-selection.";
   };
 
   provider = mkSection "Cross-provider request behaviour." {
@@ -143,5 +165,33 @@ in
     mapReduceTimeoutMs = mkOpt num "Map-reduce timeout in milliseconds.";
     mapReduceMaxConcurrency = mkOpt num "Maximum concurrent map workers.";
     changelogMaxDiffChars = mkOpt num "Maximum diff characters fed into changelog generation.";
+  };
+
+  codexResets = mkSection "Codex saved rate-limit reset auto-redeem." {
+    autoRedeem = mkOpt (t.enum [
+      "unset"
+      "yes"
+      "no"
+    ]) "Whether to auto-redeem saved Codex rate-limit resets.";
+    minBlockedMinutes = mkOpt num "Minimum blocked minutes before redeeming a reset.";
+    keepCredits = mkOpt num "Credits to keep in reserve when redeeming.";
+  };
+
+  tts = mkSection "Local TTS model/voice selection." {
+    localModel = mkOpt (t.enum [ "kokoro" ]) "On-device neural TTS model.";
+    localVoice = mkOpt (t.enum kokoroVoices) "Kokoro voice used by the local TTS backend.";
+  };
+
+  speech = mkSection "Spoken assistant output." {
+    enabled = mkOpt t.bool "Speak the assistant's output aloud as it streams.";
+    mode =
+      mkOpt
+        (t.enum [
+          "all"
+          "assistant"
+          "yield"
+        ])
+        "What to speak: all (messages + thinking), assistant (messages only), or yield (final message only).";
+    voice = mkOpt (t.enum kokoroVoices) "Kokoro voice used when speaking output aloud.";
   };
 }

@@ -69,6 +69,7 @@ in
     leftSegments = mkOpt (t.listOf (t.enum statusLineSegments)) "Custom-preset left segments.";
     rightSegments = mkOpt (t.listOf (t.enum statusLineSegments)) "Custom-preset right segments.";
     segmentOptions = mkOpt (t.attrsOf helpers.yamlFormat.type) "Per-segment options keyed by segment id.";
+    transparent = mkOpt t.bool "Use a transparent status line background.";
   };
 
   terminal = mkSection "Terminal rendering." {

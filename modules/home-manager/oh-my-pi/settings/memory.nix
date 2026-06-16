@@ -47,6 +47,12 @@ in
     autoRecall = mkOpt t.bool "Recall local memories into the first turn of each session.";
     autoRetain = mkOpt t.bool "Retain completed conversation turns into local Mnemopi memory.";
     noEmbeddings = mkOpt t.bool "Force deterministic FTS-only recall instead of vector embeddings.";
+    embeddingVariant = mkOpt (t.enum [
+      "en"
+      "multilingual"
+    ]) "Embedding model language variant.";
+    polyphonicRecall = mkOpt t.bool "Issue multiple recall queries per turn.";
+    enhancedRecall = mkOpt t.bool "Use enhanced recall ranking.";
     embeddingModel = mkOpt t.str "Optional embedding model override.";
     embeddingApiUrl = mkOpt t.str "Optional OpenAI-compatible embedding endpoint.";
     embeddingApiKey = mkOpt t.str "Optional embedding API key.";
@@ -97,5 +103,11 @@ in
     mentalModelAutoSeed = mkOpt t.bool "Auto-create built-in mental models that do not yet exist on the bank.";
     mentalModelRefreshIntervalMs = mkOpt num "Mental model refresh interval in milliseconds.";
     mentalModelMaxRenderChars = mkOpt num "Maximum characters rendered for mental models.";
+  };
+
+  autolearn = mkSection "Autolearn lesson extraction from completed turns." {
+    enabled = mkOpt t.bool "Extract reusable lessons from completed turns.";
+    autoContinue = mkOpt t.bool "Continue automatically after autolearn runs.";
+    minToolCalls = mkOpt num "Minimum tool calls in a turn before autolearn considers it.";
   };
 }

@@ -17,6 +17,17 @@ in
   hideThinkingBlock = mkOpt t.bool "Hide thinking blocks in assistant responses.";
   repeatToolDescriptions = mkOpt t.bool "Render full tool descriptions in the system prompt instead of a name list.";
   includeModelInPrompt = mkOpt t.bool "Surface the active model id in the system prompt so the agent knows which model it is.";
+  personality = mkOpt (t.enum [
+    "default"
+    "friendly"
+    "pragmatic"
+    "none"
+  ]) "Assistant personality/tone preset.";
+  fastModeScope = mkOpt (t.enum [
+    "both"
+    "openai"
+    "claude"
+  ]) "Providers fast mode applies to.";
 
   temperature = mkOpt num "Sampling temperature (-1 = provider default).";
   topP = mkOpt num "Nucleus sampling cutoff (-1 = provider default).";
@@ -55,5 +66,16 @@ in
     medium = mkOpt num "Token budget for the medium thinking level.";
     high = mkOpt num "Token budget for the high thinking level.";
     xhigh = mkOpt num "Token budget for the xhigh thinking level.";
+  };
+
+  advisor = mkSection "Passive advisor model that reviews each turn." {
+    enabled = mkOpt t.bool "Pair a second model (advisor role) that passively reviews each turn and injects notes.";
+    subagents = mkOpt t.bool "Also enable the advisor on spawned task/eval subagents.";
+    syncBacklog = mkOpt (t.enum [
+      "off"
+      "1"
+      "3"
+      "5"
+    ]) "Pause the main agent up to 30s if the advisor falls behind by this many turns.";
   };
 }

@@ -38,13 +38,33 @@ in
       "all"
     ]) "Hide tools behind a search tool to save tokens.";
     essentialOverride = mkOpt (t.listOf t.str) "Override the always-loaded built-in tools.";
+    abortOnFabricatedResult = mkOpt t.bool "Abort the turn when a fabricated tool result is detected.";
+    format = mkOpt (t.enum [
+      "auto"
+      "native"
+      "glm"
+      "hermes"
+      "kimi"
+      "xml"
+      "anthropic"
+      "deepseek"
+      "harmony"
+      "pi"
+      "qwen3"
+      "gemini"
+      "gemma"
+    ]) "Tool-calling dialect exposed to the model.";
   };
 
   todo = mkSection "Todo tool." {
     enabled = mkOpt t.bool "Enable the todo_write tool for task tracking.";
     reminders = mkOpt t.bool "Remind the agent to complete todos before stopping.";
     reminderMax = mkOpt num "Maximum reminders to complete todos before giving up (sets todo.reminders.max).";
-    eager = mkOpt t.bool "Automatically create a comprehensive todo list after the first message.";
+    eager = mkOpt (t.enum [
+      "default"
+      "preferred"
+      "always"
+    ]) "How eagerly to auto-create a comprehensive todo list.";
   };
 
   find = mkSection "Find tool." {
@@ -66,7 +86,6 @@ in
   };
 
   irc = mkSection "Agent-to-agent IRC messaging." {
-    enabled = mkOpt t.bool "Enable agent-to-agent IRC messaging via the irc tool.";
     timeoutMs = mkOpt num "Drop IRC messages whose recipient does not respond within this many ms (0 disables).";
   };
 
@@ -78,8 +97,8 @@ in
     enabled = mkOpt t.bool "Enable the debug tool for DAP-based debugging.";
   };
 
-  tts = mkSection "Text-to-speech tool." {
-    enabled = mkOpt t.bool "Enable the tts tool for speech synthesis.";
+  speechgen = mkSection "Speech generation tool." {
+    enabled = mkOpt t.bool "Enable the tts tool for on-device (Kokoro) or xAI Grok Voice speech-file synthesis.";
   };
 
   inspect_image = mkSection "Inspect image tool." {
@@ -115,6 +134,7 @@ in
     enabled = mkOpt t.bool "Enable the browser tool.";
     headless = mkOpt t.bool "Launch the browser in headless mode.";
     screenshotDir = mkOpt t.str "Directory to save screenshots (supports ~).";
+    cmux = mkOpt t.bool "Use cmux for browser sessions.";
   };
 
   async = mkSection "Async background jobs." {
@@ -126,6 +146,7 @@ in
       "30s"
       "1m"
       "5m"
+      "smart"
     ]) "How long the poll tool waits for background job updates before returning.";
   };
 

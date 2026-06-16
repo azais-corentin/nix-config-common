@@ -30,6 +30,7 @@ in
     idleThresholdTokens = mkOpt num "Token count above which idle compaction triggers.";
     idleTimeoutSeconds = mkOpt num "Seconds to wait while idle before compacting.";
     supersedeReads = mkOpt t.bool "Prune older read results when the same file is read again (cache-aware, runs every turn).";
+    dropUseless = mkOpt t.bool "Prune tool results flagged contextually useless (no matches, timed-out waits) once consumed.";
   };
 
   branchSummary = mkSection "Branch summaries." {
@@ -56,5 +57,33 @@ in
     repeatGap = mkOpt num "Messages before a rule can trigger again.";
     builtinRules = mkOpt t.bool "Load the default rules shipped with the agent.";
     disabledRules = mkOpt (t.listOf t.str) "Rule names to ignore entirely.";
+  };
+
+  snapcompact = mkSection "Experimental snapcompact inline imaging." {
+    systemPrompt = mkOpt (t.enum [
+      "none"
+      "agents-md"
+      "all"
+    ]) "Render selected system prompt text as dense PNG image(s) for vision models.";
+    toolResults = mkOpt t.bool "Render large historical tool results as dense PNG image(s) instead of text.";
+    shape = mkOpt (t.enum [
+      "auto"
+      "8x8r-bw"
+      "8x8r-sent"
+      "8x8u-bw"
+      "8x8u-sent"
+      "6x6u-bw"
+      "6x6u-sent"
+      "5x8-bw"
+      "5x8-sent"
+      "6x12-dim"
+      "8x13-bw"
+      "8on16-bw"
+      "8on22-bw"
+      "11on16-bw"
+      "doc-8on16-bw"
+      "doc-8on16-sent"
+      "doc-8on16-sent-dim"
+    ]) "Frame shape snapcompact prints text with (auto picks per model).";
   };
 }
