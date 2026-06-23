@@ -79,6 +79,7 @@ in
   images = mkSection "Image handling." {
     autoResize = mkOpt t.bool "Resize large images to 2000x2000 max for better model compatibility.";
     blockImages = mkOpt t.bool "Prevent images from being sent to LLM providers.";
+    describeForTextModels = mkOpt t.bool "For non-vision models, save attached images under local:// and inject a vision-model description instead of dropping them.";
   };
 
   tui = mkSection "TUI image/hyperlink limits." {
@@ -91,10 +92,11 @@ in
       "auto"
       "always"
     ]) "Wrap file paths in OSC 8 hyperlinks (auto/off/always).";
+    tight = mkOpt t.bool "Remove the 1-column horizontal padding from the left/right of terminal output.";
   };
 
   display = mkSection "Display rendering." {
-    tabWidth = mkOpt helpers.num "Tab width in columns.";
+    cacheMissMarker = mkOpt t.bool "Show a divider above an assistant turn whose request missed the prompt cache.";
     shimmer = mkOpt (t.enum [
       "classic"
       "kitt"

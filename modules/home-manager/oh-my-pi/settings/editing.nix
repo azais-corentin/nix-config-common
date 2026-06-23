@@ -12,7 +12,6 @@ let
 in
 {
   readLineNumbers = mkOpt t.bool "Prepend line numbers to read tool output by default.";
-  readHashLines = mkOpt t.bool "Include snapshot-tag headers and line numbers in read output (hashline edit mode).";
 
   edit = mkSection "Edit tool." {
     mode = mkOpt (t.enum [
@@ -95,6 +94,8 @@ in
   eval = mkSection "Eval tool backends." {
     py = mkOpt t.bool "Allow the eval tool to dispatch to the IPython kernel.";
     js = mkOpt t.bool "Allow the eval tool to dispatch to the in-process JavaScript runtime.";
+    jl = mkOpt t.bool "Allow the eval tool to dispatch Julia cells to the persistent Julia kernel.";
+    rb = mkOpt t.bool "Allow the eval tool to dispatch Ruby cells to the persistent Ruby kernel.";
   };
 
   python = mkSection "Python kernel." {
@@ -103,5 +104,13 @@ in
       "per-call"
     ]) "Whether to keep the IPython kernel alive across calls.";
     interpreter = mkOpt t.str "Path to an exact Python executable; disables automatic runtime discovery when set.";
+  };
+
+  julia = mkSection "Julia kernel." {
+    interpreter = mkOpt t.str "Path to an exact Julia executable; disables automatic runtime discovery when set.";
+  };
+
+  ruby = mkSection "Ruby kernel." {
+    interpreter = mkOpt t.str "Path to an exact Ruby executable; disables automatic runtime discovery when set.";
   };
 }

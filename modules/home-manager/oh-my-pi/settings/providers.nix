@@ -132,6 +132,15 @@ in
     ]) "Backend for the tts tool: local on-device (Kokoro) or xAI Grok Voice.";
     unexpectedStopModel = mkOpt (t.enum tinyMemoryModels) "Classifier model for unexpected-stop detection.";
     webSearchExclude = mkOpt (t.listOf t.str) "Web-search provider ids to exclude from auto-selection.";
+    antigravityEndpoint = mkOpt (t.enum [
+      "auto"
+      "production"
+      "sandbox"
+    ]) "Endpoint routing for google-antigravity providers (chat/search/image/discovery).";
+    fireworksTier = mkOpt (t.enum [
+      "standard"
+      "priority"
+    ]) "Default Fireworks serving path.";
   };
 
   provider = mkSection "Cross-provider request behaviour." {
@@ -147,6 +156,7 @@ in
     enableSearch = mkOpt t.bool "Basic search, deep search, code search, crawl.";
     enableResearcher = mkOpt t.bool "AI-powered deep research tasks.";
     enableWebsets = mkOpt t.bool "Webset management and enrichment tools.";
+    searchDelayMs = mkOpt num "Minimum delay between Exa web-search requests in ms (0 disables pacing).";
   };
 
   searxng = mkSection "Self-hosted SearXNG search." {

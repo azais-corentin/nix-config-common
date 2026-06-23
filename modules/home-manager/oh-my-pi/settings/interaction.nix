@@ -49,6 +49,7 @@ in
     quiet = mkOpt t.bool "Skip welcome screen and startup status messages.";
     setupWizard = mkOpt t.bool "Show newly added onboarding steps once per setup version.";
     checkUpdate = mkOpt t.bool "If false, skip the update check.";
+    showSplash = mkOpt t.bool "Show the animated setup splash on normal interactive startup (quiet still suppresses it).";
   };
 
   completion = mkSection "Completion notifications." {
@@ -85,14 +86,23 @@ in
   collab = mkSection "Realtime collaboration relay." {
     relayUrl = mkOpt t.str "Collab relay server URL.";
     displayName = mkOpt t.str "Display name shown to other collaborators.";
+    webUrl = mkOpt t.str "Browser UI for /collab links; empty derives from relayUrl (explicit http:// is localhost-only).";
   };
 
   share = mkSection "Session sharing." {
     serverUrl = mkOpt t.str "Share server URL.";
     redactSecrets = mkOpt t.bool "Redact secrets before sharing a session.";
+    store = mkOpt (t.enum [
+      "blob"
+      "gist"
+    ]) "Where /share uploads the encrypted session blob.";
   };
 
   features = mkSection "Experimental feature flags." {
     unexpectedStopDetection = mkOpt t.bool "Use a small model to detect when the assistant says it will continue but stops without tool calls, and auto-prompt it to continue.";
+  };
+
+  git = mkSection "Git integration." {
+    enabled = mkOpt t.bool "Show git branch/status/PR info in the TUI and watch repo metadata.";
   };
 }

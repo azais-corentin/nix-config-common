@@ -34,12 +34,14 @@
         blockImages = false;
       };
       tui.hyperlinks = "auto";
+      tui.tight = true;
       display = {
         shimmer = "kitt";
         showTokenUsage = false;
       };
       startup = {
         setupWizard = false;
+        showSplash = false;
       };
       task.showResolvedModelBadge = false;
       task.isolation.mode = "auto";

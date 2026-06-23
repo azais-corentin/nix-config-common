@@ -53,6 +53,7 @@ in
       "qwen3"
       "gemini"
       "gemma"
+      "minimax"
     ]) "Tool-calling dialect exposed to the model.";
   };
 
@@ -87,10 +88,6 @@ in
 
   irc = mkSection "Agent-to-agent IRC messaging." {
     timeoutMs = mkOpt num "Drop IRC messages whose recipient does not respond within this many ms (0 disables).";
-  };
-
-  renderMermaid = mkSection "Render Mermaid tool." {
-    enabled = mkOpt t.bool "Enable the render_mermaid tool for Mermaid-to-ASCII rendering.";
   };
 
   debug = mkSection "Debug tool." {

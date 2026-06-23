@@ -70,6 +70,7 @@ in
     recallMaxQueryChars = mkOpt num "Maximum recall query length in characters.";
     injectionTokenLimit = mkOpt num "Recall injection token limit.";
     debug = mkOpt t.bool "Enable Mnemopi debug logging.";
+    proactiveLinking = mkOpt t.bool "Ingest new memories into the episodic graph as stored, linking to related entities/memories.";
   };
 
   hindsight = mkSection "Hindsight remote memory service." {

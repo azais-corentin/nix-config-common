@@ -13,10 +13,14 @@ in
     "high"
     "xhigh"
     "auto"
+    "max"
   ]) "Reasoning depth for thinking-capable models.";
   hideThinkingBlock = mkOpt t.bool "Hide thinking blocks in assistant responses.";
-  repeatToolDescriptions = mkOpt t.bool "Render full tool descriptions in the system prompt instead of a name list.";
   includeModelInPrompt = mkOpt t.bool "Surface the active model id in the system prompt so the agent knows which model it is.";
+  inlineToolDescriptors = mkOpt t.bool "Render full tool descriptors in the system prompt and strip descriptions from provider tool schemas (sent once).";
+  includeWorkspaceTree = mkOpt t.bool "Render the workspace directory tree in the system prompt (can bust prompt caching when files change).";
+  omitThinking = mkOpt t.bool "Ask upstream providers to omit thinking summaries entirely (where supported).";
+  proseOnlyThinking = mkOpt t.bool "Omit code blocks from thinking summaries, replacing them with an ellipsis.";
   personality = mkOpt (t.enum [
     "default"
     "friendly"
@@ -71,11 +75,19 @@ in
   advisor = mkSection "Passive advisor model that reviews each turn." {
     enabled = mkOpt t.bool "Pair a second model (advisor role) that passively reviews each turn and injects notes.";
     subagents = mkOpt t.bool "Also enable the advisor on spawned task/eval subagents.";
+    immuneTurns = mkOpt num "After an advisor concern/blocker interrupts, route further ones non-interruptingly for this many primary turns.";
     syncBacklog = mkOpt (t.enum [
       "off"
       "1"
       "3"
       "5"
     ]) "Pause the main agent up to 30s if the advisor falls behind by this many turns.";
+  };
+
+  model = mkSection "Model runtime guards." {
+    loopGuard = mkSection "Stream loop detection (Gemini/DeepSeek)." {
+      enabled = mkOpt t.bool "Enable automatic stream loop detection for Gemini and DeepSeek models.";
+      checkAssistantContent = mkOpt t.bool "Apply loop guard to assistant prose messages in addition to thinking logs.";
+    };
   };
 }

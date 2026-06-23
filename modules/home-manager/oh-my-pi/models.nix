@@ -107,6 +107,7 @@ let
     supportsReasoningParams = mkOpt t.bool "Provider accepts reasoning params.";
     alwaysSendMaxTokens = mkOpt t.bool "Always include max tokens in the request.";
     strictResponsesPairing = mkOpt t.bool "Enforce strict request/response message pairing (Responses API).";
+    supportsImageDetailOriginal = mkOpt t.bool "Provider supports image detail: original.";
     requiresToolResultId = mkOpt t.bool "Tool results must carry the tool-use id (anthropic-messages).";
     replayUnsignedThinking = mkOpt t.bool "Replay unsigned thinking blocks (anthropic-messages).";
   };

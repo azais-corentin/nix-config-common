@@ -33,11 +33,16 @@ in
     };
   };
 
-  power = mkSection "macOS power assertions (caffeinate flags); no-op on other platforms." {
-    preventIdleSleep = mkOpt t.bool "caffeinate -i: keep the system awake while a session is open.";
-    preventSystemSleep = mkOpt t.bool "caffeinate -s: block all system sleep while on AC power.";
-    declareUserActive = mkOpt t.bool "caffeinate -u: keep the display lit and treat the user as active.";
-    preventDisplaySleep = mkOpt t.bool "caffeinate -d: keep the display from idle-sleeping.";
+  power = mkSection "macOS sleep prevention (caffeinate); no-op on other platforms." {
+    sleepPrevention =
+      mkOpt
+        (t.enum [
+          "off"
+          "idle"
+          "display"
+          "system"
+        ])
+        "Prevent macOS sleep during active sessions; levels are cumulative (off < idle < display < system).";
   };
 
   marketplace = mkSection "Plugin marketplace behaviour." {
