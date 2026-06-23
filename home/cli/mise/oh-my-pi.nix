@@ -5,6 +5,7 @@
 { ... }:
 {
   programs.mise.globalConfig.tools."github:can1357/oh-my-pi".version = "latest";
+  programs.mise.globalConfig.settings.minimum_release_age_excludes = [ "github:can1357/oh-my-pi" ];
 
   oh-my-pi = {
     enable = true;
