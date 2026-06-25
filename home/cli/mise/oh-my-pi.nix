@@ -47,6 +47,11 @@
       task.showResolvedModelBadge = false;
       task.isolation.mode = "auto";
       task.isolation.merge = "branch";
+      task.disabledAgents = [
+        "explore"
+        "oracle"
+        "librarian"
+      ];
       edit.mode = "hashline";
       loop.mode = "reset";
       github.enabled = true;
