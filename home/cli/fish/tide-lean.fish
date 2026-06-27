@@ -21,7 +21,11 @@ set -g tide_bun_icon '󰳓'
 set -g tide_character_color '5FD700'
 set -g tide_character_color_failure 'FF0000'
 set -g tide_character_icon '❯'
-set -g tide_character_vi_icon_default '❮'
+# fish 4.3+ leaves $fish_key_bindings empty, so tide's _tide_item_character
+# falls through to this vi "default" icon under emacs/default bindings
+# (fish_bind_mode=default). Keep it '❯' so the chevron points right.
+# Upstream bug: https://github.com/IlanCosman/tide/issues/641
+set -g tide_character_vi_icon_default '❯'
 set -g tide_character_vi_icon_replace '▶'
 set -g tide_character_vi_icon_visual 'V'
 set -g tide_cmd_duration_bg_color 'normal'
