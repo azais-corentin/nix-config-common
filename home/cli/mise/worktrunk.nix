@@ -13,6 +13,22 @@
   # aqua registry resolves `worktrunk` and extracts the `wt`/`git-wt` binaries.
   programs.mise.globalConfig.tools.worktrunk = "latest";
 
+  # worktrunk user config: LLM commit messages + new-worktree setup. Written
+  # read-only from the nix store; worktrunk only writes approvals.toml and git
+  # config, never config.toml, so a symlinked config is safe.
+  xdg.configFile."worktrunk/config.toml".text = ''
+    # Copy gitignored files (build caches, .env, .direnv) into each new worktree.
+    post-start = "wt step copy-ignored"
+
+    # LLM commit messages for `wt merge` / `wt step commit` / `wt step squash`.
+    # `omp -p` reads the prompt from an ARGUMENT, not stdin; worktrunk pipes the
+    # templated prompt to stdin, so bridge it with "$(cat)". Flags keep the run
+    # fast + hermetic: no session/tools/LSP/skills/rules/extensions/title/system
+    # prompt; haiku + thinking off for quick one-line subjects.
+    [commit.generation]
+    command = "omp -p --no-session --no-tools --no-lsp --no-skills --no-rules --no-extensions --no-title --system-prompt=''' --model anthropic/claude-haiku-4-5 --thinking off \"$(cat)\""
+  '';
+
   xdg.configFile."fish/functions/wt.fish" = lib.mkIf config.programs.fish.enable {
     text = ''
       # worktrunk shell integration for fish

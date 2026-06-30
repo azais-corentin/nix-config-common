@@ -35,6 +35,8 @@
       nano = "hx";
       nrs = "nh os switch";
       nrt = "nh os test";
+      ws = "wt switch --execute=omp";
+      wsc = "wt switch --create --execute=omp";
     };
   };
 
