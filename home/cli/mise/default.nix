@@ -2,7 +2,10 @@
 # consumer wraps `cli.mise-oh-my-pi` with its own extras.
 { config, ... }:
 {
-  imports = [ ./jcode.nix ];
+  imports = [
+    ./jcode.nix
+    ./worktrunk.nix
+  ];
   programs.mise = {
     enable = true;
     enableZshIntegration = config.programs.zsh.enable;
