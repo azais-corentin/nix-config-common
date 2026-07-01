@@ -26,7 +26,7 @@
     # fast + hermetic: no session/tools/LSP/skills/rules/extensions/title/system
     # prompt; haiku + thinking off for quick one-line subjects.
     [commit.generation]
-    command = "omp -p --no-session --no-tools --no-lsp --no-skills --no-rules --no-extensions --no-title --system-prompt=''' --model anthropic/claude-haiku-4-5 --thinking off \"$(cat)\""
+    command = "omp -p --no-session --no-tools --no-lsp --no-skills --no-rules --no-extensions --no-title --system-prompt=''' --model anthropic/claude-sonnet-5:low \"$(cat)\""
   '';
 
   xdg.configFile."fish/functions/wt.fish" = lib.mkIf config.programs.fish.enable {
