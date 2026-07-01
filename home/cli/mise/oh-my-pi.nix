@@ -64,8 +64,8 @@
         vision = "anthropic/claude-opus-4-8";
         plan = "anthropic/claude-opus-4-8";
         designer = "anthropic/claude-opus-4-8";
-        commit = "anthropic/claude-sonnet-4-6";
-        task = "anthropic/claude-sonnet-4-6";
+        commit = "anthropic/claude-sonnet-5:med";
+        task = "anthropic/claude-sonnet-5:med";
       };
     };
 
