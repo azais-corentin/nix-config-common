@@ -21,6 +21,7 @@
   desktop = {
     firefox = ./desktop/firefox.nix;
     ghostty = ./desktop/ghostty.nix;
+    losslesscut = ./desktop/losslesscut.nix;
     mpv = ./desktop/mpv.nix;
     plasma = ./desktop/plasma.nix;
     vscode = ./desktop/vscode.nix;
