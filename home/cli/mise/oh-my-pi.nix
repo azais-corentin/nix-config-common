@@ -1,7 +1,7 @@
 # Shared oh-my-pi base: the intersection of both consumers' settings. The
 # module namespace is top-level `oh-my-pi.*` (declared in
-# modules/home-manager/oh-my-pi). Consumers add their own secrets, providers,
-# and memory backend in a per-repo layer.
+# modules/home-manager/oh-my-pi). Consumers add their own secrets and provider
+# credentials in a per-repo layer.
 { ... }:
 {
   programs.mise.globalConfig.tools."github:can1357/oh-my-pi".version = "latest";
@@ -73,6 +73,22 @@
         designer = "anthropic/claude-opus-4-8";
         commit = "anthropic/claude-sonnet-5:med";
         task = "anthropic/claude-sonnet-5:med";
+      };
+      memory.backend = "mnemopi";
+      mnemopi = {
+        scoping = "per-project-tagged";
+        autoRecall = true;
+        autoRetain = true;
+        embeddingVariant = "en";
+        llmMode = "smol";
+        polyphonicRecall = true;
+        enhancedRecall = true;
+        proactiveLinking = true;
+      };
+      autolearn = {
+        enabled = true;
+        autoContinue = true;
+        minToolCalls = 5;
       };
     };
 
