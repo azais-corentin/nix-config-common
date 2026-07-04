@@ -29,6 +29,7 @@ let
     "cache_hit"
     "session_name"
     "usage"
+    "collab"
   ];
 in
 {
@@ -70,10 +71,12 @@ in
     rightSegments = mkOpt (t.listOf (t.enum statusLineSegments)) "Custom-preset right segments.";
     segmentOptions = mkOpt (t.attrsOf helpers.yamlFormat.type) "Per-segment options keyed by segment id.";
     transparent = mkOpt t.bool "Use a transparent status line background.";
+    compactThinkingLevel = mkOpt t.bool "Show the thinking level as a single icon on the model name instead of a separate suffix.";
   };
 
   terminal = mkSection "Terminal rendering." {
     showImages = mkOpt t.bool "Render images inline in terminal.";
+    showProgress = mkOpt t.bool "Emit OSC 9;4 indeterminate terminal progress while the agent or context maintenance runs.";
   };
 
   images = mkSection "Image handling." {
@@ -93,6 +96,7 @@ in
       "always"
     ]) "Wrap file paths in OSC 8 hyperlinks (auto/off/always).";
     tight = mkOpt t.bool "Remove the 1-column horizontal padding from the left/right of terminal output.";
+    renderMermaid = mkOpt t.bool "Render Mermaid fenced code blocks as ASCII diagrams.";
   };
 
   display = mkSection "Display rendering." {

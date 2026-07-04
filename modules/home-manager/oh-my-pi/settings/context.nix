@@ -31,6 +31,9 @@ in
     idleTimeoutSeconds = mkOpt num "Seconds to wait while idle before compacting.";
     supersedeReads = mkOpt t.bool "Prune older read results when the same file is read again (cache-aware, runs every turn).";
     dropUseless = mkOpt t.bool "Prune tool results flagged contextually useless (no matches, timed-out waits) once consumed.";
+    midTurnEnabled = mkOpt t.bool "Check compaction thresholds at safe mid-turn tool-loop boundaries before the next request.";
+    remoteStreamingV2Enabled = mkOpt t.bool "Use Responses streaming compaction for compatible remote compaction models.";
+    v2RetainedMessageBudget = mkOpt num "Message-token budget retained by remote compaction V2.";
   };
 
   branchSummary = mkSection "Branch summaries." {
@@ -81,6 +84,7 @@ in
       "8on16-bw"
       "8on22-bw"
       "11on16-bw"
+      "silver16-bw"
       "doc-8on16-bw"
       "doc-8on16-sent"
       "doc-8on16-sent-dim"

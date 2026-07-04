@@ -2,7 +2,12 @@
 # marketplace groups. (SETTINGS_SCHEMA general section + scattered top-level keys.)
 { lib, helpers }:
 let
-  inherit (helpers) mkOpt mkSection subType;
+  inherit (helpers)
+    mkOpt
+    mkSection
+    subType
+    num
+    ;
   t = lib.types;
 in
 {
@@ -51,5 +56,14 @@ in
       "notify"
       "auto"
     ]) "Check for plugin updates on startup (off/notify/auto).";
+  };
+
+  gc = mkSection "Session-store garbage collection (omp gc defaults)." {
+    blobs = mkOpt t.bool "Sweep unreferenced blobs during gc.";
+    archive = mkOpt t.bool "Archive cold sessions during gc.";
+    wal = mkOpt t.bool "Checkpoint history/model database WAL files during gc.";
+    coldArchiveAfterDays = mkOpt num "Minimum session age in days before archiving.";
+    retainNewestGlobal = mkOpt num "Always keep this many newest sessions active.";
+    retainNewestPerCwd = mkOpt num "Always keep this many newest sessions per cwd active.";
   };
 }

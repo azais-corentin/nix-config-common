@@ -8,6 +8,7 @@ let
   tinyMemoryModels = [
     "online"
     "qwen3-1.7b"
+    "llama3.2:3b"
     "gemma-3-1b"
     "qwen2.5-1.5b"
     "lfm2-1.2b"
@@ -36,20 +37,24 @@ in
   providers = mkSection "Provider selection for built-in tools." {
     webSearch = mkOpt (t.enum [
       "auto"
-      "exa"
-      "brave"
-      "jina"
-      "kimi"
-      "zai"
       "perplexity"
-      "anthropic"
       "gemini"
+      "anthropic"
       "codex"
-      "tavily"
+      "xai"
+      "zai"
+      "exa"
+      "tinyfish"
+      "jina"
       "kagi"
-      "synthetic"
+      "tavily"
+      "firecrawl"
+      "brave"
+      "kimi"
       "parallel"
+      "synthetic"
       "searxng"
+      "duckduckgo"
     ]) "Provider for the web search tool.";
     image = mkOpt (t.enum [
       "auto"
@@ -141,6 +146,16 @@ in
       "standard"
       "priority"
     ]) "Default Fireworks serving path.";
+    maxInFlightRequests = mkOpt (t.attrsOf num) "Max concurrent LLM requests per provider id (e.g. openai, anthropic); omitted providers are unlimited.";
+    webSearchGeminiModel = mkOpt t.str "Model id for Gemini Google Search grounding (default gemini-2.5-flash).";
+    streamFirstEventTimeoutSeconds = mkOpt num "Seconds to wait for the first model stream event (-1 = provider/env default, 0 = disable watchdog).";
+    streamIdleTimeoutSeconds = mkOpt num "Seconds a model stream may stay silent between events (-1 = provider/env default, 0 = disable).";
+    anthropic = mkSection "Anthropic-specific provider behaviour." {
+      serverSideFallback = mkOpt t.bool "Retry safety-classifier-blocked Claude Fable 5 / Mythos 5 requests on Claude Opus 4.8 server-side (beta; opt-in).";
+    };
+    "ollama-cloud" = mkSection "Ollama Cloud provider limits." {
+      maxConcurrency = mkOpt num "Max concurrent Ollama Cloud subagent runs per process (0 disables the limit).";
+    };
   };
 
   provider = mkSection "Cross-provider request behaviour." {
@@ -203,5 +218,6 @@ in
         ])
         "What to speak: all (messages + thinking), assistant (messages only), or yield (final message only).";
     voice = mkOpt (t.enum kokoroVoices) "Kokoro voice used when speaking output aloud.";
+    enhanced = mkOpt t.bool "Rewrite assistant output into natural spoken prose with the tiny/smol model before synthesis (falls back to mechanical cleanup).";
   };
 }

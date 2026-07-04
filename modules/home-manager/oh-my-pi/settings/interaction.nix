@@ -70,6 +70,12 @@ in
       "turbo"
       "parakeet"
     ]) "Speech-to-text model.";
+    submitTrigger = mkOpt (t.enum [
+      "never"
+      "release"
+      "release-complete"
+      "say-submit"
+    ]) "When speech dictation auto-submits.";
   };
 
   magicKeywords = mkSection "Magic keyword triggers in user input." {
@@ -100,6 +106,11 @@ in
 
   features = mkSection "Experimental feature flags." {
     unexpectedStopDetection = mkOpt t.bool "Use a small model to detect when the assistant says it will continue but stops without tool calls, and auto-prompt it to continue.";
+  };
+
+  recap = mkSection "Idle recap." {
+    enabled = mkOpt t.bool "Generate a brief LLM recap of where things stand after the terminal has been idle.";
+    idleSeconds = mkOpt num "Seconds to wait while idle before showing the recap.";
   };
 
   git = mkSection "Git integration." {

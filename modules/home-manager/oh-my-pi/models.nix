@@ -1,8 +1,8 @@
 # oh-my-pi.models → ~/.omp/agent/models.yml
 #
 # Typed mirror of ModelsConfigSchema (config/models-config-schema.ts): custom
-# providers with their models / overrides / compat / discovery, plus the model
-# equivalence map. Every submodule carries a freeform escape hatch.
+# providers with their models / overrides / compat / discovery. Every submodule
+# carries a freeform escape hatch.
 {
   lib,
   pkgs,
@@ -43,6 +43,17 @@ let
     "text"
     "image"
   ];
+
+  # RemoteCompactionSchema — per-scope remote compaction endpoint config.
+  remoteCompactionType = subType {
+    enabled = mkOpt t.bool "Enable remote compaction for this scope.";
+    api = mkOpt apiEnum "API variant for the remote compaction endpoint.";
+    endpoint = mkOpt t.str "Remote compaction endpoint URL.";
+    model = mkOpt t.str "Remote compaction model id.";
+    v2StreamingEnabled = mkOpt t.bool "Use the V2 streaming compaction path.";
+    v2Endpoint = mkOpt t.str "V2 streaming compaction endpoint URL.";
+    streamingEndpoint = mkOpt t.str "Streaming compaction endpoint URL.";
+  };
 
   routingType = subType {
     only = mkOpt (t.listOf t.str) "Allow-list of upstream providers.";
@@ -185,6 +196,8 @@ let
     contextPromotionTarget = mkOpt t.str "Model id to promote to on context overflow.";
     omitMaxOutputTokens = mkOpt t.bool "Omit the max-output-tokens field from requests.";
     supportsTools = mkOpt t.bool "Whether the model supports tool calls.";
+    compactionModel = mkOpt t.str "Model id used to compact this model's context.";
+    remoteCompaction = mkOpt remoteCompactionType "Remote compaction configuration for this model.";
   };
 
   modelType = subType (
@@ -207,6 +220,7 @@ let
     api = mkOpt apiEnum "API variant for this provider.";
     headers = mkOpt (t.attrsOf t.str) "Extra request headers.";
     compat = mkOpt compatType "OpenAI-compat quirk flags.";
+    remoteCompaction = mkOpt remoteCompactionType "Remote compaction configuration for this provider.";
     authHeader = mkOpt t.bool "Send the key in a custom auth header.";
     auth = mkOpt (t.enum [
       "apiKey"
@@ -221,6 +235,7 @@ let
           "lm-studio"
           "openai-models-list"
           "proxy"
+          "litellm"
         ];
         description = "Model discovery mechanism.";
       };
@@ -234,7 +249,7 @@ let
   };
 
   rendered = pruneNulls {
-    inherit (cfg.models) providers equivalence;
+    inherit (cfg.models) providers;
   };
 in
 {
@@ -243,14 +258,6 @@ in
       type = t.attrsOf providerType;
       default = { };
       description = "Custom model providers written to ~/.omp/agent/models.yml.";
-    };
-    equivalence = lib.mkOption {
-      type = subType {
-        overrides = mkOpt (t.attrsOf t.str) "Map a model id to its canonical equivalent.";
-        exclude = mkOpt (t.listOf t.str) "Model ids excluded from equivalence grouping.";
-      };
-      default = { };
-      description = "Model equivalence configuration written to ~/.omp/agent/models.yml.";
     };
   };
 

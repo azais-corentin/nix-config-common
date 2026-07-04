@@ -49,7 +49,6 @@ in
       "anthropic"
       "deepseek"
       "harmony"
-      "pi"
       "qwen3"
       "gemini"
       "gemma"
@@ -68,14 +67,14 @@ in
     ]) "How eagerly to auto-create a comprehensive todo list.";
   };
 
-  find = mkSection "Find tool." {
-    enabled = mkOpt t.bool "Enable the find tool for file searching.";
+  glob = mkSection "Glob tool." {
+    enabled = mkOpt t.bool "Enable the glob tool for glob-based file lookup.";
   };
 
-  search = mkSection "Search tool." {
-    enabled = mkOpt t.bool "Enable the search tool for content searching.";
-    contextBefore = mkOpt num "Lines of context before each search match.";
-    contextAfter = mkOpt num "Lines of context after each search match.";
+  grep = mkSection "Grep tool." {
+    enabled = mkOpt t.bool "Enable the grep tool for regex content search.";
+    contextBefore = mkOpt num "Lines of context before each grep match.";
+    contextAfter = mkOpt num "Lines of context after each grep match.";
   };
 
   astGrep = mkSection "AST grep tool." {

@@ -55,9 +55,18 @@ in
     maxRuntimeMs = mkOpt num "Hard wall-clock limit per subagent in ms (0 disables).";
     agentIdleTtlMs = mkOpt num "How long an idle subagent stays live before parking to disk, in ms (0 = until exit).";
     softRequestBudget = mkOpt num "Soft per-subagent request budget; crossing it injects a wrap-up notice, 1.5x aborts gracefully (0 disables).";
+    softRequestBudgetNotice = mkOpt t.bool "Inject one steering notice when a subagent crosses its soft request budget (off by default).";
     disabledAgents = mkOpt (t.listOf t.str) "Agent ids that cannot be spawned.";
     agentModelOverrides = mkOpt (t.attrsOf t.str) "Per-agent model overrides.";
     showResolvedModelBadge = mkOpt t.bool "Display the actual model id used by each subagent in the task widget.";
+  };
+
+  title = mkSection "Session title behaviour." {
+    refreshOnReplan = mkOpt t.bool "Refresh generated session titles after a todo-init replan unless the title was user-set.";
+  };
+
+  worktree = mkSection "Agent-managed worktrees." {
+    base = mkOpt t.str "Base directory for agent-managed worktrees (task isolation, PR checkouts, omp worktree). Unset uses ~/.omp/wt; must be absolute or ~-relative; OMP_WORKTREE_DIR overrides.";
   };
 
   tasks = mkSection "Todo list lifecycle." {
