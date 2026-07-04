@@ -104,17 +104,6 @@
             };
           }
           {
-            description = "Firefox: start maximized";
-            match.window-class = {
-              value = "firefox";
-              type = "substring";
-            };
-            apply = {
-              maximizehoriz = true;
-              maximizevert = true;
-            };
-          }
-          {
             description = "VS Code: start maximized";
             match.window-class = {
               value = "Code";
