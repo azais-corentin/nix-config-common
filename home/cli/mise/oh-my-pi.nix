@@ -14,6 +14,7 @@
       providers = {
         webSearch = "auto";
         tinyModel = "online";
+        anthropic.serverSideFallback = true;
       };
       theme = {
         dark = "dark-nebula";
@@ -30,15 +31,21 @@
       };
       compaction.dropUseless = true;
       terminal.showImages = true;
+      terminal.showProgress = true;
       images = {
         autoResize = true;
         blockImages = false;
       };
       tui.hyperlinks = "auto";
       tui.tight = true;
+      tui.renderMermaid = true;
       display = {
         shimmer = "kitt";
         showTokenUsage = false;
+      };
+      recap = {
+        enabled = true;
+        idleSeconds = 180;
       };
       startup = {
         setupWizard = false;
