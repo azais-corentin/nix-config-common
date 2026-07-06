@@ -67,13 +67,16 @@
       modelRoles = {
         default = "anthropic/claude-opus-4-8";
         smol = "anthropic/claude-haiku-4-5";
-        slow = "anthropic/claude-opus-4-8";
-        vision = "anthropic/claude-opus-4-8";
-        plan = "anthropic/claude-opus-4-8";
-        designer = "anthropic/claude-opus-4-8";
-        commit = "anthropic/claude-sonnet-5:med";
-        task = "anthropic/claude-sonnet-5:med";
+        slow = "anthropic/claude-fable-5:high";
+        vision = "anthropic/claude-fable-5:high";
+        plan = "anthropic/claude-fable-5:high";
+        designer = "anthropic/claude-fable-5:high";
+        commit = "anthropic/claude-sonnet-5:low";
+        tiny = "anthropic/claude-haiku-4-5";
+        task = "anthropic/claude-opus-4-8:low";
+        advisor = "openai-codex/gpt-5.5";
       };
+      personality = "pragmatic";
       memory.backend = "mnemopi";
       mnemopi = {
         scoping = "per-project-tagged";
@@ -88,7 +91,7 @@
       autolearn = {
         enabled = true;
         autoContinue = true;
-        minToolCalls = 5;
+        minToolCalls = 8;
       };
     };
 

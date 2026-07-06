@@ -21,7 +21,28 @@ in
   modelProviderOrder = mkOpt (t.listOf t.str) "Preferred ordering of model providers.";
   cycleOrder = mkOpt (t.listOf t.str) "Model-role cycle order (default: smol, default, slow).";
 
-  modelRoles = mkOpt (t.attrsOf t.str) "Role → model-selector map (default, smol, slow, vision, plan, ...).";
+  modelRoles =
+    mkSection
+      ''
+        Role → model-selector map. A value is a model selector — `provider/id` or a
+        canonical id — with an optional `:level` thinking suffix
+        (`:minimal`/`:low`/`:medium`/`:high`/`:xhigh`). A role may alias another via
+        `pi/<role>`, and a comma-separated list forms a fallback chain. Built-in
+        roles are described below; custom roles are accepted via the freeform
+        escape hatch.
+      ''
+      {
+        default = mkOpt t.str "Primary model for the main agent (DEFAULT role).";
+        smol = mkOpt t.str "Fast/cheap model (Fast role); also the fallback chain for the tiny and advisor roles.";
+        slow = mkOpt t.str "Strong reasoning model (Thinking role).";
+        vision = mkOpt t.str "Vision-capable model used by inspect_image and automatic image description.";
+        plan = mkOpt t.str "Architect model used in plan mode.";
+        designer = mkOpt t.str "Model for the designer subagent.";
+        commit = mkOpt t.str "Model for commit-message and session-title generation.";
+        tiny = mkOpt t.str "Lightweight background-task model (session titles, memory extraction, auto-thinking classifier, unexpected-stop detection); falls back to smol (pi/smol) when unset.";
+        task = mkOpt t.str "Model for spawned task/subtask subagents.";
+        advisor = mkOpt t.str "Passive per-turn reviewer model (only active when advisor.enabled is set); falls back to the slow priority chain when unset.";
+      };
 
   modelTags = mkOpt (t.attrsOf (subType {
     name = lib.mkOption {
