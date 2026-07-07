@@ -88,11 +88,7 @@
         enhancedRecall = true;
         proactiveLinking = true;
       };
-      autolearn = {
-        enabled = true;
-        autoContinue = true;
-        minToolCalls = 8;
-      };
+      autolearn.enabled = false;
     };
 
     skills = {
