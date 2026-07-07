@@ -1,0 +1,7 @@
+# Gitleaks configuration for the shared nix-config-common repository
+
+title = "nix-config-common gitleaks rules"
+
+[allowlist]
+description = "Allow commits with known false positives"
+commits = []
