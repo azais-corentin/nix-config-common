@@ -1,0 +1,13 @@
+{
+  "name": "mise-tasks",
+  "private": true,
+  "devDependencies": {
+    "@commitlint/config-conventional": "^20.4.1",
+    "@commitlint/lint": "^20.4.1",
+    "@commitlint/load": "^20.4.0",
+    "@types/bun": "1.3.9"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,14 +1,23 @@
 {
   description = "Shared NixOS and home-manager modules for nix-config and nix-config-work";
 
-  # nixpkgs exists only for the `formatter` output. The shared modules are plain
-  # files evaluated with each consumer's own nixpkgs (passed via the module
-  # system), so this flake intentionally locks no second nixpkgs into consumers
-  # (they declare `inputs.nixpkgs.follows = "nixpkgs"`).
+  # nixpkgs exists only for the repo-local dev tooling (`formatter`,
+  # `devShells`). The shared modules are plain files evaluated with each
+  # consumer's own nixpkgs (passed via the module system), so this flake
+  # intentionally locks no second nixpkgs into consumers (they declare
+  # `inputs.nixpkgs.follows = "nixpkgs"`).
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
   outputs =
     { nixpkgs, ... }:
+    let
+      forEachSystem =
+        f:
+        nixpkgs.lib.genAttrs [
+          "x86_64-linux"
+          "aarch64-linux"
+        ] (system: f nixpkgs.legacyPackages.${system});
+    in
     {
       # Leaf home-manager modules, safe to `attrValues`-import wholesale.
       homeModules = import ./modules/home-manager;
@@ -22,9 +31,21 @@
       # Generalized KWin monitor-layout JSON builder.
       lib.kwinOutputConfig = import ./lib/kwin-output-config.nix;
 
-      formatter = nixpkgs.lib.genAttrs [
-        "x86_64-linux"
-        "aarch64-linux"
-      ] (s: nixpkgs.legacyPackages.${s}.nixfmt);
+      # Dev tooling: dprint drives formatting (.dprint.json), hk runs the git
+      # hooks (hk.pkl), mise provides tasks and the remaining tools (.mise/).
+      devShells = forEachSystem (pkgs: {
+        default = pkgs.mkShell {
+          nativeBuildInputs = builtins.attrValues {
+            inherit (pkgs)
+              mise
+              dprint
+              nixfmt
+              gitleaks
+              ;
+          };
+        };
+      });
+
+      formatter = forEachSystem (pkgs: pkgs.nixfmt);
     };
 }

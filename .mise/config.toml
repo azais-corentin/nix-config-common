@@ -1,0 +1,19 @@
+[tasks."format:check"]
+description = "Check code formatting"
+run = "dprint check"
+
+[tasks.format]
+description = "Format code"
+run = "dprint fmt"
+
+[tasks.pre-commit]
+run = "hk run pre-commit"
+
+[tools]
+hk = "latest"
+bun = "latest"
+pkl = "latest"
+gitleaks = "latest"
+
+[hooks]
+postinstall = "hk install --mise"
