@@ -4,10 +4,10 @@ Shared NixOS and home-manager modules consumed by
 [`nix-config`](https://github.com/azais-corentin/nix-config) (personal) and
 [`nix-config-work`](https://github.com/azais-corentin/nix-config-work) (work).
 
-The flake locks `nixpkgs` only for its `formatter` output. Every module is a
-plain file evaluated with the **consumer's** nixpkgs (passed through the module
-system), so consumers declare `inputs.nixpkgs.follows = "nixpkgs"` and never
-lock a second nixpkgs.
+The flake locks `nixpkgs` only for its repo-local dev tooling (`formatter`,
+`devShells`). Every module is a plain file evaluated with the **consumer's**
+nixpkgs (passed through the module system), so consumers declare
+`inputs.nixpkgs.follows = "nixpkgs"` and never lock a second nixpkgs.
 
 ## Outputs
 
@@ -18,6 +18,7 @@ lock a second nixpkgs.
 | `homeFeatures`         | Nested attrset of opt-in HM feature **paths** (`cli.*`, `desktop.*`, `stylix-theme`). |
 | `lib.kwinOutputConfig` | `{ pkgs, outputs, setups }` → generated `kwinoutputconfig.json` derivation.           |
 | `formatter`            | `nixfmt` for `x86_64-linux` / `aarch64-linux`.                                        |
+| `devShells`            | Dev shell with mise, dprint, nixfmt, gitleaks for the formatting/hook workflow.       |
 
 `homeFeatures` and `lib` are non-standard flake outputs; `nix flake check`
 emits a warning about them. This is expected.
@@ -59,6 +60,24 @@ palette/fonts via `lib.mkDefault`; neither sets `stylix.enable` or
 `stylix.image`. A consumer using stylix's NixOS→HM auto-injection
 (`homeManagerIntegration`) must import **only** the NixOS one — the HM values
 propagate automatically, and importing both would double-define.
+
+## Development
+
+Formatting and hooks mirror [`nix-config`](https://github.com/azais-corentin/nix-config):
+dprint (`.dprint.json`, with `nixfmt` for `.nix` and `pkl format` for `.pkl`),
+hk hooks (`hk.pkl`: pre-commit = dprint check + gitleaks + pkl; commit-msg =
+conventional-commit lint), mise tasks/tools (`.mise/`).
+
+One-time setup:
+
+```sh
+direnv allow            # flake devShell: mise, dprint, nixfmt, gitleaks
+mise trust && mise install  # hk/bun/pkl/gitleaks; auto-installs the git hooks
+bun install --cwd .mise # commitlint dependencies
+```
+
+Then `mise run format` / `mise run format:check`, or let the pre-commit hook
+enforce it. Commit messages must be conventional commits.
 
 ## Update workflow
 
