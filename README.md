@@ -11,13 +11,13 @@ lock a second nixpkgs.
 
 ## Outputs
 
-| Output | Contents |
-| --- | --- |
-| `homeModules` | `{ oh-my-pi, jcode }` — leaf HM modules, safe to `attrValues`-import. |
-| `nixosModules` | `{ desktop, plasma6, stylix-theme }`. |
-| `homeFeatures` | Nested attrset of opt-in HM feature **paths** (`cli.*`, `desktop.*`, `stylix-theme`). |
-| `lib.kwinOutputConfig` | `{ pkgs, outputs, setups }` → generated `kwinoutputconfig.json` derivation. |
-| `formatter` | `nixfmt` for `x86_64-linux` / `aarch64-linux`. |
+| Output                 | Contents                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `homeModules`          | `{ oh-my-pi, jcode }` — leaf HM modules, safe to `attrValues`-import.                 |
+| `nixosModules`         | `{ desktop, plasma6, stylix-theme }`.                                                 |
+| `homeFeatures`         | Nested attrset of opt-in HM feature **paths** (`cli.*`, `desktop.*`, `stylix-theme`). |
+| `lib.kwinOutputConfig` | `{ pkgs, outputs, setups }` → generated `kwinoutputconfig.json` derivation.           |
+| `formatter`            | `nixfmt` for `x86_64-linux` / `aarch64-linux`.                                        |
 
 `homeFeatures` and `lib` are non-standard flake outputs; `nix flake check`
 emits a warning about them. This is expected.
