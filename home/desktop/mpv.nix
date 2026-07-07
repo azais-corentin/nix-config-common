@@ -22,6 +22,7 @@
       drag-and-drop = "replace";
       cache = "yes";
     };
+    bindings.r = "cycle-values video-rotate 90 180 270 0";
     profiles.mpi = {
       # Disable audio entirely
       audio = false;
