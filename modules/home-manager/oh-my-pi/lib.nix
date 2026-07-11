@@ -61,6 +61,26 @@ let
     else
       v;
 
+  # Recursively lower the priority of inherited profile declarations while
+  # keeping every nested leaf independently overridable. Derivations are
+  # leaves: traversing them would rewrite their internal attrs.
+  mkDefaultRecursive =
+    value:
+    if lib.isAttrs value && !(lib.isDerivation value) then
+      lib.mapAttrs (_: mkDefaultRecursive) value
+    else
+      lib.mkDefault value;
+
+  # Canonical OMP profile names, excluding the implicit default sentinel and
+  # Windows device basenames that cannot be used portably as directories.
+  isValidProfileName =
+    name:
+    lib.isString name
+    && name != "default"
+    && !(lib.hasSuffix "." name)
+    && builtins.match "^[a-z0-9][a-z0-9._-]{0,63}$" name != null
+    && builtins.match "^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\\..*)?$" name == null;
+
   # ── Skill / file source helpers (reused from the previous oh-my-pi.nix) ────
 
   # Parse "github:owner/repo/subdir@ref" → { owner, repo, subdir, ref } or null.
@@ -131,13 +151,14 @@ let
   contentType = types.either types.lines types.path;
 
   # Maps an attrset of name→(path|string) into home.file entries.
-  #   dirPrefix: target directory under ~/.omp/agent/ (e.g. "commands")
-  #   suffix:    extension appended to the name (e.g. ".md")
+  #   agentDir: target agent directory relative to the home directory
+  #   dirPrefix: directory under agentDir (e.g. "commands")
+  #   suffix: extension appended to the name (e.g. ".md")
   mkFileEntries =
-    dirPrefix: suffix: attrs:
+    agentDir: dirPrefix: suffix: attrs:
     lib.mapAttrs' (
       name: content:
-      lib.nameValuePair ".omp/agent/${dirPrefix}/${name}${suffix}" (
+      lib.nameValuePair "${agentDir}/${dirPrefix}/${name}${suffix}" (
         if lib.isPath content then { source = content; } else { text = content; }
       )
     ) attrs;
@@ -145,10 +166,10 @@ let
   # Like mkFileEntries but the attr name is the verbatim filename (extension
   # included) and directory paths are symlinked recursively. For themes/tools/hooks.
   mkRawFileEntries =
-    dirPrefix: attrs:
+    agentDir: dirPrefix: attrs:
     lib.mapAttrs' (
       name: content:
-      lib.nameValuePair ".omp/agent/${dirPrefix}/${name}" (
+      lib.nameValuePair "${agentDir}/${dirPrefix}/${name}" (
         if lib.isPath content && lib.pathIsDirectory content then
           {
             source = content;
@@ -164,34 +185,34 @@ let
   # Skills support directories (with assets), single files, inline strings,
   # github: shorthand refs, and structured { src, subdir } attrsets.
   mkSkillEntries =
-    attrs:
+    agentDir: attrs:
     lib.mapAttrs' (
       name: content:
       # 1. Nix path to directory → recursive symlink
       if lib.isPath content && lib.pathIsDirectory content then
-        lib.nameValuePair ".omp/agent/skills/${name}" {
+        lib.nameValuePair "${agentDir}/skills/${name}" {
           source = content;
           recursive = true;
         }
       # 2. Nix path to file → SKILL.md symlink
       else if lib.isPath content then
-        lib.nameValuePair ".omp/agent/skills/${name}/SKILL.md" {
+        lib.nameValuePair "${agentDir}/skills/${name}/SKILL.md" {
           source = content;
         }
       # 3. String: github: shorthand → fetch + recursive symlink
       else if lib.isString content && parseGithubRef content != null then
-        lib.nameValuePair ".omp/agent/skills/${name}" {
+        lib.nameValuePair "${agentDir}/skills/${name}" {
           source = fetchGithubSkill (parseGithubRef content);
           recursive = true;
         }
       # 4. String: inline SKILL.md content
       else if lib.isString content then
-        lib.nameValuePair ".omp/agent/skills/${name}/SKILL.md" {
+        lib.nameValuePair "${agentDir}/skills/${name}/SKILL.md" {
           text = content;
         }
       # 5. Attrset: structured { src, subdir } → recursive symlink
       else
-        lib.nameValuePair ".omp/agent/skills/${name}" {
+        lib.nameValuePair "${agentDir}/skills/${name}" {
           source = if content.subdir != "" then "${content.src}/${content.subdir}" else "${content.src}";
           recursive = true;
         }
@@ -207,6 +228,8 @@ in
     mkSection
     subType
     pruneNulls
+    mkDefaultRecursive
+    isValidProfileName
     skillType
     contentType
     mkFileEntries

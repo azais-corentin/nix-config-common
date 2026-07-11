@@ -1,16 +1,10 @@
-# oh-my-pi.models → ~/.omp/agent/models.yml
+# oh-my-pi.models → the selected profile's models.yml
 #
 # Typed mirror of ModelsConfigSchema (config/models-config-schema.ts): custom
 # providers with their models / overrides / compat / discovery. Every submodule
 # carries a freeform escape hatch.
-{
-  lib,
-  pkgs,
-  config,
-  ...
-}:
+{ lib, pkgs }:
 let
-  cfg = config.oh-my-pi;
   helpers = import ./lib.nix { inherit lib pkgs; };
   inherit (helpers)
     mkOpt
@@ -248,20 +242,28 @@ let
     ]) "Streaming transport override (pi-native routes via the auth gateway).";
   };
 
-  rendered = pruneNulls {
-    inherit (cfg.models) providers;
-  };
 in
 {
-  options.oh-my-pi.models = {
+  options.models = {
     providers = lib.mkOption {
       type = t.attrsOf providerType;
       default = { };
-      description = "Custom model providers written to ~/.omp/agent/models.yml.";
+      description = "Custom model providers written to the selected profile's models.yml.";
     };
   };
 
-  config = lib.mkIf (cfg.enable && rendered != { }) {
-    home.file.".omp/agent/models.yml".source = yamlFormat.generate "omp-models.yml" rendered;
-  };
+  mkFiles =
+    {
+      agentDir,
+      artifactPrefix,
+      config,
+    }:
+    let
+      rendered = pruneNulls {
+        inherit (config.models) providers;
+      };
+    in
+    lib.optionalAttrs (rendered != { }) {
+      "${agentDir}/models.yml".source = yamlFormat.generate "${artifactPrefix}-models.yml" rendered;
+    };
 }
