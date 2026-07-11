@@ -12,6 +12,13 @@ let
     };
   };
 
+  miseGlobalConfigModule = { lib, ... }: {
+    options.programs.mise.globalConfig = lib.mkOption {
+      type = lib.types.attrsOf lib.types.anything;
+      default = { };
+    };
+  };
+
   evaluate =
     declaration:
     lib.evalModules {
@@ -22,6 +29,16 @@ let
         { oh-my-pi = declaration; }
       ];
     };
+
+  sharedFeature = lib.evalModules {
+    specialArgs = { inherit pkgs; };
+    modules = [
+      ./default.nix
+      homeFileModule
+      miseGlobalConfigModule
+      ../../../home/cli/mise/oh-my-pi.nix
+    ];
+  };
 
   main = evaluate {
     enable = true;
@@ -151,6 +168,10 @@ let
     ++ [ ".omp/profiles/work-2.0_a/agent/mcp.json" ]
   );
 
+  sharedFeatureFiles = sharedFeature.config.home.file;
+  sharedDefaultConfig = sharedFeatureFiles.".omp/agent/config.yml".source;
+  openaiProfileConfig = sharedFeatureFiles.".omp/profiles/openai/agent/config.yml".source;
+
   defaultConfig = homeFiles.".omp/agent/config.yml".source;
   personalConfig = homeFiles.".omp/profiles/personal/agent/config.yml".source;
   workConfig = homeFiles.".omp/profiles/work/agent/config.yml".source;
@@ -175,6 +196,8 @@ assert !(builtins.hasAttr ".omp/profiles/work/agent/skills/shared/SKILL.md" home
 assert !(builtins.hasAttr ".omp/agent/mcp.json" homeFiles);
 assert !(builtins.hasAttr ".omp/profiles/personal/agent/mcp.json" homeFiles);
 assert homeFiles.".omp/profiles/work/agent/commands/shared.md".text == "work command";
+assert builtins.hasAttr ".omp/agent/config.yml" sharedFeatureFiles;
+assert builtins.hasAttr ".omp/profiles/openai/agent/config.yml" sharedFeatureFiles;
 assert hasArtifactName ".omp/agent/config.yml" "omp-config.yml";
 assert hasArtifactName ".omp/agent/models.yml" "omp-models.yml";
 assert hasArtifactName ".omp/agent/keybindings.yml" "omp-keybindings.yml";
@@ -210,6 +233,20 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
 
     jq -e --arg schema '${mcpSchemaUrl}' '."$schema" == $schema and .mcpServers.local.type == "stdio" and .mcpServers.local.command == "local-mcp"' ${workMcp} >/dev/null
     jq -e '."$schema" == "https://example.invalid/mcp-schema.json" and .mcpServers == {}' ${work2Mcp} >/dev/null
+
+    yq -o=json '.modelRoles' ${openaiProfileConfig} \
+      | jq -e '. == {
+          "advisor": "openai-codex/gpt-5.6-sol:xhigh",
+          "commit": "openai-codex/gpt-5.6-luna:medium",
+          "default": "openai-codex/gpt-5.6-sol:xhigh",
+          "designer": "openai-codex/gpt-5.6-sol:xhigh",
+          "plan": "openai-codex/gpt-5.6-sol:xhigh",
+          "slow": "openai-codex/gpt-5.6-sol:xhigh",
+          "smol": "openai-codex/gpt-5.6-luna:medium",
+          "task": "openai-codex/gpt-5.6-sol:xhigh",
+          "tiny": "openai-codex/gpt-5.6-luna:medium",
+          "vision": "openai-codex/gpt-5.6-sol:xhigh"
+        }' >/dev/null
 
     touch "$out"
   ''

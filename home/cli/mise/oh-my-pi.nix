@@ -2,7 +2,7 @@
 # module namespace is top-level `oh-my-pi.*` (declared in
 # modules/home-manager/oh-my-pi). Consumers add their own secrets and provider
 # credentials in a per-repo layer.
-{ ... }:
+{ lib, ... }:
 {
   programs.mise.globalConfig.tools."github:can1357/oh-my-pi".version = "latest";
   programs.mise.globalConfig.settings.minimum_release_age_excludes = [ "github:can1357/oh-my-pi" ];
@@ -89,6 +89,19 @@
         proactiveLinking = true;
       };
       autolearn.enabled = false;
+    };
+
+    profiles.openai.settings.modelRoles = lib.mkForce {
+      default = "openai-codex/gpt-5.6-sol:xhigh";
+      smol = "openai-codex/gpt-5.6-luna:medium";
+      slow = "openai-codex/gpt-5.6-sol:xhigh";
+      vision = "openai-codex/gpt-5.6-sol:xhigh";
+      plan = "openai-codex/gpt-5.6-sol:xhigh";
+      designer = "openai-codex/gpt-5.6-sol:xhigh";
+      commit = "openai-codex/gpt-5.6-luna:medium";
+      tiny = "openai-codex/gpt-5.6-luna:medium";
+      task = "openai-codex/gpt-5.6-sol:xhigh";
+      advisor = "openai-codex/gpt-5.6-sol:xhigh";
     };
 
     skills = {
