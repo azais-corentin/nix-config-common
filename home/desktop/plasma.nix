@@ -130,8 +130,10 @@
         programs.plasma.shortcuts.kwin."Window Close" = "Meta+Q";
         programs.plasma.shortcuts.plasmashell."manage activities" = [ ];
 
-        # Keep the numpad in digit mode from session start.
+        # Keep the numpad in digit mode from session start; pin the AZERTY layout
+        # (KWin Wayland reads kxkbrc, not the X11/xkb system config).
         programs.plasma.input.keyboard = {
+          layouts = [ { layout = "fr"; } ];
           numlockOnStartup = "on";
           repeatDelay = 500;
           repeatRate = 50;
