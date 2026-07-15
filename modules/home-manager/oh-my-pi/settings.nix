@@ -6,7 +6,7 @@
 # typed option surface is composed from the per-tab files in ./settings/.
 #
 # omp reads config.yml via nested path traversal (getByPath), never flat dotted
-# keys, so the emitted YAML is nested (e.g. `tools: { discoveryMode: ... }`).
+# keys, so the emitted YAML is nested (e.g. `tools: { xdev: ... }`).
 { lib, pkgs }:
 let
   helpers = import ./lib.nix { inherit lib pkgs; };
@@ -51,39 +51,7 @@ in
       config,
     }:
     let
-      raw = config.settings;
-
-      # config.yml cannot hold both a scalar `X` and an object `X.Y` at the same
-      # nested path. omp treats any object at `X` as truthy (feature on) and
-      # reads `X.Y` only then.
-
-      # todo.reminders (bool) vs todo.reminders.max (number)
-      todoFixed =
-        let
-          td = raw.todo;
-        in
-        (removeAttrs td [ "reminderMax" ])
-        // {
-          reminders = if td.reminderMax != null then { max = td.reminderMax; } else td.reminders;
-        };
-
-      # dev.autoqa (bool) vs dev.autoqa.consent (enum)
-      devFixed =
-        let
-          dv = raw.dev;
-        in
-        (removeAttrs dv [ "autoqaConsent" ])
-        // {
-          autoqa = if dv.autoqaConsent != null then { consent = dv.autoqaConsent; } else dv.autoqa;
-        };
-
-      rendered = pruneNulls (
-        raw
-        // {
-          todo = todoFixed;
-          dev = devFixed;
-        }
-      );
+      rendered = pruneNulls config.settings;
     in
     lib.optionalAttrs (rendered != { }) {
       "${agentDir}/config.yml".source = yamlFormat.generate "${artifactPrefix}-config.yml" rendered;

@@ -75,6 +75,7 @@ in
     medium = mkOpt num "Token budget for the medium thinking level.";
     high = mkOpt num "Token budget for the high thinking level.";
     xhigh = mkOpt num "Token budget for the xhigh thinking level.";
+    max = mkOpt num "Token budget for the max thinking level.";
   };
 
   advisor = mkSection "Passive advisor model that reviews each turn." {
@@ -87,6 +88,10 @@ in
       "3"
       "5"
     ]) "Pause the main agent up to 30s if the advisor falls behind by this many turns.";
+  };
+
+  prewalk = mkSection "Prewalk: strong model plans, cheap model implements." {
+    enabled = mkOpt t.bool "Start on the active model, then hand off to the smol role at the first edit/write after the plan nudge's todo list exists (per-session --prewalk / --no-prewalk override).";
   };
 
   tier = mkSection "Per-family processing tier (service_tier)." {
@@ -126,7 +131,7 @@ in
     toolCallLoopGuard = mkSection "Cross-turn repeated tool-call loop guard." {
       enabled = mkOpt t.bool "Detect consecutive identical tool calls across turns and inject a corrective steer.";
       threshold = mkOpt num "Consecutive identical tool calls required before the steer is injected.";
-      exemptTools = mkOpt (t.listOf t.str) "Tool names that may repeat without triggering the guard (default: job, irc).";
+      exemptTools = mkOpt (t.listOf t.str) "Tool names that may repeat without triggering the guard (default: hub).";
     };
   };
 }

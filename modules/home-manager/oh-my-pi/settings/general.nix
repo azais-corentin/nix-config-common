@@ -26,10 +26,10 @@ in
       ''
         Role → model-selector map. A value is a model selector — `provider/id` or a
         canonical id — with an optional `:level` thinking suffix
-        (`:minimal`/`:low`/`:medium`/`:high`/`:xhigh`). A role may alias another via
-        `pi/<role>`, and a comma-separated list forms a fallback chain. Built-in
-        roles are described below; custom roles are accepted via the freeform
-        escape hatch.
+        (`:minimal`/`:low`/`:medium`/`:high`/`:xhigh`/`:max`). A role may alias
+        another via `@<role>` (`pi/<role>` still accepted as legacy), and a
+        comma-separated list forms a fallback chain. Built-in roles are described
+        below; custom roles are accepted via the freeform escape hatch.
       ''
       {
         default = mkOpt t.str "Primary model for the main agent (DEFAULT role).";

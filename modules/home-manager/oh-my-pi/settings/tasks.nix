@@ -59,6 +59,8 @@ in
     disabledAgents = mkOpt (t.listOf t.str) "Agent ids that cannot be spawned.";
     agentModelOverrides = mkOpt (t.attrsOf t.str) "Per-agent model overrides.";
     showResolvedModelBadge = mkOpt t.bool "Display the actual model id used by each subagent in the task widget.";
+    prewalk = mkOpt t.bool "Arm prewalk for the bundled generic task subagent (per-agent overrides via task.agentPrewalk and agent prewalk frontmatter apply regardless).";
+    agentPrewalk = mkOpt (t.attrsOf t.str) "Per-agent prewalk overrides keyed by agent id (toggled with P in /agents).";
   };
 
   title = mkSection "Session title behaviour." {

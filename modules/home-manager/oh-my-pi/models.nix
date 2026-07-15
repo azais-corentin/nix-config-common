@@ -32,6 +32,7 @@ let
     "medium"
     "high"
     "xhigh"
+    "max"
   ];
   inputEnum = t.enum [
     "text"
@@ -61,6 +62,7 @@ let
     medium = mkOpt t.str "Upstream value for the medium effort level.";
     high = mkOpt t.str "Upstream value for the high effort level.";
     xhigh = mkOpt t.str "Upstream value for the xhigh effort level.";
+    max = mkOpt t.str "Upstream value for the max effort level.";
   };
 
   # OpenAICompatFieldsSchema — provider/model quirk flags.

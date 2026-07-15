@@ -1,10 +1,7 @@
 # Tools settings: tool output/approval, every optional tool toggle, async jobs,
-# MCP runtime behaviour, plus the todo and dev/autoqa groups (both of which have
-# the nested boolean-vs-subkey collision resolved at render time in settings.nix).
-#
-# Collision option names exposed here (not raw schema keys):
-#   todo.reminders + todo.reminderMax  → rendered as todo.reminders (bool | { max }).
-#   dev.autoqa     + dev.autoqaConsent → rendered as dev.autoqa     (bool | { consent }).
+# MCP runtime behaviour, plus the todo and dev/autoqa groups. All option names
+# here map 1:1 onto flat schema keys (v17 flattened the former todo.reminders.max
+# and dev.autoqa.consent collisions into todo.remindersMax / dev.autoqaConsent).
 { lib, helpers }:
 let
   inherit (helpers) mkOpt mkSection num;
@@ -31,13 +28,7 @@ in
     ]) "Default approval behaviour for tool calls.";
     intentTracing = mkOpt t.bool "Ask the agent to describe the intent of each tool call before executing it.";
     maxTimeout = mkOpt num "Maximum timeout in seconds the agent can set for any tool (0 = no limit).";
-    discoveryMode = mkOpt (t.enum [
-      "auto"
-      "off"
-      "mcp-only"
-      "all"
-    ]) "Hide tools behind a search tool to save tokens.";
-    essentialOverride = mkOpt (t.listOf t.str) "Override the always-loaded built-in tools.";
+    xdev = mkOpt t.bool "Mount rarely-used (discoverable) tools under xd:// device URLs driven via read/write instead of shipping their schemas on every request (disable to expose every enabled tool top-level).";
     abortOnFabricatedResult = mkOpt t.bool "Abort the turn when a fabricated tool result is detected.";
     format = mkOpt (t.enum [
       "auto"
@@ -59,7 +50,7 @@ in
   todo = mkSection "Todo tool." {
     enabled = mkOpt t.bool "Enable the todo_write tool for task tracking.";
     reminders = mkOpt t.bool "Remind the agent to complete todos before stopping.";
-    reminderMax = mkOpt num "Maximum reminders to complete todos before giving up (sets todo.reminders.max).";
+    remindersMax = mkOpt num "Maximum reminders to complete todos before giving up.";
     eager = mkOpt (t.enum [
       "default"
       "preferred"
@@ -85,12 +76,20 @@ in
     enabled = mkOpt t.bool "Enable the ast_edit tool for structural AST rewrites.";
   };
 
-  irc = mkSection "Agent-to-agent IRC messaging." {
-    timeoutMs = mkOpt num "Drop IRC messages whose recipient does not respond within this many ms (0 disables).";
+  irc = mkSection "Agent-to-agent messaging (hub)." {
+    timeoutMs = mkOpt num "Default timeout for hub message waits (and send await:true) in ms (0 disables).";
   };
 
   debug = mkSection "Debug tool." {
     enabled = mkOpt t.bool "Enable the debug tool for DAP-based debugging.";
+  };
+
+  launch = mkSection "Launch tool." {
+    enabled = mkOpt t.bool "Enable the launch tool for supervising shared long-running project processes.";
+  };
+
+  generate_image = mkSection "Image generation tool." {
+    enabled = mkOpt t.bool "Enable the generate_image tool for text-to-image generation and editing (exposed as an xd:// device when tools.xdev is on).";
   };
 
   speechgen = mkSection "Speech generation tool." {
@@ -143,13 +142,11 @@ in
       "1m"
       "5m"
       "smart"
-    ]) "How long the poll tool waits for background job updates before returning.";
+    ]) "How long a hub wait watches background jobs before returning the current state.";
   };
 
   mcp = mkSection "MCP runtime behaviour (server definitions live in mcp.json, not here)." {
     enableProjectConfig = mkOpt t.bool "Load .mcp.json/mcp.json from the project root.";
-    discoveryMode = mkOpt t.bool "Hide MCP tools by default and expose them through a discovery tool.";
-    discoveryDefaultServers = mkOpt (t.listOf t.str) "Servers kept visible while discovery mode hides other MCP tools.";
     notifications = mkOpt t.bool "Inject MCP resource updates into the agent conversation.";
     notificationDebounceMs = mkOpt num "Debounce window for MCP resource update notifications.";
   };
@@ -160,7 +157,7 @@ in
       "unset"
       "granted"
       "denied"
-    ]) "Consent for sharing automatic grievances (sets dev.autoqa.consent).";
+    ]) "Consent for sharing automatic grievances.";
     autoqaPush = mkSection "Auto-QA grievance push target." {
       endpoint = mkOpt t.str "Full URL that receives the JSON payload.";
       token = mkOpt t.str "Bearer token for the push endpoint.";

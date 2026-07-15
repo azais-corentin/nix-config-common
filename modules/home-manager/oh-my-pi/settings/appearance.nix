@@ -97,6 +97,8 @@ in
     ]) "Wrap file paths in OSC 8 hyperlinks (auto/off/always).";
     tight = mkOpt t.bool "Remove the 1-column horizontal padding from the left/right of terminal output.";
     renderMermaid = mkOpt t.bool "Render Mermaid fenced code blocks as ASCII diagrams.";
+    scrollbackRebuild = mkOpt t.bool "Erase and replay terminal scrollback when a block's final form replaces its live preview (off keeps stale preview copies in history).";
+    imeSafeCursor = mkOpt t.bool "Move the prompt's bottom border to a separate row so macOS IME preedit cannot displace it.";
   };
 
   display = mkSection "Display rendering." {
@@ -108,5 +110,6 @@ in
     ]) "Animation style for working/loading messages.";
     showTokenUsage = mkOpt t.bool "Show per-turn token usage on assistant messages.";
     smoothStreaming = mkOpt t.bool "Reveal assistant text smoothly while streamed chunks arrive.";
+    collapseCompacted = mkOpt t.bool "Collapse pre-compaction history behind the summary divider on the live transcript (disable to keep the full transcript inline).";
   };
 }

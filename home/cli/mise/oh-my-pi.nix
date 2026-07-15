@@ -39,6 +39,7 @@
       tui.hyperlinks = "auto";
       tui.tight = true;
       tui.renderMermaid = true;
+      tui.scrollbackRebuild = true;
       display = {
         shimmer = "kitt";
         showTokenUsage = false;
@@ -54,16 +55,10 @@
       task.showResolvedModelBadge = false;
       task.isolation.mode = "auto";
       task.isolation.merge = "branch";
-      task.disabledAgents = [
-        "explore"
-        "oracle"
-        "librarian"
-      ];
+      task.disabledAgents = [ "librarian" ];
       edit.mode = "hashline";
       loop.mode = "reset";
       github.enabled = true;
-      tools.discoveryMode = "mcp-only";
-      mcp.discoveryMode = true;
       modelRoles = {
         default = "anthropic/claude-opus-4-8";
         smol = "anthropic/claude-haiku-4-5";

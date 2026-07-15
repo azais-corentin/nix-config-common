@@ -46,9 +46,13 @@ let
     settings = {
       personality = "pragmatic";
       task.disabledAgents = [
-        "explore"
+        "scout"
         "oracle"
       ];
+      todo.remindersMax = 5;
+      dev.autoqaConsent = "granted";
+      tools.xdev = false;
+      task.prewalk = true;
     };
 
     models.providers.local = {
@@ -219,7 +223,15 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     set -euo pipefail
 
     yq -e '.personality == "pragmatic"' ${defaultConfig} >/dev/null
-    yq -e '.task.disabledAgents | join(",") == "explore,oracle"' ${defaultConfig} >/dev/null
+    yq -e '.task.disabledAgents | join(",") == "scout,oracle"' ${defaultConfig} >/dev/null
+    yq -e '.todo.remindersMax == 5' ${defaultConfig} >/dev/null
+    yq -e 'has("todo") and (.todo | has("reminders") | not)' ${defaultConfig} >/dev/null
+    yq -e '.dev.autoqaConsent == "granted"' ${defaultConfig} >/dev/null
+    yq -e '.dev | has("autoqa") | not' ${defaultConfig} >/dev/null
+    yq -e '.tools.xdev == false' ${defaultConfig} >/dev/null
+    yq -e '.task.prewalk == true' ${defaultConfig} >/dev/null
+    yq -e '.tui.scrollbackRebuild == true' ${sharedDefaultConfig} >/dev/null
+    yq -e '.tools == null or (.tools | has("discoveryMode") | not)' ${sharedDefaultConfig} >/dev/null
     yq -e '.providers.local.baseUrl == "http://default.invalid"' ${defaultModels} >/dev/null
     yq -e '.providers.local.api == "openai-completions"' ${defaultModels} >/dev/null
 
