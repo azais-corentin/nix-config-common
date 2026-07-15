@@ -37,12 +37,15 @@
         programs.firefox.nativeMessagingHosts.packages = lib.mkForce [ ];
         programs.chromium.enablePlasmaBrowserIntegration = lib.mkForce false;
 
-        # Seed NumLock=on for the plasma-login-manager greeter. PLM is a KWin-based
-        # Wayland greeter, so the legacy SDDM `Numlock=on` knob is ignored; KWin
-        # reads kcminputrc under the `plasmalogin` user instead (NumLock=0 means
-        # "on at startup", 1 = off, 2 = leave as-is).
-        systemd.services.plasmalogin-numlock = {
-          description = "Seed NumLock=on for the plasma-login-manager greeter";
+        # Seed keyboard defaults for the plasma-login-manager greeter. PLM is a
+        # KWin-based Wayland greeter, so both the legacy SDDM `Numlock=on` knob and
+        # the X11 xkb system config are ignored; KWin reads kcminputrc and kxkbrc
+        # under the `plasmalogin` user instead (NumLock=0 means "on at startup",
+        # 1 = off, 2 = leave as-is). kxkbrc mirrors what plasma-manager writes for
+        # the user session, derived from services.xserver.xkb so the greeter always
+        # matches the system layout.
+        systemd.services.plasmalogin-input-defaults = {
+          description = "Seed keyboard defaults (NumLock, layout) for the plasma-login-manager greeter";
           wantedBy = [ "plasmalogin.service" ];
           before = [ "plasmalogin.service" ];
           serviceConfig = {
@@ -58,6 +61,14 @@
                 NumLock=0
               ''} \
               /var/lib/plasmalogin/.config/kdedefaults/kcminputrc
+            ${pkgs.coreutils}/bin/install -m 0644 -o plasmalogin -g plasmalogin \
+              ${pkgs.writeText "kxkbrc" ''
+                [Layout]
+                LayoutList=${config.services.xserver.xkb.layout}
+                VariantList=${config.services.xserver.xkb.variant}
+                Use=true
+              ''} \
+              /var/lib/plasmalogin/.config/kxkbrc
           '';
         };
       }
