@@ -35,9 +35,12 @@
       # hooks (hk.pkl), mise provides tasks and the remaining tools (.mise/).
       devShells = forEachSystem (pkgs: {
         default = pkgs.mkShell {
-          nativeBuildInputs = builtins.attrValues {
+          nativeBuildInputs = [
+            # Pinned-or-newer mise, same source as the shared home module.
+            (import ./home/cli/mise/package.nix pkgs)
+          ]
+          ++ builtins.attrValues {
             inherit (pkgs)
-              mise
               dprint
               nixfmt
               gitleaks
