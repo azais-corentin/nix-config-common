@@ -230,7 +230,7 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.dev | has("autoqa") | not' ${defaultConfig} >/dev/null
     yq -e '.tools.xdev == false' ${defaultConfig} >/dev/null
     yq -e '.task.prewalk == true' ${defaultConfig} >/dev/null
-    yq -e '.tui.scrollbackRebuild == true' ${sharedDefaultConfig} >/dev/null
+    yq -e '.tui.scrollbackRebuild == false' ${sharedDefaultConfig} >/dev/null
     yq -e '.tools == null or (.tools | has("discoveryMode") | not)' ${sharedDefaultConfig} >/dev/null
     yq -e '.providers.local.baseUrl == "http://default.invalid"' ${defaultModels} >/dev/null
     yq -e '.providers.local.api == "openai-completions"' ${defaultModels} >/dev/null

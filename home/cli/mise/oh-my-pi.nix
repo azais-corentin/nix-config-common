@@ -39,7 +39,7 @@
       tui.hyperlinks = "auto";
       tui.tight = true;
       tui.renderMermaid = true;
-      tui.scrollbackRebuild = true;
+      tui.scrollbackRebuild = false;
       display = {
         shimmer = "kitt";
         showTokenUsage = false;
