@@ -1,7 +1,7 @@
 # oh-my-pi (omp) declarative Home Manager module.
 #
-# Manages every user-level config file omp reads from the default agent
-# directory and any declared named-profile agent directories.
+# Manages declarative non-secret configuration in the default agent directory
+# and any declared named-profile agent directories.
 #
 # The default mcp.json remains owned by the shared programs.mcp module. This
 # module manages only the independent MCP documents declared by named profiles.

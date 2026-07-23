@@ -62,7 +62,7 @@ in
     maxRetries = mkOpt num "Maximum retry attempts on API errors.";
     baseDelayMs = mkOpt num "Base backoff delay in milliseconds.";
     maxDelayMs = mkOpt num "Maximum wait between retries, in ms (fail fast past this).";
-    fallbackChains = mkOpt (t.attrsOf (t.listOf t.str)) "Per-model fallback chains.";
+    fallbackChains = mkOpt (t.attrsOf (t.listOf t.str)) "Fallback chains keyed by model role, provider/model selector, provider/* wildcard, or id-prefixed wildcard such as openrouter/google/*.";
     fallbackRevertPolicy = mkOpt (t.enum [
       "cooldown-expiry"
       "never"

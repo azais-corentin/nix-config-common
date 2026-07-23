@@ -100,6 +100,10 @@ in
     recallMaxQueryChars = mkOpt num "Maximum recall query length in characters.";
     recallTypes = mkOpt (t.listOf t.str) "Memory types to recall (default: world, experience).";
     debug = mkOpt t.bool "Enable Hindsight debug logging.";
+    requestTimeoutMs = mkOpt num "Base request timeout in milliseconds (upstream default: 30000; HINDSIGHT_REQUEST_TIMEOUT_MS takes precedence).";
+    reflectTimeoutMs = mkOpt num "Reflect request timeout in milliseconds (upstream default: 120000; HINDSIGHT_REFLECT_TIMEOUT_MS takes precedence).";
+    recallTimeoutMs = mkOpt num "Recall request timeout in milliseconds (upstream default: 30000; HINDSIGHT_RECALL_TIMEOUT_MS takes precedence).";
+    retainTimeoutMs = mkOpt num "Retain request timeout in milliseconds (upstream default: 60000; HINDSIGHT_RETAIN_TIMEOUT_MS takes precedence).";
     mentalModelsEnabled = mkOpt t.bool "Read curated reflect summaries into developer instructions at boot.";
     mentalModelAutoSeed = mkOpt t.bool "Auto-create built-in mental models that do not yet exist on the bank.";
     mentalModelRefreshIntervalMs = mkOpt num "Mental model refresh interval in milliseconds.";
@@ -108,7 +112,7 @@ in
 
   autolearn = mkSection "Autolearn lesson extraction from completed turns." {
     enabled = mkOpt t.bool "Extract reusable lessons from completed turns.";
-    autoContinue = mkOpt t.bool "Continue automatically after autolearn runs.";
+    autoContinue = mkOpt t.bool "Auto-run one private capture turn when the agent stops; when disabled, only standing auto-learn guidance remains.";
     minToolCalls = mkOpt num "Minimum tool calls in a turn before autolearn considers it.";
   };
 }

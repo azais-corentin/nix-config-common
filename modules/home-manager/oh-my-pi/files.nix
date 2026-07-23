@@ -1,7 +1,6 @@
-# Remaining files in the selected profile's agent directory: keybindings.yml,
-# ssh.json, markdown content trees (skills/commands/rules/agents/prompts/
-# instructions), raw file trees (themes/tools/hooks), and the top-level
-# AGENTS.md / SYSTEM.md / RULES.md.
+# Declarative non-secret files in the selected profile's agent directory:
+# keybindings.yml, ssh.json, lsp.json, WATCHDOG.yml, markdown content trees,
+# raw resource trees (including extensions), and top-level prompt documents.
 #
 # Default-profile mcp.json is deliberately absent — it is owned by the shared
 # programs.mcp module. Named-profile MCP rendering is composed in default.nix.
@@ -14,6 +13,7 @@ let
     pruneNulls
     yamlFormat
     jsonFormat
+    num
     skillType
     contentType
     mkSkillEntries
@@ -33,6 +33,49 @@ let
     description = mkOpt t.str "Human-readable description shown in the host list.";
     compat = mkOpt t.bool "Use the compatibility (non-PTY) execution path.";
   };
+
+  lspCapabilitiesType = t.submodule {
+    freeformType = jsonFormat.type;
+    options = {
+      flycheck = mkOpt t.bool "Server supports Flycheck operations.";
+      ssr = mkOpt t.bool "Server supports structural search and replace.";
+      expandMacro = mkOpt t.bool "Server supports macro expansion.";
+      runnables = mkOpt t.bool "Server supports runnable discovery.";
+      relatedTests = mkOpt t.bool "Server supports related-test discovery.";
+    };
+  };
+
+  lspServerType = t.submodule {
+    freeformType = jsonFormat.type;
+    options = {
+      command = mkOpt t.str "Language-server executable.";
+      args = mkOpt (t.listOf t.str) "Arguments passed to the language server.";
+      fileTypes = mkOpt (t.listOf t.str) "File types handled by the language server.";
+      rootMarkers = mkOpt (t.listOf t.str) "Files or directories that identify a project root.";
+      initOptions = mkOpt (t.attrsOf jsonFormat.type) "Initialization options sent to the language server.";
+      settings = mkOpt (t.attrsOf jsonFormat.type) "Language-server workspace settings.";
+      disabled = mkOpt t.bool "Disable this language server.";
+      isLinter = mkOpt t.bool "Use this server only for diagnostics and code actions.";
+      warmupTimeoutMs = mkOpt num "Per-server warmup timeout in milliseconds.";
+      capabilities = mkOpt lspCapabilitiesType "Language-server capability overrides.";
+    };
+  };
+
+  advisorType = subType {
+    name = lib.mkOption {
+      type = t.str;
+      description = "Advisor display name (required).";
+    };
+    model = mkOpt t.str "Model selector for this advisor.";
+    tools = mkOpt (t.listOf t.str) "Tools granted to this advisor; an explicit empty list grants none.";
+    instructions = mkOpt t.lines "Specialized instructions appended to the shared baseline.";
+    enabled = mkOpt t.bool "Whether this advisor is active.";
+  };
+
+  watchdogType = subType {
+    instructions = mkOpt t.lines "Shared instructions prepended to every advisor.";
+    advisors = mkOpt (t.listOf advisorType) "Declared passive advisors.";
+  };
 in
 {
   options = {
@@ -46,6 +89,34 @@ in
       type = t.attrsOf sshHostType;
       default = { };
       description = "SSH hosts written to the selected profile's ssh.json.";
+    };
+
+    extensions = lib.mkOption {
+      type = t.attrsOf contentType;
+      default = { };
+      description = "Extension modules installed under the selected profile's extensions directory; names are used verbatim.";
+    };
+
+    lsp = lib.mkOption {
+      type = t.submodule {
+        freeformType = jsonFormat.type;
+        options = {
+          idleTimeoutMs = mkOpt num "Shut down idle LSP clients after this many milliseconds.";
+          servers = lib.mkOption {
+            type = t.attrsOf lspServerType;
+            default = { };
+            description = "Language-server definitions and partial built-in overrides.";
+          };
+        };
+      };
+      default = { };
+      description = "Wrapped LSP configuration written to the selected profile's lsp.json.";
+    };
+
+    watchdog = lib.mkOption {
+      type = t.nullOr watchdogType;
+      default = null;
+      description = "Passive advisor configuration written to the selected profile's WATCHDOG.yml.";
     };
 
     skills = lib.mkOption {
@@ -129,6 +200,24 @@ in
       description = "Global system prompt written to the selected profile's agent directory.";
     };
 
+    appendSystemPrompt = lib.mkOption {
+      type = t.nullOr contentType;
+      default = null;
+      description = "Additional system prompt written to APPEND_SYSTEM.md in the selected profile's agent directory.";
+    };
+
+    titleSystemPrompt = lib.mkOption {
+      type = t.nullOr contentType;
+      default = null;
+      description = "Session-title system prompt written to TITLE_SYSTEM.md in the selected profile's agent directory.";
+    };
+
+    watchdogPrompt = lib.mkOption {
+      type = t.nullOr contentType;
+      default = null;
+      description = "Shared advisor prompt written to WATCHDOG.md in the selected profile's agent directory.";
+    };
+
     rulesMd = lib.mkOption {
       type = t.nullOr contentType;
       default = null;
@@ -148,6 +237,8 @@ in
         lib.optionalAttrs (value != null) {
           ${target} = if lib.isPath value then { source = value; } else { text = value; };
         };
+      lspConfig = pruneNulls config.lsp;
+      watchdogConfig = if config.watchdog == null then { } else pruneNulls config.watchdog;
     in
     lib.mkMerge [
       (lib.optionalAttrs (config.keybindings != { }) {
@@ -158,6 +249,13 @@ in
         "${agentDir}/ssh.json".source = jsonFormat.generate "${artifactPrefix}-ssh.json" {
           hosts = pruneNulls config.ssh.hosts;
         };
+      })
+      (lib.optionalAttrs (lspConfig != { }) {
+        "${agentDir}/lsp.json".source = jsonFormat.generate "${artifactPrefix}-lsp.json" lspConfig;
+      })
+      (lib.optionalAttrs (watchdogConfig != { }) {
+        "${agentDir}/WATCHDOG.yml".source =
+          yamlFormat.generate "${artifactPrefix}-watchdog.yml" watchdogConfig;
       })
       (lib.optionalAttrs (config.skills != { }) (mkSkillEntries agentDir config.skills))
       (lib.optionalAttrs (config.commands != { }) (
@@ -171,6 +269,9 @@ in
       ))
       (lib.optionalAttrs (config.themes != { }) (mkRawFileEntries agentDir "themes" config.themes))
       (lib.optionalAttrs (config.tools != { }) (mkRawFileEntries agentDir "tools" config.tools))
+      (lib.optionalAttrs (config.extensions != { }) (
+        mkRawFileEntries agentDir "extensions" config.extensions
+      ))
       (lib.optionalAttrs (config.hooks.pre != { }) (
         mkRawFileEntries agentDir "hooks/pre" config.hooks.pre
       ))
@@ -179,6 +280,9 @@ in
       ))
       (mkDocFile "${agentDir}/AGENTS.md" config.agentsMd)
       (mkDocFile "${agentDir}/SYSTEM.md" config.systemPrompt)
+      (mkDocFile "${agentDir}/APPEND_SYSTEM.md" config.appendSystemPrompt)
+      (mkDocFile "${agentDir}/TITLE_SYSTEM.md" config.titleSystemPrompt)
+      (mkDocFile "${agentDir}/WATCHDOG.md" config.watchdogPrompt)
       (mkDocFile "${agentDir}/RULES.md" config.rulesMd)
     ];
 }

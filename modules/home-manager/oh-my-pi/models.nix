@@ -115,6 +115,8 @@ let
     alwaysSendMaxTokens = mkOpt t.bool "Always include max tokens in the request.";
     strictResponsesPairing = mkOpt t.bool "Enforce strict request/response message pairing (Responses API).";
     supportsImageDetailOriginal = mkOpt t.bool "Provider supports image detail: original.";
+    supportsEagerToolInputStreaming = mkOpt t.bool "Allow Anthropic's per-tool eager_input_streaming flag.";
+    allowAnthropicHeaderOverrides = mkOpt t.bool "Allow explicit Anthropic fingerprint headers to replace OAuth defaults on non-official endpoints.";
     requiresToolResultId = mkOpt t.bool "Tool results must carry the tool-use id (anthropic-messages).";
     replayUnsignedThinking = mkOpt t.bool "Replay unsigned thinking blocks (anthropic-messages).";
   };

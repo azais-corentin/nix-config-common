@@ -56,14 +56,18 @@ in
       "searxng"
       "duckduckgo"
     ]) "Provider for the web search tool.";
-    image = mkOpt (t.enum [
-      "auto"
-      "openai"
-      "antigravity"
-      "xai"
-      "gemini"
-      "openrouter"
-    ]) "Provider for the image generation tool.";
+    image =
+      mkOpt
+        (t.enum [
+          "auto"
+          "openai"
+          "openai-codex"
+          "antigravity"
+          "xai"
+          "gemini"
+          "openrouter"
+        ])
+        "Image-generation provider: openai uses an OpenAI API key, while openai-codex uses a connected Codex/ChatGPT subscription.";
     tinyModel = mkOpt (t.enum [
       "online"
       "lfm2-350m"
@@ -107,9 +111,10 @@ in
     memoryModel = mkOpt (t.enum tinyMemoryModels) "Mnemopi fact-extraction model: online or a local on-device model.";
     autoThinkingModel = mkOpt (t.enum tinyMemoryModels) "Difficulty classifier for the auto thinking level.";
     kimiApiFormat = mkOpt (t.enum [
+      "auto"
       "openai"
       "anthropic"
-    ]) "API format for the Kimi Code provider.";
+    ]) "API format for the Kimi Code provider (auto follows live model metadata).";
     openaiWebsockets = mkOpt (t.enum [
       "auto"
       "off"

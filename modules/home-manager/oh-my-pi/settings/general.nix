@@ -14,12 +14,17 @@ in
   autoResume = mkOpt t.bool "Automatically resume the most recent session in the current directory.";
   shellPath = mkOpt t.str "Override the shell binary used for bash tool execution.";
 
-  extensions = mkOpt (t.listOf t.str) "Explicitly enabled extension ids.";
+  extensions = mkOpt (t.listOf t.str) "Explicit extension module file or directory paths to load.";
   enabledModels = mkOpt (t.listOf t.str) "Explicit allow-list of model ids to expose.";
   disabledProviders = mkOpt (t.listOf t.str) "Provider ids to hide.";
   disabledExtensions = mkOpt (t.listOf t.str) "Extension ids to disable.";
   modelProviderOrder = mkOpt (t.listOf t.str) "Preferred ordering of model providers.";
   cycleOrder = mkOpt (t.listOf t.str) "Model-role cycle order (default: smol, default, slow).";
+
+  modelRoleStorage = mkOpt (t.enum [
+    "global"
+    "project"
+  ]) "Where model-role assignments are persisted (upstream default: global).";
 
   modelRoles =
     mkSection

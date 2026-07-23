@@ -89,7 +89,7 @@ in
   };
 
   generate_image = mkSection "Image generation tool." {
-    enabled = mkOpt t.bool "Enable the generate_image tool for text-to-image generation and editing (exposed as an xd:// device when tools.xdev is on).";
+    enabled = mkOpt t.bool "Enable the generate_image tool for text-to-image generation and editing (exposed as an xd:// device when tools.xdev is on; upstream default: disabled).";
   };
 
   speechgen = mkSection "Speech generation tool." {
