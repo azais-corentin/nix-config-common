@@ -99,6 +99,7 @@ in
     renderMermaid = mkOpt t.bool "Render Mermaid fenced code blocks as ASCII diagrams.";
     scrollbackRebuild = mkOpt t.bool "Erase and replay terminal scrollback when a block's final form replaces its live preview (off keeps stale preview copies in history).";
     imeSafeCursor = mkOpt t.bool "Move the prompt's bottom border to a separate row so macOS IME preedit cannot displace it.";
+    titleState = mkOpt t.bool "Show the agent run state in the terminal title separator (spinner/>/!).";
   };
 
   display = mkSection "Display rendering." {

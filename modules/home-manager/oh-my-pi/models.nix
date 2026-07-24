@@ -22,6 +22,7 @@ let
     "openai-codex-responses"
     "azure-openai-responses"
     "anthropic-messages"
+    "bedrock-converse-stream"
     "google-generative-ai"
     "google-gemini-cli"
     "google-vertex"
@@ -119,6 +120,13 @@ let
     allowAnthropicHeaderOverrides = mkOpt t.bool "Allow explicit Anthropic fingerprint headers to replace OAuth defaults on non-official endpoints.";
     requiresToolResultId = mkOpt t.bool "Tool results must carry the tool-use id (anthropic-messages).";
     replayUnsignedThinking = mkOpt t.bool "Replay unsigned thinking blocks (anthropic-messages).";
+    promptCacheMode = mkOpt (t.enum [
+      "none"
+      "automatic"
+      "explicit"
+    ]) "Bedrock prompt-cache mode.";
+    promptCacheMinimumTokens = mkOpt num "Bedrock minimum tokens before prompt caching engages.";
+    promptCacheMaximumCheckpoints = mkOpt num "Bedrock maximum prompt-cache checkpoints.";
   };
 
   # OpenAICompatSchema — fields plus thinking-only overrides.

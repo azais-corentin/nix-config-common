@@ -12,7 +12,6 @@
 
     settings = {
       providers = {
-        webSearch = "auto";
         tinyModel = "online";
         anthropic.serverSideFallback = true;
       };

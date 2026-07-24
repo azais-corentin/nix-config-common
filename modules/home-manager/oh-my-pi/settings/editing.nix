@@ -30,6 +30,7 @@ in
   read = mkSection "Read tool." {
     defaultLimit = mkOpt num "Default number of lines returned when read is called without a limit.";
     toolResultPreview = mkOpt t.bool "Render read tool results inline in the transcript instead of summary rows.";
+    renderMarkdown = mkOpt t.bool "Render Markdown read results as formatted terminal previews instead of raw source.";
     summarize = mkSection "Structural read summaries." {
       enabled = mkOpt t.bool "Return structural code summaries when read is called without a selector.";
       prose = mkOpt t.bool "Return structural summaries for Markdown and plain text reads.";
@@ -72,6 +73,25 @@ in
 
   bash = mkSection "Bash tool output handling." {
     enabled = mkOpt t.bool "Enable the bash tool for shell command execution.";
+    direnv = mkOpt (t.enum [
+      "auto"
+      "off"
+    ]) "Auto-load a repo's direnv/devenv .envrc into the bash session (honors direnv's allow list).";
+    direnvLoadTimeoutMs = mkOpt num "Max wait for the first direnv export in ms; on timeout the session runs without the direnv env.";
+    patterns = mkOpt (t.listOf (subType {
+      match = lib.mkOption {
+        type = t.str;
+        description = "Command match pattern ('*' wildcards only).";
+      };
+      approval = lib.mkOption {
+        type = t.enum [
+          "allow"
+          "prompt"
+          "deny"
+        ];
+        description = "Approval decision for matching commands.";
+      };
+    })) "Ordered bash command approval rules (match + approval).";
     autoBackground = mkSection "Automatic backgrounding of long-running commands." {
       enabled = mkOpt t.bool "Automatically background long-running bash commands.";
       thresholdMs = mkOpt num "Runtime in ms after which a command is auto-backgrounded.";

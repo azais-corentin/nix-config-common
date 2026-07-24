@@ -61,9 +61,14 @@ let
         retainTimeoutMs = 61000;
       };
       providers = {
-        image = "openai-codex";
+        imageOrder = [ "openai-codex" ];
         kimiApiFormat = "auto";
       };
+      computer.enabled = true;
+      tui.titleState = false;
+      workspace.additionalDirectories = [ "/tmp/x" ];
+      bash.direnv = "off";
+      retry.usageReservePolicy = "auto";
     };
 
     models.providers.local = {
@@ -304,8 +309,13 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.hindsight.reflectTimeoutMs == 121000' ${defaultConfig} >/dev/null
     yq -e '.hindsight.recallTimeoutMs == 32000' ${defaultConfig} >/dev/null
     yq -e '.hindsight.retainTimeoutMs == 61000' ${defaultConfig} >/dev/null
-    yq -e '.providers.image == "openai-codex"' ${defaultConfig} >/dev/null
+    yq -e '.providers.imageOrder | join(",") == "openai-codex"' ${defaultConfig} >/dev/null
     yq -e '.providers.kimiApiFormat == "auto"' ${defaultConfig} >/dev/null
+    yq -e '.computer.enabled == true' ${defaultConfig} >/dev/null
+    yq -e '.tui.titleState == false' ${defaultConfig} >/dev/null
+    yq -e '.workspace.additionalDirectories | join(",") == "/tmp/x"' ${defaultConfig} >/dev/null
+    yq -e '.bash.direnv == "off"' ${defaultConfig} >/dev/null
+    yq -e '.retry.usageReservePolicy == "auto"' ${defaultConfig} >/dev/null
     yq -e '.tui.scrollbackRebuild == false' ${sharedDefaultConfig} >/dev/null
     yq -e '.tools == null or (.tools | has("discoveryMode") | not)' ${sharedDefaultConfig} >/dev/null
     yq -e 'has("modelRoleStorage") | not' ${sharedDefaultConfig} >/dev/null
@@ -321,7 +331,7 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.hindsight.reflectTimeoutMs == 121000' ${personalConfig} >/dev/null
     yq -e '.hindsight.recallTimeoutMs == 32000' ${personalConfig} >/dev/null
     yq -e '.hindsight.retainTimeoutMs == 61000' ${personalConfig} >/dev/null
-    yq -e '.providers.image == "openai-codex"' ${personalConfig} >/dev/null
+    yq -e '.providers.imageOrder | join(",") == "openai-codex"' ${personalConfig} >/dev/null
     yq -e '.providers.kimiApiFormat == "auto"' ${personalConfig} >/dev/null
     yq -e 'has("personality") == false' ${workConfig} >/dev/null
     yq -e '.task.disabledAgents | join(",") == "oracle"' ${workConfig} >/dev/null

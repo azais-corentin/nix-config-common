@@ -56,6 +56,10 @@ in
     notify = mkOpt onOff "Notify when the agent completes.";
   };
 
+  error = mkSection "Error notifications." {
+    notify = mkOpt onOff "Notify when the agent stops with an error.";
+  };
+
   ask = mkSection "Ask tool behaviour." {
     enabled = mkOpt t.bool "Enable the ask tool for interactive user questions.";
     timeout = mkOpt num "Auto-select recommended option after timeout in seconds (0 to disable).";

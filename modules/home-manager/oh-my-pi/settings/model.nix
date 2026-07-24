@@ -67,6 +67,13 @@ in
       "cooldown-expiry"
       "never"
     ]) "When to return to the primary model after a fallback.";
+    usageAwareFallback = mkOpt t.bool "Prefer same-provider accounts, then configured fallback models, before a hard usage limit (coding-plan quota reports only).";
+    usageReservePct = mkOpt num "Treat a coding-plan model as near its limit below this remaining percentage.";
+    usageReservePolicy = mkOpt (t.enum [
+      "confirm"
+      "auto"
+      "fail-closed"
+    ]) "Action when every same-provider coding-plan account is inside the reserve margin.";
   };
 
   thinkingBudgets = mkSection "Token budgets per thinking level (budget-mode models)." {

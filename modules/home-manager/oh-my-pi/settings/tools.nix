@@ -45,6 +45,15 @@ in
       "gemma"
       "minimax"
     ]) "Tool-calling dialect exposed to the model.";
+    xdevDocs =
+      mkOpt
+        (t.enum [
+          "inline"
+          "builtins"
+          "catalog"
+        ])
+        "Which mounted-device docs/schemas are inlined in the system prompt (inline = all, builtins = core only, catalog = none).";
+    xdevInlineDevices = mkOpt (t.listOf t.str) "When xdevDocs = builtins, glob patterns of dynamic devices to inline anyway.";
   };
 
   todo = mkSection "Todo tool." {
@@ -132,6 +141,17 @@ in
     cmux = mkOpt t.bool "Use cmux for browser sessions.";
   };
 
+  computer = mkSection "Computer-use tool (native desktop screenshots + input)." {
+    enabled = mkOpt t.bool "Enable native host-desktop screenshots and input for OpenAI computer use.";
+    backend = mkOpt (t.enum [
+      "auto"
+      "native"
+    ]) "Automatic or explicit platform-native desktop capture/input.";
+    display = mkOpt t.str "Composite all displays (\"all\") or a native display id.";
+    maxWidth = mkOpt num "Maximum composite screenshot width in pixels.";
+    maxHeight = mkOpt num "Maximum composite screenshot height in pixels.";
+  };
+
   async = mkSection "Async background jobs." {
     enabled = mkOpt t.bool "Enable async bash commands and background task execution.";
     maxJobs = mkOpt num "Maximum concurrent background jobs.";
@@ -149,6 +169,7 @@ in
     enableProjectConfig = mkOpt t.bool "Load .mcp.json/mcp.json from the project root.";
     notifications = mkOpt t.bool "Inject MCP resource updates into the agent conversation.";
     notificationDebounceMs = mkOpt num "Debounce window for MCP resource update notifications.";
+    renderMarkdownResults = mkOpt t.bool "Render non-JSON MCP text results as Markdown in the transcript.";
   };
 
   dev = mkSection "Developer / auto-QA options." {

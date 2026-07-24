@@ -35,39 +35,49 @@ in
   };
 
   providers = mkSection "Provider selection for built-in tools." {
-    webSearch = mkOpt (t.enum [
-      "auto"
-      "perplexity"
-      "gemini"
-      "anthropic"
-      "codex"
-      "xai"
-      "zai"
-      "exa"
-      "tinyfish"
-      "jina"
-      "kagi"
-      "tavily"
-      "firecrawl"
-      "brave"
-      "kimi"
-      "parallel"
-      "synthetic"
-      "searxng"
-      "duckduckgo"
-    ]) "Provider for the web search tool.";
-    image =
+    webSearchOrder =
       mkOpt
-        (t.enum [
-          "auto"
-          "openai"
-          "openai-codex"
-          "antigravity"
-          "xai"
-          "gemini"
-          "openrouter"
-        ])
-        "Image-generation provider: openai uses an OpenAI API key, while openai-codex uses a connected Codex/ChatGPT subscription.";
+        (t.listOf (
+          t.enum [
+            "perplexity"
+            "gemini"
+            "anthropic"
+            "codex"
+            "xai"
+            "zai"
+            "exa"
+            "tinyfish"
+            "jina"
+            "kagi"
+            "tavily"
+            "firecrawl"
+            "brave"
+            "kimi"
+            "parallel"
+            "synthetic"
+            "searxng"
+            "startpage"
+            "duckduckgo"
+            "ecosia"
+            "google"
+            "mojeek"
+            "public"
+          ]
+        ))
+        "Prioritized providers for the web_search tool; unlisted providers keep their default order afterward.";
+    imageOrder =
+      mkOpt
+        (t.listOf (
+          t.enum [
+            "openai"
+            "openai-codex"
+            "antigravity"
+            "xai"
+            "gemini"
+            "openrouter"
+          ]
+        ))
+        "Prioritized providers for image generation; unlisted providers follow the active session provider and the built-in order.";
     tinyModel = mkOpt (t.enum [
       "online"
       "lfm2-350m"

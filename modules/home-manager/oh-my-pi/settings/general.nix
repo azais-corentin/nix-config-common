@@ -92,4 +92,8 @@ in
     retainNewestGlobal = mkOpt num "Always keep this many newest sessions active.";
     retainNewestPerCwd = mkOpt num "Always keep this many newest sessions per cwd active.";
   };
+
+  workspace = mkSection "Multi-root workspace." {
+    additionalDirectories = mkOpt (t.listOf t.str) "Extra workspace directories added to every session as additional roots.";
+  };
 }

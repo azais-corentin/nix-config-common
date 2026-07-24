@@ -42,6 +42,7 @@ in
         "generic"
         "ai"
       ]) "Commit message style for nested repo changes.";
+      apply = mkOpt t.bool "Automatically apply successful isolated task changes to the parent checkout (disable to retain patch/branch artifacts).";
     };
     eager = mkOpt (t.enum [
       "default"
