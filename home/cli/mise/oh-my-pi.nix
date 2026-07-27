@@ -59,7 +59,7 @@
       loop.mode = "reset";
       github.enabled = true;
       modelRoles = {
-        default = "anthropic/claude-opus-4-8";
+        default = "anthropic/claude-opus-5";
         smol = "anthropic/claude-haiku-4-5";
         slow = "anthropic/claude-fable-5:high";
         vision = "anthropic/claude-fable-5:high";
@@ -67,8 +67,8 @@
         designer = "anthropic/claude-fable-5:high";
         commit = "anthropic/claude-sonnet-5:low";
         tiny = "anthropic/claude-haiku-4-5";
-        task = "anthropic/claude-opus-4-8:low";
-        advisor = "openai-codex/gpt-5.5";
+        task = "anthropic/claude-opus-5:low";
+        advisor = "anthropic/claude-opus-5:medium";
       };
       personality = "pragmatic";
       memory.backend = "mnemopi";

@@ -27,7 +27,7 @@
 
     provider = {
       default_provider = "claude";
-      default_model = "claude-opus-4-8";
+      default_model = "claude-opus-5";
       openai_reasoning_effort = "medium";
       anthropic_reasoning_effort = "high";
     };
