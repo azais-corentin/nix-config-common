@@ -167,6 +167,10 @@ in
   # defaultApplications, so it owns the mimeApps toggle.
   stylix.targets.firefox.enable = false;
   xdg.mimeApps.enable = true;
+  # Desktop apps (KDE, claude-cli handler registration) replace the managed
+  # symlink with a real file; without force, the next activation aborts on a
+  # stale mimeapps.list.hm-bak.
+  xdg.configFile."mimeapps.list".force = true;
 
   programs.browserpass.enable = true;
   programs.firefox = {
