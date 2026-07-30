@@ -29,6 +29,7 @@
         transparent = true;
       };
       compaction.dropUseless = true;
+      compaction.thresholdPercent = 50;
       terminal.showImages = true;
       terminal.showProgress = true;
       images = {
