@@ -102,6 +102,18 @@ in
       advisor = "openai-codex/gpt-5.6-sol:xhigh";
     };
 
+    profiles.deepseek.settings.modelRoles = lib.mkForce {
+      default = "openrouter/deepseek/deepseek-v4-flash-0731:high";
+      smol = "openrouter/deepseek/deepseek-v4-flash-0731:high";
+      slow = "openrouter/deepseek/deepseek-v4-flash-0731:high";
+      plan = "openrouter/deepseek/deepseek-v4-flash-0731:high";
+      designer = "openrouter/deepseek/deepseek-v4-flash-0731:high";
+      commit = "openrouter/deepseek/deepseek-v4-flash-0731:high";
+      tiny = "openrouter/deepseek/deepseek-v4-flash-0731:high";
+      task = "openrouter/deepseek/deepseek-v4-flash-0731:high";
+      advisor = "openrouter/deepseek/deepseek-v4-flash-0731:high";
+    };
+
     skills = {
       pdf = "github:anthropics/skills/skills/pdf@b0cbd3df1533b396d281a6886d5132f623393a9c";
       pptx = "github:anthropics/skills/skills/pptx@b0cbd3df1533b396d281a6886d5132f623393a9c";
