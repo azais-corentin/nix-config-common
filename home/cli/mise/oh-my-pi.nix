@@ -89,6 +89,17 @@ in
       autolearn.enabled = false;
     };
 
+    rules.no-find-from-root = lib.removeSuffix "\n" ''
+      ---
+      name: no-find-from-root
+      description: "Never run `find /` — scanning from the filesystem root is forbidden; use a scoped path or the `find` tool"
+      condition: "\\bfind\\s+/(?:\\s|$)"
+      scope: "tool:bash"
+      ---
+
+      Never invoke `find /` (scanning from the filesystem root). It is slow, noisy, and traverses the entire system. Scope the search to a concrete directory (e.g. `find ~/.cargo/registry/src -maxdepth 2 ...`) or, preferably, use the dedicated `find` tool with explicit `paths` globs. If you need a known cache/registry location, target it directly instead of walking root.
+    '';
+
     profiles.openai.settings.modelRoles = lib.mkForce {
       default = "openai-codex/gpt-5.6-sol:xhigh";
       smol = "openai-codex/gpt-5.6-luna:medium";

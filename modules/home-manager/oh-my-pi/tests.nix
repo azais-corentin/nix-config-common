@@ -219,6 +219,12 @@ let
   );
 
   sharedFeatureFiles = sharedFeature.config.home.file;
+  sharedRulePaths = [
+    ".omp/agent/rules/no-find-from-root.md"
+    ".omp/profiles/openai/agent/rules/no-find-from-root.md"
+    ".omp/profiles/deepseek/agent/rules/no-find-from-root.md"
+  ];
+  sharedNoFindRule = sharedFeatureFiles.".omp/agent/rules/no-find-from-root.md".text;
   sharedDefaultConfig = sharedFeatureFiles.".omp/agent/config.yml".source;
   openaiProfileConfig = sharedFeatureFiles.".omp/profiles/openai/agent/config.yml".source;
 
@@ -272,6 +278,10 @@ assert lib.all (
 ) inheritedResourcePrefixes;
 assert builtins.hasAttr ".omp/agent/config.yml" sharedFeatureFiles;
 assert builtins.hasAttr ".omp/profiles/openai/agent/config.yml" sharedFeatureFiles;
+assert lib.all (path: builtins.hasAttr path sharedFeatureFiles) sharedRulePaths;
+assert lib.all (path: sharedFeatureFiles.${path}.text == sharedNoFindRule) sharedRulePaths;
+assert lib.hasInfix ''condition: "\\bfind\\s+/(?:\\s|$)"'' sharedNoFindRule;
+assert lib.hasInfix ''scope: "tool:bash"'' sharedNoFindRule;
 assert hasArtifactName ".omp/agent/config.yml" "omp-config.yml";
 assert hasArtifactName ".omp/agent/models.yml" "omp-models.yml";
 assert hasArtifactName ".omp/agent/keybindings.yml" "omp-keybindings.yml";
