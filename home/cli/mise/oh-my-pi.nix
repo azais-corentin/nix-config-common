@@ -2,7 +2,10 @@
 # module namespace is top-level `oh-my-pi.*` (declared in
 # modules/home-manager/oh-my-pi). Consumers add their own secrets and provider
 # credentials in a per-repo layer.
-{ lib, ... }:
+{ lib, pkgs, ... }:
+let
+  noSlopSkill = import ./no-slop-skill.nix pkgs;
+in
 {
   programs.mise.globalConfig.tools."github:can1357/oh-my-pi".version = "latest";
   programs.mise.globalConfig.settings.minimum_release_age_excludes = [ "github:can1357/oh-my-pi" ];
@@ -107,6 +110,9 @@
       uv = "github:wshobson/agents/plugins/python-development/skills/uv-package-manager@a6f0f457c4e41cbb0ad329b691d28e255a829210";
       rust-best-practices = "github:apollographql/skills/skills/rust-best-practices@5dca44919c9a320d5c0cec70ed5107d4d7a6a816";
       vitepress = "github:antfu/skills/skills/vitepress@c35a5588a5158b5b404a14fb10469b2b6dc1952b";
+      no-slop = {
+        src = noSlopSkill;
+      };
     };
   };
 }
