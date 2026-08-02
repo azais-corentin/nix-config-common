@@ -89,11 +89,6 @@ in
 {
   options.oh-my-pi = profileOptions // {
     enable = lib.mkEnableOption "oh-my-pi declarative configuration";
-    package = lib.mkOption {
-      type = t.nullOr t.package;
-      default = null;
-      description = "Oh My Pi package to install instead of the mise-managed release.";
-    };
 
     profiles = lib.mkOption {
       type = t.attrsOf (t.submodule profileModule);

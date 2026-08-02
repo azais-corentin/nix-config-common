@@ -11,12 +11,6 @@ let
       default = { };
     };
   };
-  homePackagesModule = { lib, ... }: {
-    options.home.packages = lib.mkOption {
-      type = lib.types.listOf lib.types.package;
-      default = [ ];
-    };
-  };
 
   miseGlobalConfigModule = { lib, ... }: {
     options.programs.mise.globalConfig = lib.mkOption {
@@ -36,22 +30,15 @@ let
       ];
     };
 
-  evaluateSharedFeature =
-    package:
-    lib.evalModules {
-      specialArgs = { inherit pkgs; };
-      modules = [
-        ./default.nix
-        homeFileModule
-        homePackagesModule
-        miseGlobalConfigModule
-        ../../../home/cli/mise/oh-my-pi.nix
-        { oh-my-pi.package = package; }
-      ];
-    };
-
-  sharedFeature = evaluateSharedFeature null;
-  packageSelectedFeature = evaluateSharedFeature pkgs.hello;
+  sharedFeature = lib.evalModules {
+    specialArgs = { inherit pkgs; };
+    modules = [
+      ./default.nix
+      homeFileModule
+      miseGlobalConfigModule
+      ../../../home/cli/mise/oh-my-pi.nix
+    ];
+  };
 
   main = evaluate {
     enable = true;
@@ -232,10 +219,6 @@ let
   );
 
   sharedFeatureFiles = sharedFeature.config.home.file;
-  sharedFeaturePackages = sharedFeature.config.home.packages;
-  sharedFeatureMiseConfig = sharedFeature.config.programs.mise.globalConfig;
-  packageSelectedFeaturePackages = packageSelectedFeature.config.home.packages;
-  packageSelectedFeatureMiseConfig = packageSelectedFeature.config.programs.mise.globalConfig;
   sharedRulePaths = [
     ".omp/agent/rules/no-find-from-root.md"
     ".omp/profiles/openai/agent/rules/no-find-from-root.md"
@@ -298,14 +281,6 @@ assert builtins.hasAttr ".omp/profiles/openai/agent/config.yml" sharedFeatureFil
 assert lib.all (path: builtins.hasAttr path sharedFeatureFiles) sharedRulePaths;
 assert lib.all (path: sharedFeatureFiles.${path}.text == sharedNoFindRule) sharedRulePaths;
 assert lib.hasInfix ''condition: "\\bfind\\s+/(?:\\s|$)"'' sharedNoFindRule;
-assert sharedFeaturePackages == [ ];
-assert sharedFeatureMiseConfig.tools."github:can1357/oh-my-pi".version == "latest";
-assert
-  sharedFeatureMiseConfig.settings.minimum_release_age_excludes == [
-    "github:can1357/oh-my-pi"
-  ];
-assert packageSelectedFeaturePackages == [ pkgs.hello ];
-assert packageSelectedFeatureMiseConfig == { };
 assert lib.hasInfix ''scope: "tool:bash"'' sharedNoFindRule;
 assert hasArtifactName ".omp/agent/config.yml" "omp-config.yml";
 assert hasArtifactName ".omp/agent/models.yml" "omp-models.yml";

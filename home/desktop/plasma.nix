@@ -15,13 +15,6 @@
   osConfig ? { },
   ...
 }:
-let
-  ompCommand =
-    if config.oh-my-pi.package == null then
-      "$HOME/.local/share/mise/shims/omp usage --json --provider anthropic"
-    else
-      "${lib.getExe config.oh-my-pi.package} usage --json --provider anthropic";
-in
 {
   options.plasma.kwinOutputConfig = lib.mkOption {
     type = lib.types.nullOr lib.types.package;
@@ -223,10 +216,7 @@ in
             widgets = [
               "org.kde.plasma.kickoff"
               "org.kde.plasma.icontasks"
-              {
-                name = "org.nelieru.claudeusage";
-                config.command = ompCommand;
-              }
+              "org.nelieru.claudeusage"
               "org.kde.plasma.marginsseparator"
               "org.kde.plasma.systemtray"
               "org.kde.plasma.digitalclock"

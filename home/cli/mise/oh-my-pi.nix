@@ -2,22 +2,13 @@
 # module namespace is top-level `oh-my-pi.*` (declared in
 # modules/home-manager/oh-my-pi). Consumers add their own secrets and provider
 # credentials in a per-repo layer.
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+{ lib, pkgs, ... }:
 let
   noSlopSkill = import ./no-slop-skill.nix pkgs;
 in
 {
-  home.packages = lib.optional (config.oh-my-pi.package != null) config.oh-my-pi.package;
-
-  programs.mise.globalConfig = lib.mkIf (config.oh-my-pi.package == null) {
-    tools."github:can1357/oh-my-pi".version = "latest";
-    settings.minimum_release_age_excludes = [ "github:can1357/oh-my-pi" ];
-  };
+  programs.mise.globalConfig.tools."github:can1357/oh-my-pi".version = "latest";
+  programs.mise.globalConfig.settings.minimum_release_age_excludes = [ "github:can1357/oh-my-pi" ];
 
   oh-my-pi = {
     enable = true;
