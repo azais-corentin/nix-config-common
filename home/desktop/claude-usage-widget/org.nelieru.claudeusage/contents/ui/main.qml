@@ -8,8 +8,10 @@ import org.kde.kirigami as Kirigami
 PlasmoidItem {
     id: root
 
-    // Last good parse: array of { id, title, usedFraction, remainingPct, resetsAt, status }
-    property var limits: []
+    // Last good parse, sorted by label:
+    //   [{ key, label, email, orgName, limits: [{ id, title, usedFraction,
+    //                                             remainingPct, resetsAt, status }] }]
+    property var accounts: []
     property double lastUpdated: 0
     property string lastError: ""
     property bool loading: false
@@ -45,8 +47,41 @@ PlasmoidItem {
         return "in " + mins + "m";
     }
 
-    function windowTitle(title) {
-        return title === "5h" ? "5 Hour window" : "7 Day window";
+    function accountKey(meta, idx) {
+        if (meta && meta.accountId)
+            return String(meta.accountId);
+        if (meta && meta.email)
+            return String(meta.email);
+        return "report:" + idx;
+    }
+
+    function accountLabel(meta, idx) {
+        var email = (meta && meta.email) ? String(meta.email) : "";
+        if (email !== "") {
+            var at = email.indexOf("@");
+            return at > 0 ? email.substring(0, at) : email;
+        }
+        if (meta && meta.accountId)
+            return String(meta.accountId).substring(0, 8);
+        return "account " + (idx + 1);
+    }
+
+    // Panel bars are the two shared windows, in fixed order. Exact ids on purpose:
+    // scope.windowId is "7d" for both anthropic:7d and anthropic:7d:fable.
+    function panelLimits(account) {
+        var wanted = ["anthropic:5h", "anthropic:7d"];
+        var out = [];
+        for (var w = 0; w < wanted.length; w++) {
+            var found = null;
+            for (var i = 0; i < account.limits.length; i++) {
+                if (account.limits[i].id === wanted[w]) {
+                    found = account.limits[i];
+                    break;
+                }
+            }
+            out.push(found);   // null => render an empty track so columns stay aligned
+        }
+        return out;
     }
 
     function refresh() {
@@ -73,42 +108,49 @@ PlasmoidItem {
             return;
         }
         var reports = (parsed && parsed.reports) || [];
-        // Merge all anthropic reports; worst (max usedFraction) per window id wins
-        // so the display stays meaningful if multiple accounts ever appear.
-        var byId = ({});
+        var out = [];
         for (var i = 0; i < reports.length; i++) {
             var rep = reports[i];
             if (rep.provider !== "anthropic")
                 continue;
+            var meta = rep.metadata || ({});
             var lims = rep.limits || [];
+            var norm = [];
             for (var j = 0; j < lims.length; j++) {
                 var lim = lims[j];
-                if (lim.id !== "anthropic:5h" && lim.id !== "anthropic:7d")
-                    continue;
                 var amt = lim.amount || ({});
                 var uf = (amt.usedFraction !== undefined && amt.usedFraction !== null)
                     ? amt.usedFraction
                     : ((amt.used || 0) / 100);
-                var prev = byId[lim.id];
-                if (prev === undefined || uf > prev.usedFraction) {
-                    byId[lim.id] = {
-                        "id": lim.id,
-                        "title": (lim.window && lim.window.label === "5 Hour") ? "5h" : "7d",
-                        "usedFraction": uf,
-                        "remainingPct": Math.round(100 - 100 * uf),
-                        "resetsAt": lim.window ? lim.window.resetsAt : undefined,
-                        "status": lim.status || "unknown"
-                    };
-                }
+                norm.push({
+                    "id": lim.id,
+                    // "Claude 7 Day (Fable)" -> "7 Day (Fable)"; the provider is already
+                    // implied by the widget, and the popup is only ~18 grid units wide.
+                    "title": String(lim.label || lim.id).replace(/^Claude\s+/, ""),
+                    "usedFraction": uf,
+                    "remainingPct": Math.round(100 - 100 * uf),
+                    "resetsAt": lim.window ? lim.window.resetsAt : undefined,
+                    "status": lim.status || "unknown"
+                });
             }
+            out.push({
+                "key": accountKey(meta, i),
+                "label": accountLabel(meta, i),
+                "email": (meta.email !== undefined && meta.email !== null) ? String(meta.email) : "",
+                "orgName": (meta.orgName !== undefined && meta.orgName !== null) ? String(meta.orgName) : "",
+                "limits": norm
+            });
         }
-        var out = [];
-        var order = ["anthropic:5h", "anthropic:7d"];
-        for (var k = 0; k < order.length; k++) {
-            if (byId[order[k]] !== undefined)
-                out.push(byId[order[k]]);
-        }
-        limits = out;
+        // Stable ordering: omp's report order is not guaranteed, and usage-based sorting
+        // would make columns swap places between polls.
+        out.sort(function (a, b) {
+            if (a.label !== b.label)
+                return a.label < b.label ? -1 : 1;
+            if (a.email !== b.email)
+                return a.email < b.email ? -1 : 1;
+            return a.key < b.key ? -1 : (a.key > b.key ? 1 : 0);
+        });
+        accounts = out;
         lastError = "";
         lastUpdated = (parsed && parsed.generatedAt) ? parsed.generatedAt : Date.now();
         nowMs = Date.now();
@@ -145,68 +187,111 @@ PlasmoidItem {
 
     toolTipMainText: "Claude Usage"
     toolTipSubText: {
-        if (limits.length === 0)
+        if (accounts.length === 0)
             return lastError !== "" ? lastError : "No Claude usage data";
         var lines = [];
-        for (var i = 0; i < limits.length; i++) {
-            var l = limits[i];
-            var eta = formatEta(l.resetsAt, nowMs);
-            var line = l.title + ": " + l.remainingPct + "% left";
-            if (eta !== "")
-                line += " · resets " + eta;
-            lines.push(line);
+        for (var i = 0; i < accounts.length; i++) {
+            var acct = accounts[i];
+            if (accounts.length > 1)
+                lines.push(acct.label);
+            var rows = panelLimits(acct);
+            for (var j = 0; j < rows.length; j++) {
+                var l = rows[j];
+                if (l === null)
+                    continue;
+                var eta = formatEta(l.resetsAt, nowMs);
+                var short = (l.id === "anthropic:5h") ? "5h" : "7d";
+                var line = short + ": " + l.remainingPct + "% left";
+                if (eta !== "")
+                    line += " · resets " + eta;
+                lines.push(accounts.length > 1 ? "  " + line : line);
+            }
         }
         return lines.join("\n");
     }
 
     compactRepresentation: MouseArea {
         id: compactRoot
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 4
-        Layout.preferredWidth: Kirigami.Units.gridUnit * 6
+        // One entry per account; a single null column keeps the placeholder bars
+        // visible before the first successful poll.
+        readonly property var columns: root.accounts.length > 0 ? root.accounts : [null]
+        // Labels only matter when there is something to disambiguate, and only if
+        // the panel is tall enough to fit a line of text under the bars.
+        readonly property bool showLabels: root.accounts.length > 1
+            && compactRoot.height >= Kirigami.Units.gridUnit * 2
+
+        Layout.minimumWidth: columns.length * Kirigami.Units.gridUnit * 2
+        Layout.preferredWidth: columns.length * Kirigami.Units.gridUnit * 3
         onClicked: root.expanded = !root.expanded
 
-        ColumnLayout {
+        RowLayout {
             anchors.fill: parent
             anchors.leftMargin: Kirigami.Units.smallSpacing
             anchors.rightMargin: Kirigami.Units.smallSpacing
-            spacing: Kirigami.Units.mediumSpacing
-
-            Item { Layout.fillHeight: true }
+            spacing: Kirigami.Units.smallSpacing
 
             Repeater {
-                model: root.limits.length > 0 ? root.limits : [({})]
-                delegate: Rectangle {
+                model: compactRoot.columns
+                delegate: ColumnLayout {
+                    id: accountColumn
                     required property var modelData
+                    readonly property var account: modelData
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 5
-                    radius: height / 2
-                    // Track keyed off the panel text color so it stays visible
-                    // on both light and dark panels (background-derived tracks
-                    // vanish against the panel).
-                    color: Qt.rgba(Kirigami.Theme.textColor.r,
-                                   Kirigami.Theme.textColor.g,
-                                   Kirigami.Theme.textColor.b, 0.25)
+                    Layout.fillHeight: true
+                    spacing: Kirigami.Units.mediumSpacing
 
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: parent.height
-                        width: parent.width * (modelData && modelData.usedFraction !== undefined ? modelData.usedFraction : 0)
-                        radius: parent.radius
-                        color: (modelData && modelData.status !== undefined)
-                            ? root.barColor(modelData.status, modelData.usedFraction)
-                            : Kirigami.Theme.disabledTextColor
+                    Item { Layout.fillHeight: true }
+
+                    Repeater {
+                        // Always two rows so every column lines up, even when an
+                        // account is missing one of the shared windows.
+                        model: accountColumn.account
+                            ? root.panelLimits(accountColumn.account)
+                            : [null, null]
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 5
+                            radius: height / 2
+                            // Track keyed off the panel text color so it stays visible
+                            // on both light and dark panels (background-derived tracks
+                            // vanish against the panel).
+                            color: Qt.rgba(Kirigami.Theme.textColor.r,
+                                           Kirigami.Theme.textColor.g,
+                                           Kirigami.Theme.textColor.b, 0.25)
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                height: parent.height
+                                width: parent.width * (modelData ? modelData.usedFraction : 0)
+                                radius: parent.radius
+                                color: modelData
+                                    ? root.barColor(modelData.status, modelData.usedFraction)
+                                    : Kirigami.Theme.disabledTextColor
+                            }
+                        }
                     }
+
+                    PlasmaComponents3.Label {
+                        visible: compactRoot.showLabels
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        opacity: 0.8
+                        font: Kirigami.Theme.smallFont
+                        text: accountColumn.account ? accountColumn.account.label : ""
+                    }
+
+                    Item { Layout.fillHeight: true }
                 }
             }
-
-            Item { Layout.fillHeight: true }
         }
     }
 
     fullRepresentation: ColumnLayout {
-        Layout.preferredWidth: Kirigami.Units.gridUnit * 16
-        Layout.preferredHeight: Kirigami.Units.gridUnit * 12
+        Layout.preferredWidth: Kirigami.Units.gridUnit * 18
+        Layout.preferredHeight: Kirigami.Units.gridUnit * 22
         spacing: Kirigami.Units.smallSpacing
 
         Kirigami.InlineMessage {
@@ -220,49 +305,87 @@ PlasmoidItem {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
-            visible: root.limits.length === 0 && root.lastError === ""
+            visible: root.accounts.length === 0 && root.lastError === ""
             text: (root.loading && !root.everLoaded)
                 ? "Loading…"
                 : "No Claude usage data — run omp and /login"
         }
 
-        Repeater {
-            model: root.limits
-            delegate: ColumnLayout {
-                required property var modelData
-                Layout.fillWidth: true
-                spacing: 2
+        PlasmaComponents3.ScrollView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.accounts.length > 0
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    PlasmaComponents3.Label {
-                        text: root.windowTitle(modelData.title)
+            ListView {
+                model: root.accounts
+                spacing: Kirigami.Units.largeSpacing
+                clip: true
+
+                delegate: ColumnLayout {
+                    id: accountSection
+                    required property var modelData
+                    required property int index
+                    width: ListView.view ? ListView.view.width : 0
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Kirigami.Separator {
+                        Layout.fillWidth: true
+                        visible: accountSection.index > 0
                     }
-                    Item { Layout.fillWidth: true }
-                    PlasmaComponents3.Label {
-                        text: modelData.remainingPct + "% left"
-                        font.bold: true
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        // A header adds nothing when there is only one account.
+                        visible: root.accounts.length > 1
+
+                        PlasmaComponents3.Label {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            font.bold: true
+                            text: accountSection.modelData.label
+                        }
                     }
-                }
 
-                PlasmaComponents3.ProgressBar {
-                    Layout.fillWidth: true
-                    from: 0
-                    to: 1
-                    value: modelData.usedFraction
-                }
+                    Repeater {
+                        // Every limit the report carries, tier windows included.
+                        model: accountSection.modelData.limits
+                        delegate: ColumnLayout {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 2
 
-                PlasmaComponents3.Label {
-                    readonly property string eta: root.formatEta(modelData.resetsAt, root.nowMs)
-                    visible: eta !== ""
-                    text: "resets " + eta
-                    opacity: 0.7
-                    font: Kirigami.Theme.smallFont
+                            RowLayout {
+                                Layout.fillWidth: true
+                                PlasmaComponents3.Label {
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                    text: modelData.title
+                                }
+                                PlasmaComponents3.Label {
+                                    text: modelData.remainingPct + "% left"
+                                    font.bold: true
+                                }
+                            }
+
+                            PlasmaComponents3.ProgressBar {
+                                Layout.fillWidth: true
+                                from: 0
+                                to: 1
+                                value: modelData.usedFraction
+                            }
+
+                            PlasmaComponents3.Label {
+                                readonly property string eta: root.formatEta(modelData.resetsAt, root.nowMs)
+                                visible: eta !== ""
+                                text: "resets " + eta
+                                opacity: 0.7
+                                font: Kirigami.Theme.smallFont
+                            }
+                        }
+                    }
                 }
             }
         }
-
-        Item { Layout.fillHeight: true }
 
         RowLayout {
             Layout.fillWidth: true

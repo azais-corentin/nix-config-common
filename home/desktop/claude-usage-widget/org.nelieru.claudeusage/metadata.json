@@ -2,11 +2,11 @@
   "KPlugin": {
     "Id": "org.nelieru.claudeusage",
     "Name": "Claude Usage",
-    "Description": "Anthropic Claude subscription usage (5h / 7d windows) via oh-my-pi",
+    "Description": "Per-account Anthropic Claude subscription usage via oh-my-pi",
     "Icon": "office-chart-bar",
     "Authors": [{ "Name": "nelieru" }],
     "Category": "System Information",
-    "Version": "1.0.0",
+    "Version": "1.1.0",
     "License": "MIT"
   },
   "KPackageStructure": "Plasma/Applet",
