@@ -21,6 +21,15 @@ PlasmoidItem {
 
     readonly property string command: Plasmoid.configuration.command
 
+    /** Bounds for the in-panel width, in px. Mirrored by the config spin box. */
+    readonly property int minPanelWidth: 48
+    readonly property int maxPanelWidth: 600
+    /** >= 0 only while a resize grip is being dragged; overrides the stored width live so the
+     *  drag stays smooth without writing config on every mouse move. */
+    property int dragWidth: -1
+    readonly property int effectiveWidth: Math.max(minPanelWidth, Math.min(maxPanelWidth,
+        dragWidth >= 0 ? dragWidth : Plasmoid.configuration.panelWidth))
+
     function barColor(status, usedFraction) {
         if (status === "exhausted" || usedFraction >= 1)
             return Kirigami.Theme.negativeTextColor;
@@ -220,8 +229,10 @@ PlasmoidItem {
         readonly property bool showLabels: root.accounts.length > 1
             && compactRoot.height >= Kirigami.Units.gridUnit * 2
 
-        Layout.minimumWidth: columns.length * Kirigami.Units.gridUnit * 2
-        Layout.preferredWidth: columns.length * Kirigami.Units.gridUnit * 3
+        // The configured width wins over any account-count heuristic: columns share
+        // whatever room it gives them, and the user widens the widget by dragging.
+        Layout.minimumWidth: root.effectiveWidth
+        Layout.preferredWidth: root.effectiveWidth
         onClicked: root.expanded = !root.expanded
 
         RowLayout {
@@ -284,6 +295,71 @@ PlasmoidItem {
                     }
 
                     Item { Layout.fillHeight: true }
+                }
+            }
+        }
+
+        // Plasma gives panel applets no resize handles of their own (the stock Panel Spacer
+        // only exposes a width in its config dialog), so provide one grip per edge. Dragging
+        // away from the centre grows the widget, toward it shrinks — correct on either side no
+        // matter which edge the panel layout happens to pin.
+        Repeater {
+            model: [-1, 1] // -1 = leading edge, 1 = trailing edge
+            delegate: MouseArea {
+                id: grip
+                required property var modelData
+                readonly property int sign: modelData
+
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.left: sign < 0 ? parent.left : undefined
+                anchors.right: sign > 0 ? parent.right : undefined
+                width: 6
+                hoverEnabled: true
+                cursorShape: Qt.SizeHorCursor
+                // Keep the press away from compactRoot so a drag never toggles the popup.
+                preventStealing: true
+
+                property real pressSceneX: 0
+                property int pressWidth: 0
+                property bool moved: false
+
+                onPressed: mouse => {
+                    grip.pressSceneX = grip.mapToItem(null, mouse.x, 0).x;
+                    grip.pressWidth = root.effectiveWidth;
+                    grip.moved = false;
+                }
+                onPositionChanged: mouse => {
+                    if (!grip.pressed)
+                        return;
+                    // Scene coordinates: the widget's own edges shift as it grows, local ones
+                    // would feed back into the delta.
+                    const delta = grip.mapToItem(null, mouse.x, 0).x - grip.pressSceneX;
+                    if (!grip.moved && Math.abs(delta) < 2)
+                        return;
+                    grip.moved = true;
+                    root.dragWidth = Math.round(grip.pressWidth + grip.sign * delta);
+                }
+                onReleased: {
+                    if (grip.moved)
+                        Plasmoid.configuration.panelWidth = root.effectiveWidth;
+                    else
+                        root.expanded = !root.expanded; // a plain click on the grip still toggles
+                    root.dragWidth = -1;
+                }
+                onCanceled: root.dragWidth = -1
+
+                // Discoverability: a hairline that fades in under the cursor.
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 2
+                    height: parent.height * 0.6
+                    radius: 1
+                    color: Kirigami.Theme.highlightColor
+                    opacity: grip.containsMouse || grip.pressed ? 0.8 : 0
+                    Behavior on opacity {
+                        NumberAnimation { duration: Kirigami.Units.shortDuration }
+                    }
                 }
             }
         }

@@ -6,9 +6,18 @@ import org.kde.kirigami as Kirigami
 
 KCM.SimpleKCM {
     property alias cfg_pollIntervalSeconds: pollSpin.value
+    property alias cfg_panelWidth: widthSpin.value
     property alias cfg_command: commandField.text
 
     Kirigami.FormLayout {
+        QQC2.SpinBox {
+            id: widthSpin
+            Kirigami.FormData.label: "Panel width (px):"
+            from: 48
+            to: 600
+            stepSize: 8
+        }
+
         QQC2.SpinBox {
             id: pollSpin
             Kirigami.FormData.label: "Refresh interval (seconds):"
