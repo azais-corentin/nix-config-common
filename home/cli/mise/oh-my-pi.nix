@@ -17,6 +17,13 @@ in
   # unset — setting it disables discovery, which would stop a project's own
   # .venv from winning. Created only when absent, so packages a session
   # installs survive rebuilds.
+  #
+  # uv ships alongside because omp exports the venv to the kernel (VIRTUAL_ENV
+  # plus its bin/ on PATH), so a bare `uv pip install X` inside a cell targets
+  # the managed env. The activation below uses the store path directly and does
+  # not depend on this.
+  home.packages = [ pkgs.uv ];
+
   home.activation.ompPythonEnv = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     if [ ! -x "$HOME/.omp/python-env/bin/python" ]; then
       run ${pkgs.uv}/bin/uv venv --seed --managed-python --python 3.14 \
