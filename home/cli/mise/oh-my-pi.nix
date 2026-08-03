@@ -10,6 +10,21 @@ in
   programs.mise.globalConfig.tools."github:can1357/oh-my-pi".version = "latest";
   programs.mise.globalConfig.settings.minimum_release_age_excludes = [ "github:can1357/oh-my-pi" ];
 
+  # omp's eval tool needs a Python 3.8+ interpreter. It resolves one from an
+  # active/project venv, then ~/.omp/python-env, then PATH; NixOS ships no
+  # global python, so provision that managed venv with uv. Seeded with pip so
+  # the in-cell `%pip` magic works. `python.interpreter` is deliberately left
+  # unset — setting it disables discovery, which would stop a project's own
+  # .venv from winning. Created only when absent, so packages a session
+  # installs survive rebuilds.
+  home.activation.ompPythonEnv = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ ! -x "$HOME/.omp/python-env/bin/python" ]; then
+      run ${pkgs.uv}/bin/uv venv --seed --managed-python --python 3.14 \
+        "$HOME/.omp/python-env" \
+        || echo "omp: could not create ~/.omp/python-env; the Python kernel stays unavailable"
+    fi
+  '';
+
   oh-my-pi = {
     enable = true;
 
