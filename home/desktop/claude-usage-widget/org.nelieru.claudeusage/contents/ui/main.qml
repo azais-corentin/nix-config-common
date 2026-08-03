@@ -248,6 +248,11 @@ PlasmoidItem {
                     required property var modelData
                     readonly property var account: modelData
                     Layout.fillWidth: true
+                    // Every account gets the same slice of the panel: without a fixed
+                    // preferred width the column inherits the label's text width, so a
+                    // longer account name would claim more room than a short one. The
+                    // label elides instead.
+                    Layout.preferredWidth: 1
                     Layout.fillHeight: true
                     spacing: Kirigami.Units.mediumSpacing
 

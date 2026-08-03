@@ -6,7 +6,7 @@
     "Icon": "office-chart-bar",
     "Authors": [{ "Name": "nelieru" }],
     "Category": "System Information",
-    "Version": "1.2.0",
+    "Version": "1.2.1",
     "License": "MIT"
   },
   "KPackageStructure": "Plasma/Applet",
