@@ -87,10 +87,10 @@ in
       modelRoles = {
         default = "anthropic/claude-opus-5";
         smol = "anthropic/claude-haiku-4-5";
-        slow = "anthropic/claude-fable-5:high";
-        vision = "anthropic/claude-fable-5:high";
-        plan = "anthropic/claude-fable-5:high";
-        designer = "anthropic/claude-fable-5:high";
+        slow = "anthropic/claude-opus-5:high";
+        vision = "anthropic/claude-opus-5:high";
+        plan = "anthropic/claude-opus-5:high";
+        designer = "anthropic/claude-opus-5:high";
         commit = "anthropic/claude-sonnet-5:low";
         tiny = "anthropic/claude-haiku-4-5";
         task = "anthropic/claude-opus-5:low";
