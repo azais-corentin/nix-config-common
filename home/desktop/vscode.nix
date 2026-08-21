@@ -37,7 +37,7 @@
         "workbench.secondarySideBar.defaultVisibility" = "hidden";
         "editor.formatOnSave" = true;
         "editor.inlayHints.enabled" = "offUnlessPressed";
-        "direnv.restart.automatic" = true;
+        "direnv.restart.automatic" = false;
         "git.autofetch" = "all";
         "git.confirmSync" = false;
         "git.suggestSmartCommit" = false;
