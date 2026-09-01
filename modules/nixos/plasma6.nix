@@ -34,8 +34,6 @@
           konsole
           # Stock wallpapers (256 MB); stylix supplies the wallpaper.
           plasma-workspace-wallpapers
-          # Extra widget pack drags in qtwebengine (428 MB).
-          kdeplasma-addons
         ];
 
         # plasma6.nix defaults programs.kde-pim.enable to true, pulling akonadi,
