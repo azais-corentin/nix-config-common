@@ -135,6 +135,19 @@ in
       advisor = "openai-codex/gpt-5.6-sol:xhigh";
     };
 
+    profiles.gemini.settings.modelRoles = lib.mkForce {
+      default = "google-antigravity/gemini-3.7-flash:high";
+      smol = "google-antigravity/gemini-3.7-flash:high";
+      slow = "google-antigravity/gemini-3.7-flash:high";
+      vision = "google-antigravity/gemini-3.7-flash:high";
+      plan = "google-antigravity/gemini-3.7-flash:high";
+      designer = "google-antigravity/gemini-3.7-flash:high";
+      commit = "google-antigravity/gemini-3.7-flash:high";
+      tiny = "google-antigravity/gemini-3.7-flash:high";
+      task = "google-antigravity/gemini-3.7-flash:high";
+      advisor = "google-antigravity/gemini-3.7-flash:high";
+    };
+
     profiles.deepseek.settings.modelRoles = lib.mkForce {
       default = "openrouter/deepseek/deepseek-v4-flash-0731:high";
       smol = "openrouter/deepseek/deepseek-v4-flash-0731:high";
