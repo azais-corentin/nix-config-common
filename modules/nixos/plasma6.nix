@@ -32,7 +32,16 @@
           plasma-browser-integration
           elisa
           konsole
+          # Stock wallpapers (256 MB); stylix supplies the wallpaper.
+          plasma-workspace-wallpapers
+          # Extra widget pack drags in qtwebengine (428 MB).
+          kdeplasma-addons
         ];
+
+        # plasma6.nix defaults programs.kde-pim.enable to true, pulling akonadi,
+        # kdepim-runtime and a MariaDB server (~700 MB) even with KMail/Kontact/
+        # Merkuro off.
+        programs.kde-pim.enable = false;
 
         programs.firefox.nativeMessagingHosts.packages = lib.mkForce [ ];
         programs.chromium.enablePlasmaBrowserIntegration = lib.mkForce false;
