@@ -6,6 +6,11 @@
   programs.fish = {
     enable = true;
 
+    # One derivation per package in home.packages, generated from that
+    # package's man pages. They hash on the exact package set, so they are
+    # never substitutable and rebuild on every flake input bump.
+    generateCompletions = false;
+
     plugins = [
       {
         name = "tide";
