@@ -19,6 +19,7 @@
     ssh = ./cli/ssh.nix;
   };
   desktop = {
+    fastpotify = ./desktop/fastpotify;
     firefox = ./desktop/firefox.nix;
     ghostty = ./desktop/ghostty.nix;
     losslesscut = ./desktop/losslesscut.nix;
