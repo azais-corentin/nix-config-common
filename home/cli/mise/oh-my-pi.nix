@@ -39,6 +39,7 @@ in
       providers = {
         tinyModel = "online";
         anthropic.serverSideFallback = true;
+        webSearchGeminiModel = "gemini-flash-latest";
       };
       theme = {
         dark = "dark-nebula";
