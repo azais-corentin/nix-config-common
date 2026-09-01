@@ -9,7 +9,7 @@ pkgs:
 let
   src = builtins.fetchGit {
     url = "https://github.com/saschb2b/skills";
-    rev = "8807494d7c0f2ad277f81d22c9fd261831128fc4";
+    rev = "be23848591d83a2790a6c7debf63704977b7c917";
   };
 in
 pkgs.runCommandLocal "no-slop-skill" { } ''

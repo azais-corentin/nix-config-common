@@ -161,13 +161,13 @@ in
     };
 
     skills = {
-      pdf = "github:anthropics/skills/skills/pdf@b0cbd3df1533b396d281a6886d5132f623393a9c";
-      pptx = "github:anthropics/skills/skills/pptx@b0cbd3df1533b396d281a6886d5132f623393a9c";
-      frontend-design = "github:anthropics/skills/skills/frontend-design@b0cbd3df1533b396d281a6886d5132f623393a9c";
-      web-artifacts-builder = "github:anthropics/skills/skills/web-artifacts-builder@b0cbd3df1533b396d281a6886d5132f623393a9c";
-      uv = "github:wshobson/agents/plugins/python-development/skills/uv-package-manager@a6f0f457c4e41cbb0ad329b691d28e255a829210";
-      rust-best-practices = "github:apollographql/skills/skills/rust-best-practices@5dca44919c9a320d5c0cec70ed5107d4d7a6a816";
-      vitepress = "github:antfu/skills/skills/vitepress@c35a5588a5158b5b404a14fb10469b2b6dc1952b";
+      pdf = "github:anthropics/skills/skills/pdf@3b3fad96af16a10759d930941b4520ba0c40edae";
+      pptx = "github:anthropics/skills/skills/pptx@3b3fad96af16a10759d930941b4520ba0c40edae";
+      frontend-design = "github:anthropics/skills/skills/frontend-design@3b3fad96af16a10759d930941b4520ba0c40edae";
+      web-artifacts-builder = "github:anthropics/skills/skills/web-artifacts-builder@3b3fad96af16a10759d930941b4520ba0c40edae";
+      uv = "github:wshobson/agents/plugins/python-development/skills/uv-package-manager@38e19c20d2b154510b0e624a2e3e186b19b5c527";
+      rust-best-practices = "github:apollographql/skills/skills/rust-best-practices@c288eb80629dd2309eed81f23d693f66a452d043";
+      vitepress = "github:antfu/skills/skills/vitepress@a74f281a27dadc02397bc1a174b0f2c97531b6ae";
       boileau = "github:alxbd/boileau@5b272a70b1d5387984c12a08c4edc45af3f4fbda";
       no-slop = {
         src = noSlopSkill;
