@@ -168,6 +168,24 @@ let
     appendSystemPrompt = "Append system fixture\n";
     titleSystemPrompt = "Title system fixture\n";
     watchdogPrompt = "Watchdog prompt fixture\n";
+    personalityPrompt = "Personality fixture\n";
+    dap.adapters.custom-gdb = {
+      command = "gdb";
+      args = [ "--interpreter=dap" ];
+      languages = [
+        "c"
+        "cpp"
+      ];
+      fileTypes = [
+        "c"
+        "cpp"
+      ];
+      rootMarkers = [ "CMakeLists.txt" ];
+      launchDefaults.stopAtEntry = false;
+      attachDefaults.skipAttachRequest = true;
+      connectMode = "tcp";
+      acceptsDirectoryProgram = true;
+    };
 
     profiles = {
       personal = { };
@@ -246,6 +264,7 @@ let
   resourcePaths = [
     "AGENTS.md"
     "APPEND_SYSTEM.md"
+    "PERSONALITY.md"
     "RULES.md"
     "SYSTEM.md"
     "TITLE_SYSTEM.md"
@@ -255,6 +274,7 @@ let
     "extensions/shared.ts"
     "commands/shared.md"
     "config.yml"
+    "dap.json"
     "hooks/post/shared"
     "hooks/pre/shared"
     "instructions/shared.md"
@@ -300,12 +320,15 @@ let
   defaultLsp = homeFiles.".omp/agent/lsp.json".source;
   personalLsp = homeFiles.".omp/profiles/personal/agent/lsp.json".source;
   workLsp = homeFiles.".omp/profiles/work/agent/lsp.json".source;
+  defaultDap = homeFiles.".omp/agent/dap.json".source;
+  personalDap = homeFiles.".omp/profiles/personal/agent/dap.json".source;
   defaultWatchdog = homeFiles.".omp/agent/WATCHDOG.yml".source;
   personalWatchdog = homeFiles.".omp/profiles/personal/agent/WATCHDOG.yml".source;
   workWatchdog = homeFiles.".omp/profiles/work/agent/WATCHDOG.yml".source;
   inlineResourceContents = {
     "extensions/shared.ts" = "export default () => {};\n";
     "APPEND_SYSTEM.md" = "Append system fixture\n";
+    "PERSONALITY.md" = "Personality fixture\n";
     "TITLE_SYSTEM.md" = "Title system fixture\n";
     "WATCHDOG.md" = "Watchdog prompt fixture\n";
   };
@@ -366,6 +389,7 @@ assert hasArtifactName ".omp/agent/models.yml" "omp-models.yml";
 assert hasArtifactName ".omp/agent/keybindings.yml" "omp-keybindings.yml";
 assert hasArtifactName ".omp/agent/ssh.json" "omp-ssh.json";
 assert hasArtifactName ".omp/agent/lsp.json" "omp-lsp.json";
+assert hasArtifactName ".omp/agent/dap.json" "omp-dap.json";
 assert hasArtifactName ".omp/agent/WATCHDOG.yml" "omp-watchdog.yml";
 assert hasArtifactName ".omp/profiles/work/agent/config.yml" "omp-profile-work-config.yml";
 assert hasArtifactName ".omp/profiles/work/agent/models.yml" "omp-profile-work-models.yml";
@@ -374,6 +398,7 @@ assert hasArtifactName ".omp/profiles/work/agent/keybindings.yml"
 assert hasArtifactName ".omp/profiles/work/agent/ssh.json" "omp-profile-work-ssh.json";
 assert hasArtifactName ".omp/profiles/work/agent/mcp.json" "omp-profile-work-mcp.json";
 assert hasArtifactName ".omp/profiles/work/agent/lsp.json" "omp-profile-work-lsp.json";
+assert hasArtifactName ".omp/profiles/work/agent/dap.json" "omp-profile-work-dap.json";
 assert hasArtifactName ".omp/profiles/work/agent/WATCHDOG.yml" "omp-profile-work-watchdog.yml";
 pkgs.runCommand "oh-my-pi-profile-module-tests"
   {
@@ -454,6 +479,23 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     }' ${defaultLsp} >/dev/null
     cmp ${defaultLsp} ${personalLsp}
 
+    jq -e '. == {
+      "adapters": {
+        "custom-gdb": {
+          "command": "gdb",
+          "args": ["--interpreter=dap"],
+          "languages": ["c", "cpp"],
+          "fileTypes": ["c", "cpp"],
+          "rootMarkers": ["CMakeLists.txt"],
+          "launchDefaults": { "stopAtEntry": false },
+          "attachDefaults": { "skipAttachRequest": true },
+          "connectMode": "tcp",
+          "acceptsDirectoryProgram": true
+        }
+      }
+    }' ${defaultDap} >/dev/null
+    cmp ${defaultDap} ${personalDap}
+
     yq -o=json '.' ${defaultWatchdog} \
       | jq -e '. == {
           "instructions": "Shared reviewer baseline",
@@ -492,5 +534,6 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     cp ${defaultConfig} "$out/config.yml"
     cp ${defaultModels} "$out/models.yml"
     cp ${defaultLsp} "$out/lsp.json"
+    cp ${defaultDap} "$out/dap.json"
     cp ${defaultWatchdog} "$out/WATCHDOG.yml"
   ''

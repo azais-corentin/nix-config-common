@@ -1,6 +1,7 @@
 # Declarative non-secret files in the selected profile's agent directory:
-# keybindings.yml, ssh.json, lsp.json, WATCHDOG.yml, markdown content trees,
-# raw resource trees (including extensions), and top-level prompt documents.
+# keybindings.yml, ssh.json, lsp.json, dap.json, WATCHDOG.yml, markdown content
+# trees, raw resource trees (including extensions), and top-level prompt
+# documents (including PERSONALITY.md).
 #
 # Default-profile mcp.json is deliberately absent — it is owned by the shared
 # programs.mcp module. Named-profile MCP rendering is composed in default.nix.
@@ -71,6 +72,38 @@ let
     };
   };
 
+  dapAttachDefaultsType = t.submodule {
+    freeformType = jsonFormat.type;
+    options = {
+      skipAttachRequest = mkOpt t.bool "The adapter is already attached, so omp sends no DAP attach request.";
+    };
+  };
+
+  dapAdapterType = t.submodule {
+    freeformType = jsonFormat.type;
+    options = {
+      command = lib.mkOption {
+        type = t.str;
+        description = "Debug adapter executable or path (required; omp drops an adapter whose command is missing or empty).";
+      };
+      args = mkOpt (t.listOf t.str) "Arguments passed to the adapter. With connectMode = \"tcp\", the literal \${port} placeholder in an argument is replaced by the chosen port.";
+      languages = mkOpt (t.listOf t.str) "Languages this adapter handles.";
+      fileTypes = mkOpt (t.listOf t.str) "File extensions this adapter handles; omp lower-cases them on load.";
+      rootMarkers = mkOpt (t.listOf t.str) "Files or directories that mark a project root for this adapter.";
+      launchDefaults = mkOpt (t.attrsOf jsonFormat.type) "DAP launch-request defaults, merged before program/cwd/args.";
+      attachDefaults = mkOpt dapAttachDefaultsType "DAP attach-request defaults.";
+      connectMode =
+        mkOpt
+          (t.enum [
+            "stdio"
+            "socket"
+            "tcp"
+          ])
+          "Transport. stdio (the default) uses stdin/stdout pipes; socket is an adapter-specific socket launch (currently Delve); tcp spawns a DAP server with \${port} substituted in args and connects to it.";
+      acceptsDirectoryProgram = mkOpt t.bool "Accept a directory as the launch program (for example dlv treating it as a Go package path).";
+    };
+  };
+
   advisorType = subType {
     name = lib.mkOption {
       type = t.str;
@@ -121,6 +154,12 @@ in
       };
       default = { };
       description = "Wrapped LSP configuration written to the selected profile's lsp.json.";
+    };
+
+    dap.adapters = lib.mkOption {
+      type = t.attrsOf dapAdapterType;
+      default = { };
+      description = "Debug adapters written to the selected profile's dap.json, merged over omp's built-in adapters.";
     };
 
     watchdog = lib.mkOption {
@@ -210,6 +249,12 @@ in
       description = "Global system prompt written to the selected profile's agent directory.";
     };
 
+    personalityPrompt = lib.mkOption {
+      type = t.nullOr contentType;
+      default = null;
+      description = "Personality-block override written to PERSONALITY.md in the selected profile's agent directory. omp ignores it when settings.personality = \"none\", and falls back to the configured preset when the file is empty.";
+    };
+
     appendSystemPrompt = lib.mkOption {
       type = t.nullOr contentType;
       default = null;
@@ -263,6 +308,11 @@ in
       (lib.optionalAttrs (lspConfig != { }) {
         "${agentDir}/lsp.json".source = jsonFormat.generate "${artifactPrefix}-lsp.json" lspConfig;
       })
+      (lib.optionalAttrs (config.dap.adapters != { }) {
+        "${agentDir}/dap.json".source = jsonFormat.generate "${artifactPrefix}-dap.json" {
+          adapters = pruneNulls config.dap.adapters;
+        };
+      })
       (lib.optionalAttrs (watchdogConfig != { }) {
         "${agentDir}/WATCHDOG.yml".source =
           yamlFormat.generate "${artifactPrefix}-watchdog.yml" watchdogConfig;
@@ -290,6 +340,7 @@ in
       ))
       (mkDocFile "${agentDir}/AGENTS.md" config.agentsMd)
       (mkDocFile "${agentDir}/SYSTEM.md" config.systemPrompt)
+      (mkDocFile "${agentDir}/PERSONALITY.md" config.personalityPrompt)
       (mkDocFile "${agentDir}/APPEND_SYSTEM.md" config.appendSystemPrompt)
       (mkDocFile "${agentDir}/TITLE_SYSTEM.md" config.titleSystemPrompt)
       (mkDocFile "${agentDir}/WATCHDOG.md" config.watchdogPrompt)
