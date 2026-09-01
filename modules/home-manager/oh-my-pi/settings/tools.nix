@@ -1,7 +1,8 @@
 # Tools settings: tool output/approval, every optional tool toggle, async jobs,
-# MCP runtime behaviour, plus the todo and dev/autoqa groups. All option names
-# here map 1:1 onto flat schema keys (v17 flattened the former todo.reminders.max
-# and dev.autoqa.consent collisions into todo.remindersMax / dev.autoqaConsent).
+# MCP runtime behaviour, extension handlers, plus the todo, security and
+# dev/autoqa groups. All option names here map 1:1 onto flat schema keys (v17
+# flattened the former todo.reminders.max and dev.autoqa.consent collisions into
+# todo.remindersMax / dev.autoqaConsent).
 { lib, helpers }:
 let
   inherit (helpers) mkOpt mkSection num;
@@ -107,6 +108,15 @@ in
 
   inspect_image = mkSection "Inspect image tool." {
     enabled = mkOpt t.bool "Enable the inspect_image tool, delegating to a vision-capable model.";
+    mode =
+      mkOpt
+        (t.enum [
+          "auto"
+          "on"
+          "off"
+        ])
+        "Expose the inspect_image tool: auto only when the active model lacks native image input, on always, off never.";
+    timeoutMs = mkOpt num "Per-request timeout in ms for the inspect_image vision-model call (0 disables the timeout).";
   };
 
   checkpoint = mkSection "Checkpoint/rewind tools." {
@@ -139,14 +149,13 @@ in
     headless = mkOpt t.bool "Launch the browser in headless mode.";
     screenshotDir = mkOpt t.str "Directory to save screenshots (supports ~).";
     cmux = mkOpt t.bool "Use cmux for browser sessions.";
+    cdpUrl = mkOpt t.str "Default HTTP CDP discovery endpoint (e.g. http://127.0.0.1:9222) to attach to instead of launching a browser; explicit app.cdp_url or app.path on the tool call take precedence.";
+    relay = mkOpt t.bool "Drive your own Chrome tabs through the omp browser relay (install the extension once with `omp browser-relay install`). Takes precedence over browser.cdpUrl.";
+    relayUrl = mkOpt t.str "omp browser relay endpoint (default http://127.0.0.1:9224).";
   };
 
   computer = mkSection "Computer-use tool (native desktop screenshots + input)." {
     enabled = mkOpt t.bool "Enable native host-desktop screenshots and input for OpenAI computer use.";
-    backend = mkOpt (t.enum [
-      "auto"
-      "native"
-    ]) "Automatic or explicit platform-native desktop capture/input.";
     display = mkOpt t.str "Composite all displays (\"all\") or a native display id.";
     maxWidth = mkOpt num "Maximum composite screenshot width in pixels.";
     maxHeight = mkOpt num "Maximum composite screenshot height in pixels.";
@@ -170,6 +179,14 @@ in
     notifications = mkOpt t.bool "Inject MCP resource updates into the agent conversation.";
     notificationDebounceMs = mkOpt num "Debounce window for MCP resource update notifications.";
     renderMarkdownResults = mkOpt t.bool "Render non-JSON MCP text results as Markdown in the transcript.";
+  };
+
+  extensionHandlers = mkSection "Extension event handlers." {
+    toolCallTimeoutMs = mkOpt num "Positive finite active-work timeout in ms for extension tool_call handlers (invalid values fall back to 30000); time awaiting OMP-owned dialogs does not count.";
+  };
+
+  security = mkSection "Security scanning." {
+    enabled = mkOpt t.bool "Enable OMP-native security scan planning, execution, and the read-only security:// resource namespace.";
   };
 
   dev = mkSection "Developer / auto-QA options." {

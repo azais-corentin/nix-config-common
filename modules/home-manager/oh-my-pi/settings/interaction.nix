@@ -1,4 +1,5 @@
-# Interaction settings: conversation flow, input/startup, notifications, STT.
+# Interaction settings: conversation flow, input/spelling, startup/update,
+# notifications, STT.
 { lib, helpers }:
 let
   inherit (helpers) mkOpt mkSection num;
@@ -21,11 +22,13 @@ in
     "wait"
   ]) "When steering messages interrupt tool execution.";
 
-  doubleEscapeAction = mkOpt (t.enum [
-    "branch"
-    "tree"
-    "none"
-  ]) "Action when pressing Escape twice with an empty editor.";
+  doubleEscapeAction =
+    mkOpt
+      (t.enum [
+        "rewind"
+        "none"
+      ])
+      "Action when pressing Escape twice with an empty editor (rewind opens the transcript rewind selector).";
   treeFilterMode = mkOpt (t.enum [
     "default"
     "no-tools"
@@ -35,7 +38,6 @@ in
   ]) "Default filter mode when opening the session tree.";
   autocompleteMaxVisible = mkOpt num "Max visible items in the autocomplete dropdown (3-20).";
   emojiAutocomplete = mkOpt t.bool "Suggest emojis from :name: shortcodes and expand text emoticons.";
-  collapseChangelog = mkOpt t.bool "Show condensed changelog after updates.";
 
   loop = mkSection "/loop iteration behaviour." {
     mode = mkOpt (t.enum [
@@ -45,11 +47,32 @@ in
     ]) "What happens between /loop iterations before re-submitting the prompt.";
   };
 
+  spelling = mkSection "macOS dictionary integration for the prompt editor." {
+    autocomplete = mkOpt t.bool "Show macOS dictionary word completions as inline hints accepted with Tab.";
+    autocorrect = mkOpt t.bool "Apply confident macOS spelling corrections after completed words.";
+    typoDetection = mkOpt t.bool "Mark misspelled prompt words with the active macOS dictionaries.";
+  };
+
   startup = mkSection "Startup behaviour." {
     quiet = mkOpt t.bool "Skip welcome screen and startup status messages.";
     setupWizard = mkOpt t.bool "Show newly added onboarding steps once per setup version.";
     checkUpdate = mkOpt t.bool "If false, skip the update check.";
     showSplash = mkOpt t.bool "Show the animated setup splash on normal interactive startup (quiet still suppresses it).";
+    changelogMode =
+      mkOpt
+        (t.enum [
+          "summary"
+          "expanded"
+          "hidden"
+        ])
+        "Whether update notes start as a summary, full details, or stay hidden. Successor to the removed collapseChangelog.";
+  };
+
+  update = mkSection "Update channel." {
+    channel = mkOpt (t.enum [
+      "stable"
+      "canary"
+    ]) "Update channel used by `omp update` and the startup update check.";
   };
 
   completion = mkSection "Completion notifications." {
@@ -110,7 +133,14 @@ in
   };
 
   features = mkSection "Experimental feature flags." {
-    unexpectedStopDetection = mkOpt t.bool "Use a small model to detect when the assistant says it will continue but stops without tool calls, and auto-prompt it to continue.";
+    unexpectedStopDetection =
+      mkOpt
+        (t.enum [
+          "none"
+          "mechanical"
+          "smart"
+        ])
+        "Automatically recover when the assistant stops without a visible message (upstream default: mechanical). Mechanical retries stops with no visible assistant message, excluding tool calls; smart additionally classifies text-only stops with a small model.";
   };
 
   recap = mkSection "Idle recap." {

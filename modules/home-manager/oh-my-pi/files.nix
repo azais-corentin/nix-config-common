@@ -51,11 +51,21 @@ let
       command = mkOpt t.str "Language-server executable.";
       args = mkOpt (t.listOf t.str) "Arguments passed to the language server.";
       fileTypes = mkOpt (t.listOf t.str) "File types handled by the language server.";
+      languageId = mkOpt t.str "LSP language identifier sent in didOpen; inferred from the file path when omitted.";
       rootMarkers = mkOpt (t.listOf t.str) "Files or directories that identify a project root.";
       initOptions = mkOpt (t.attrsOf jsonFormat.type) "Initialization options sent to the language server.";
       settings = mkOpt (t.attrsOf jsonFormat.type) "Language-server workspace settings.";
       disabled = mkOpt t.bool "Disable this language server.";
       isLinter = mkOpt t.bool "Use this server only for diagnostics and code actions.";
+      workspaceReadyTimings = mkOpt (t.submodule {
+        freeformType = jsonFormat.type;
+        options = {
+          timeoutMs = mkOpt num "Overall workspace-ready timeout in milliseconds.";
+          pollMs = mkOpt num "Interval between workspace-ready polls in milliseconds.";
+          settleMs = mkOpt num "Quiet period the workspace must stay ready before it counts, in milliseconds.";
+          statusRequestTimeoutMs = mkOpt num "Timeout for a single status request in milliseconds.";
+        };
+      }) "Per-server overrides for rust-analyzer workspace-ready polling.";
       warmupTimeoutMs = mkOpt num "Per-server warmup timeout in milliseconds.";
       capabilities = mkOpt lspCapabilitiesType "Language-server capability overrides.";
     };

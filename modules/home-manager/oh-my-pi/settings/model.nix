@@ -37,6 +37,7 @@ in
   includeWorkspaceTree = mkOpt t.bool "Render the workspace directory tree in the system prompt (can bust prompt caching when files change).";
   omitThinking = mkOpt t.bool "Ask upstream providers to omit thinking summaries entirely (where supported).";
   proseOnlyThinking = mkOpt t.bool "Omit code blocks from thinking summaries, replacing them with an ellipsis.";
+  externalThinking = mkOpt t.bool "Private scratchpad thinking not shown to the user; disables supported GPT, Claude and Gemini reasoning. At your own risk: providers have flagged this request shape as abuse, up to account-level enforcement.";
   personality = mkOpt (t.enum [
     "default"
     "friendly"
@@ -87,7 +88,6 @@ in
 
   advisor = mkSection "Passive advisor model that reviews each turn." {
     enabled = mkOpt t.bool "Pair a second model (advisor role) that passively reviews each turn and injects notes.";
-    subagents = mkOpt t.bool "Also enable the advisor on spawned task/eval subagents.";
     immuneTurns = mkOpt num "After an advisor concern/blocker interrupts, route further ones non-interruptingly for this many primary turns.";
     syncBacklog = mkOpt (t.enum [
       "off"

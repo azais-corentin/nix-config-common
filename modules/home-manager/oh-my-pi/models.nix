@@ -101,6 +101,7 @@ let
       "qwen"
       "qwen-chat-template"
     ]) "Wire format for thinking content.";
+    qwenTemplateReasoningEffort = mkOpt t.bool "Send the chat_template_kwargs.reasoning_effort kwarg; set false to suppress it on strict local OpenAI-compat servers that reject unknown kwargs.";
     openRouterRouting = mkOpt routingType "OpenRouter provider routing.";
     vercelGatewayRouting = mkOpt routingType "Vercel AI Gateway provider routing.";
     extraBody = mkOpt yamlFormat.type "Extra fields merged into the request body.";
@@ -111,11 +112,19 @@ let
     ]) "Strict-mode policy for tool schemas.";
     cacheControlFormat = mkOpt (t.enum [ "anthropic" ]) "Cache-control wire format.";
     streamIdleTimeoutMs = mkOpt num "Abort the stream after this many ms of idle (must be positive).";
+    streamMarkupHealingPattern = mkOpt (t.enum [
+      "kimi"
+      "dsml"
+      "qwen"
+      "thinking"
+    ]) "Markup-healing pattern applied to malformed streamed tool-call/thinking markup.";
     supportsLongPromptCacheRetention = mkOpt t.bool "Provider supports long prompt cache retention.";
     supportsReasoningParams = mkOpt t.bool "Provider accepts reasoning params.";
+    supportsReasoningSummary = mkOpt t.bool "Provider returns reasoning summaries.";
     alwaysSendMaxTokens = mkOpt t.bool "Always include max tokens in the request.";
     strictResponsesPairing = mkOpt t.bool "Enforce strict request/response message pairing (Responses API).";
     supportsImageDetailOriginal = mkOpt t.bool "Provider supports image detail: original.";
+    supportsContextManagement = mkOpt t.bool "Provider supports Anthropic context management (anthropic-messages).";
     supportsEagerToolInputStreaming = mkOpt t.bool "Allow Anthropic's per-tool eager_input_streaming flag.";
     allowAnthropicHeaderOverrides = mkOpt t.bool "Allow explicit Anthropic fingerprint headers to replace OAuth defaults on non-official endpoints.";
     requiresToolResultId = mkOpt t.bool "Tool results must carry the tool-use id (anthropic-messages).";
@@ -155,6 +164,7 @@ let
     efforts = mkOpt (t.listOf effortEnum) "Ordered allowed thinking efforts (canonical; replaces minLevel/maxLevel/levels).";
     effortMap = mkOpt reasoningEffortMapType "Map effort levels to upstream reasoning values.";
     supportsDisplay = mkOpt t.bool "Model surfaces reasoning display output.";
+    requiresEffort = mkOpt t.bool "Model requires an effort value; set false to let a supported local model explicitly disable thinking.";
   };
 
   # Cost block: required fields on a full model definition.
@@ -193,6 +203,17 @@ let
     reasoning = mkOpt t.bool "Whether the model reasons.";
     thinking = mkOpt thinkingType "Thinking control configuration.";
     input = mkOpt (t.listOf inputEnum) "Accepted input modalities.";
+    imageInputDecoder = mkOpt (t.enum [ "stb" ]) "Decoder used for image inputs.";
+    tokenizer = mkOpt (t.enum [
+      "claude-v3"
+      "claude-v47"
+      "claude-v5"
+      "claude-v5-sonnet"
+      "qwen3"
+      "deepseek-v3"
+      "kimi-k2"
+      "glm5"
+    ]) "Tokenizer used for local token counting.";
     cost = mkOpt costType "Per-token cost.";
     premiumMultiplier = mkOpt num "Premium request multiplier.";
     contextWindow = mkOpt num "Context window size in tokens.";
@@ -201,6 +222,7 @@ let
     compat = mkOpt compatType "OpenAI-compat quirk flags.";
     contextPromotionTarget = mkOpt t.str "Model id to promote to on context overflow.";
     omitMaxOutputTokens = mkOpt t.bool "Omit the max-output-tokens field from requests.";
+    preferWebsockets = mkOpt t.bool "Prefer the WebSocket transport for this model where available.";
     supportsTools = mkOpt t.bool "Whether the model supports tool calls.";
     compactionModel = mkOpt t.str "Model id used to compact this model's context.";
     remoteCompaction = mkOpt remoteCompactionType "Remote compaction configuration for this model.";
@@ -245,10 +267,19 @@ let
         ];
         description = "Model discovery mechanism.";
       };
+      timeoutMs = mkOpt num "Discovery request timeout in ms; upstream requires a positive finite number.";
+      injectV1 = mkOpt t.bool "Inject /v1 into the discovery model-list URL (default true). Upstream accepts this only when discovery.type = \"openai-models-list\"; set false for gateways rooting their OpenAI-compatible surface at a versioned path.";
     }) "Dynamic model discovery.";
     models = mkOpt (t.listOf modelType) "Explicit model definitions.";
     modelOverrides = mkOpt (t.attrsOf overrideType) "Per-model-id overrides.";
     disableStrictTools = mkOpt t.bool "Disable strict tool schemas for this provider.";
+    guardrailIdentifier = mkOpt t.str "Amazon Bedrock Guardrail id or ARN attached to every Converse request under this provider.";
+    guardrailVersion = mkOpt t.str "Bedrock guardrail version (upstream defaults to DRAFT when a guardrail is set).";
+    guardrailTrace = mkOpt (t.enum [
+      "enabled"
+      "disabled"
+      "enabled_full"
+    ]) "Bedrock guardrail trace verbosity.";
     transport = mkOpt (t.enum [
       "pi-native"
     ]) "Streaming transport override (pi-native routes via the auth gateway).";

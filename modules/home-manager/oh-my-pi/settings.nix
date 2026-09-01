@@ -38,9 +38,8 @@ in
     description = ''
       Typed map of oh-my-pi's config.yml settings written to the selected
       profile's agent directory. Every SETTINGS_SCHEMA key (except the
-      runtime-state lastChangelogVersion / setupVersion) is reachable as a
-      typed option; unknown keys remain settable via the per-section freeform
-      escape hatch.
+      runtime-state setupVersion) is reachable as a typed option; unknown keys
+      remain settable via the per-section freeform escape hatch.
     '';
   };
 

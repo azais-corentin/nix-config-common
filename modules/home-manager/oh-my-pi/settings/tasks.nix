@@ -62,6 +62,19 @@ in
     showResolvedModelBadge = mkOpt t.bool "Display the actual model id used by each subagent in the task widget.";
     prewalk = mkOpt t.bool "Arm prewalk for the bundled generic task subagent (per-agent overrides via task.agentPrewalk and agent prewalk frontmatter apply regardless).";
     agentPrewalk = mkOpt (t.attrsOf t.str) "Per-agent prewalk overrides keyed by agent id (toggled with P in /agents).";
+    agentAdvisor = mkOpt (t.attrsOf t.str) "Per-agent advisor overrides keyed by agent id; each value is \"on\", \"off\", or a model pattern. Successor to the removed advisor.subagents, which was a single global boolean.";
+    enableEffort = mkOpt t.bool "Expose the optional effort parameter on task spawns, letting callers override each subagent's thinking level.";
+    maxEffort =
+      mkOpt
+        (t.enum [
+          "minimal"
+          "low"
+          "medium"
+          "high"
+          "xhigh"
+          "max"
+        ])
+        "Ceiling for the task tool's per-spawn effort hint (upstream default: max, preserving the model's full range).";
   };
 
   title = mkSection "Session title behaviour." {

@@ -1,5 +1,5 @@
 # Providers settings: secret handling, web/image/tiny-model provider selection,
-# append-only context, Exa, SearXNG and the commit map-reduce knobs.
+# append-only context, Exa, SearXNG, live voice and the commit changelog knobs.
 { lib, helpers }:
 let
   inherit (helpers) mkOpt mkSection num;
@@ -12,6 +12,18 @@ let
     "gemma-3-1b"
     "qwen2.5-1.5b"
     "lfm2-1.2b"
+  ];
+
+  liveVoices = [
+    "arbor"
+    "breeze"
+    "cove"
+    "ember"
+    "juniper"
+    "maple"
+    "sol"
+    "spruce"
+    "vale"
   ];
 
   kokoroVoices = [
@@ -149,7 +161,8 @@ in
       "auto"
       "local"
       "xai"
-    ]) "Backend for the tts tool: local on-device (Kokoro) or xAI Grok Voice.";
+      "deepinfra"
+    ]) "Backend for the tts tool: local on-device (Kokoro-82M), xAI Grok Voice, or DeepInfra speech.";
     unexpectedStopModel = mkOpt (t.enum tinyMemoryModels) "Classifier model for unexpected-stop detection.";
     webSearchExclude = mkOpt (t.listOf t.str) "Web-search provider ids to exclude from auto-selection.";
     antigravityEndpoint = mkOpt (t.enum [
@@ -165,11 +178,39 @@ in
     webSearchGeminiModel = mkOpt t.str "Model id for Gemini Google Search grounding (default gemini-2.5-flash).";
     streamFirstEventTimeoutSeconds = mkOpt num "Seconds to wait for the first model stream event (-1 = provider/env default, 0 = disable watchdog).";
     streamIdleTimeoutSeconds = mkOpt num "Seconds a model stream may stay silent between events (-1 = provider/env default, 0 = disable).";
+    autoThinkingMaxEffort =
+      mkOpt
+        (t.enum [
+          "xhigh"
+          "max"
+        ])
+        "Highest effort the `auto` thinking classifier may resolve; xhigh keeps it one tier below the top so only an explicit ultrathink reaches max.";
+    cacheRetention =
+      mkOpt
+        (t.enum [
+          "auto"
+          "short"
+          "long"
+          "none"
+        ])
+        "Prompt-cache retention forwarded to providers that support it (Anthropic, Bedrock, OpenRouter, OpenAI): auto = provider default, short = 5m, long = 1h, none = disable caching and cache-affinity routing.";
+    webSearchTimeoutSeconds = mkOpt num "Hard timeout in seconds for each provider's search transport before web_search advances to the next fallback.";
     anthropic = mkSection "Anthropic-specific provider behaviour." {
       serverSideFallback = mkOpt t.bool "Retry safety-classifier-blocked Claude Fable 5 / Mythos 5 requests on Claude Opus 4.8 server-side (beta; opt-in).";
     };
     "ollama-cloud" = mkSection "Ollama Cloud provider limits." {
       maxConcurrency = mkOpt num "Max concurrent Ollama Cloud subagent runs per process (0 disables the limit).";
+    };
+    "openai-codex" = mkSection "OpenAI Codex provider behaviour." {
+      codeMode =
+        mkOpt
+          (t.enum [
+            "off"
+            "on"
+            "auto"
+          ])
+          "Route Codex code_mode_only models (GPT-5.6) through eval, mirroring codex-rs Code Mode; auto follows the model catalog flag.";
+      codeModeDirectTools = mkOpt (t.listOf t.str) "Extra direct tools for Codex Code Mode; the standard direct tools are eval, ask, todo, yield, think, checkpoint and rewind.";
     };
   };
 
@@ -183,9 +224,6 @@ in
 
   exa = mkSection "Exa search tools." {
     enabled = mkOpt t.bool "Master toggle for all Exa search tools.";
-    enableSearch = mkOpt t.bool "Basic search, deep search, code search, crawl.";
-    enableResearcher = mkOpt t.bool "AI-powered deep research tasks.";
-    enableWebsets = mkOpt t.bool "Webset management and enrichment tools.";
     searchDelayMs = mkOpt num "Minimum delay between Exa web-search requests in ms (0 disables pacing).";
   };
 
@@ -196,14 +234,16 @@ in
     basicPassword = mkOpt t.str "Optional HTTP basic-auth password.";
     categories = mkOpt t.str "Default search categories.";
     language = mkOpt t.str "Default search language.";
+    engines = mkOpt t.str "Default comma-separated engine list.";
+    safesearch = mkOpt num "Default safesearch level (0 = off, 1 = moderate, 2 = strict).";
   };
 
-  commit = mkSection "Commit map-reduce changelog generation." {
+  commit = mkSection "Commit changelog generation and caching." {
     mapReduceEnabled = mkOpt t.bool "Enable map-reduce changelog generation for large commits.";
-    mapReduceMinFiles = mkOpt num "Minimum changed files before map-reduce kicks in.";
-    mapReduceMaxFileTokens = mkOpt num "Maximum tokens per file in the map phase.";
-    mapReduceTimeoutMs = mkOpt num "Map-reduce timeout in milliseconds.";
-    mapReduceMaxConcurrency = mkOpt num "Maximum concurrent map workers.";
+    mapReduceThreshold = mkOpt num "Diff token count above which map-reduce changelog generation kicks in.";
+    mapBatchTokenBudget = mkOpt num "Token budget per map-phase batch.";
+    cacheEnabled = mkOpt t.bool "Cache generated commit changelogs.";
+    cacheTtlDays = mkOpt num "Days a cached commit changelog stays valid.";
     changelogMaxDiffChars = mkOpt num "Maximum diff characters fed into changelog generation.";
   };
 
@@ -215,11 +255,16 @@ in
     ]) "Whether to auto-redeem saved Codex rate-limit resets.";
     minBlockedMinutes = mkOpt num "Minimum blocked minutes before redeeming a reset.";
     keepCredits = mkOpt num "Credits to keep in reserve when redeeming.";
+    salvageHorizonHours = mkOpt num "Spend a saved Codex reset automatically when it would otherwise expire within this many hours and either chat window has meaningful usage to restore (0 disables expiry salvage).";
   };
 
   tts = mkSection "Local TTS model/voice selection." {
     localModel = mkOpt (t.enum [ "kokoro" ]) "On-device neural TTS model.";
     localVoice = mkOpt (t.enum kokoroVoices) "Kokoro voice used by the local TTS backend.";
+  };
+
+  live = mkSection "Codex-backed realtime voice sessions." {
+    voice = mkOpt (t.enum liveVoices) "Voice used by Codex-backed realtime voice sessions.";
   };
 
   speech = mkSection "Spoken assistant output." {

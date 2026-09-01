@@ -1,5 +1,8 @@
-# Appearance settings: theme, status line, terminal/images, tui, display, plus
-# the top-level appearance scalars.
+# Appearance settings: theme, composer, status line, terminal/images, tui,
+# display, plus the top-level appearance scalars.
+#
+# `images` also carries the model-tab `images.urls.*` blob-serving keys: top-level
+# config.yml keys must stay disjoint across settings/*.nix, and `images` lives here.
 { lib, helpers }:
 let
   inherit (helpers) mkOpt mkSection;
@@ -46,6 +49,10 @@ in
     light = mkOpt t.str "Theme used when terminal has a light background.";
   };
 
+  composer = mkSection "Input composer layout." {
+    shape = mkOpt t.str "Visual layout of the input editor and status line. Upstream types this as a free string because extensions register shapes at runtime; the built-ins are band (default), box, claude, pi, borderless, rule, field and rail.";
+  };
+
   statusLine = mkSection "Status line configuration." {
     preset = mkOpt (t.enum [
       "default"
@@ -72,6 +79,15 @@ in
     segmentOptions = mkOpt (t.attrsOf helpers.yamlFormat.type) "Per-segment options keyed by segment id.";
     transparent = mkOpt t.bool "Use a transparent status line background.";
     compactThinkingLevel = mkOpt t.bool "Show the thinking level as a single icon on the model name instead of a separate suffix.";
+    contextLine =
+      mkOpt
+        (t.enum [
+          "off"
+          "percentage"
+          "annotated"
+          "embedded"
+        ])
+        "How the line between the left and right segments reflects context usage (box composer shape only).";
   };
 
   terminal = mkSection "Terminal rendering." {
@@ -83,6 +99,18 @@ in
     autoResize = mkOpt t.bool "Resize large images to 2000x2000 max for better model compatibility.";
     blockImages = mkOpt t.bool "Prevent images from being sent to LLM providers.";
     describeForTextModels = mkOpt t.bool "For non-vision models, save attached images under local:// and inject a vision-model description instead of dropping them.";
+    urls = mkSection "Serve outgoing images as URLs instead of inline base64." {
+      enabled = mkOpt t.bool "Publish outgoing images through the backend chain and send URL-fetching providers short URLs instead of inline base64 (falls back to inline when every backend or a provider fetch fails).";
+      backends = mkOpt (t.listOf t.str) "Ordered blob-destination ids tried when publishing images (default: provider-files, tailscale, cloudflared, litterbox). Not enumerated here because the valid set is filtered at runtime.";
+      bindHost = mkOpt t.str "Host the blob server binds to; loopback for tunnels, 0.0.0.0 for direct serving.";
+      command = mkOpt t.str "Argv template for the command backend; {file} is the image path, {mime}/{ext} optional. The last URL printed on stdout is used.";
+      publicBaseUrl = mkOpt t.str "Externally reachable base URL fronting the blob server (required for ssh, optional for direct).";
+      sshTarget = mkOpt t.str "user@host destination for the ssh reverse forward.";
+      sshRemotePort = mkOpt helpers.num "Remote listen port of the ssh reverse forward that your web server proxies to.";
+      ttlHours = mkOpt helpers.num "Serving window in hours for locally hosted image URLs, measured from the last send (0 keeps links alive while the broker runs).";
+      options = mkOpt (t.attrsOf helpers.yamlFormat.type) "Per-backend options keyed by blob-destination id.";
+      credentials = mkOpt (t.attrsOf (t.attrsOf t.str)) "Per-backend credentials keyed by blob-destination id. Upstream flags these as credentials: values set here land in world-readable Nix store output, so keep real secrets in the consumer's sops layer and out of this option.";
+    };
   };
 
   tui = mkSection "TUI image/hyperlink limits." {
@@ -97,7 +125,15 @@ in
     ]) "Wrap file paths in OSC 8 hyperlinks (auto/off/always).";
     tight = mkOpt t.bool "Remove the 1-column horizontal padding from the left/right of terminal output.";
     renderMermaid = mkOpt t.bool "Render Mermaid fenced code blocks as ASCII diagrams.";
-    scrollbackRebuild = mkOpt t.bool "Erase and replay terminal scrollback when a block's final form replaces its live preview (off keeps stale preview copies in history).";
+    codexResetFireworks = mkOpt t.bool "Celebrate unscheduled Codex weekly usage resets and newly banked saved resets with a fireworks overlay that remains until Escape.";
+    resizeScrollback =
+      mkOpt
+        (t.enum [
+          "append"
+          "rebuild"
+          "preserve"
+        ])
+        "How a settled terminal resize refreshes transcript rows retained in terminal scrollback (append replays below history, rebuild erases and replays, preserve repaints only the viewport).";
     imeSafeCursor = mkOpt t.bool "Move the prompt's bottom border to a separate row so macOS IME preedit cannot displace it.";
     titleState = mkOpt t.bool "Show the agent run state in the terminal title separator (spinner/>/!).";
   };
@@ -112,5 +148,7 @@ in
     showTokenUsage = mkOpt t.bool "Show per-turn token usage on assistant messages.";
     smoothStreaming = mkOpt t.bool "Reveal assistant text smoothly while streamed chunks arrive.";
     collapseCompacted = mkOpt t.bool "Collapse pre-compaction history behind the summary divider on the live transcript (disable to keep the full transcript inline).";
+    hideToolActivity = mkOpt t.bool "Hide model-initiated tool calls and results from the transcript.";
+    showTurnTime = mkOpt t.bool "Show the total prompt-to-yield time (including tool calls) on assistant message usage rows.";
   };
 }

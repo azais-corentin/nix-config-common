@@ -1,5 +1,6 @@
 # Memory settings: legacy memories pipeline, the backend selector, the Mnemopi
-# local SQLite backend and the Hindsight remote memory service.
+# local SQLite backend, the Sharpshooter decision-file backend and the Hindsight
+# remote memory service.
 { lib, helpers }:
 let
   inherit (helpers) mkOpt mkSection num;
@@ -32,12 +33,16 @@ in
   };
 
   memory = mkSection "Memory backend selector." {
-    backend = mkOpt (t.enum [
-      "off"
-      "local"
-      "hindsight"
-      "mnemopi"
-    ]) "Off, local summary pipeline, Mnemopi SQLite, or Hindsight remote memory.";
+    backend =
+      mkOpt
+        (t.enum [
+          "off"
+          "local"
+          "hindsight"
+          "mnemopi"
+          "sharpshooter"
+        ])
+        "Off, local summary pipeline, Mnemopi SQLite, Hindsight remote memory, or Sharpshooter decision files.";
   };
 
   mnemopi = mkSection "Mnemopi local SQLite memory backend." {
@@ -108,6 +113,12 @@ in
     mentalModelAutoSeed = mkOpt t.bool "Auto-create built-in mental models that do not yet exist on the bank.";
     mentalModelRefreshIntervalMs = mkOpt num "Mental model refresh interval in milliseconds.";
     mentalModelMaxRenderChars = mkOpt num "Maximum characters rendered for mental models.";
+  };
+
+  sharpshooter = mkSection "Sharpshooter friction-gated project decision files." {
+    injectionTokenLimit = mkOpt num "Token limit for injecting decision files into the conversation (upstream default: 15000).";
+    intervalMinutes = mkOpt num "Minutes between background consolidation passes (upstream default: 5).";
+    model = mkOpt t.str "Model selector for extraction/consolidation; empty uses the smol role.";
   };
 
   autolearn = mkSection "Autolearn lesson extraction from completed turns." {

@@ -5,12 +5,46 @@ let
 
   mcpSchemaUrl = "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json";
 
-  homeFileModule = { lib, ... }: {
-    options.home.file = lib.mkOption {
-      type = lib.types.attrsOf lib.types.anything;
-      default = { };
+  # The shared feature is a real home-manager module: besides home.file it also
+  # declares home.packages and a home.activation DAG entry. This harness runs on
+  # bare lib.evalModules, so stand in for the home-manager options it touches and
+  # for lib.hm.dag (same entry shape as home-manager's modules/lib/dag.nix).
+  homeModule = { lib, ... }: {
+    options.home = {
+      file = lib.mkOption {
+        type = lib.types.attrsOf lib.types.anything;
+        default = { };
+      };
+      packages = lib.mkOption {
+        type = lib.types.listOf lib.types.anything;
+        default = [ ];
+      };
+      activation = lib.mkOption {
+        type = lib.types.attrsOf lib.types.anything;
+        default = { };
+      };
     };
   };
+
+  hmLib = lib.extend (
+    _: _: {
+      hm.dag = {
+        entryAnywhere = data: {
+          inherit data;
+          before = [ ];
+          after = [ ];
+        };
+        entryAfter = after: data: {
+          inherit data after;
+          before = [ ];
+        };
+        entryBefore = before: data: {
+          inherit data before;
+          after = [ ];
+        };
+      };
+    }
+  );
 
   miseGlobalConfigModule = { lib, ... }: {
     options.programs.mise.globalConfig = lib.mkOption {
@@ -25,16 +59,19 @@ let
       specialArgs = { inherit pkgs; };
       modules = [
         ./default.nix
-        homeFileModule
+        homeModule
         { oh-my-pi = declaration; }
       ];
     };
 
   sharedFeature = lib.evalModules {
-    specialArgs = { inherit pkgs; };
+    specialArgs = {
+      inherit pkgs;
+      lib = hmLib;
+    };
     modules = [
       ./default.nix
-      homeFileModule
+      homeModule
       miseGlobalConfigModule
       ../../../home/cli/mise/oh-my-pi.nix
     ];
@@ -63,12 +100,22 @@ let
       providers = {
         imageOrder = [ "openai-codex" ];
         kimiApiFormat = "auto";
+        "openai-codex".codeMode = "auto";
       };
       computer.enabled = true;
       tui.titleState = false;
       workspace.additionalDirectories = [ "/tmp/x" ];
       bash.direnv = "off";
       retry.usageReservePolicy = "auto";
+      tui.resizeScrollback = "append";
+      edit.mode = "sloppy";
+      edit.autoRepair.enabled = true;
+      task.agentAdvisor.scout = "off";
+      compaction.methodOrder = [
+        "snapcompact"
+        "soft"
+      ];
+      features.unexpectedStopDetection = "smart";
     };
 
     models.providers.local = {
@@ -77,6 +124,12 @@ let
       compat = {
         supportsEagerToolInputStreaming = false;
         allowAnthropicHeaderOverrides = true;
+        supportsContextManagement = true;
+      };
+      guardrailTrace = "enabled";
+      discovery = {
+        type = "openai-models-list";
+        injectV1 = false;
       };
     };
 
@@ -130,6 +183,8 @@ let
         mcp.mcpServers.local = {
           type = "stdio";
           command = "local-mcp";
+          env.TOKEN = "local";
+          requestIdFormat = "string";
         };
       };
 
@@ -144,6 +199,13 @@ let
     name:
     let
       evaluated = evaluate { profiles.${name} = { }; };
+    in
+    (builtins.tryEval (builtins.deepSeq evaluated.config.oh-my-pi.profiles true)).success;
+
+  mcpServerSucceeds =
+    server:
+    let
+      evaluated = evaluate { profiles.probe.mcp.mcpServers.probe = server; };
     in
     (builtins.tryEval (builtins.deepSeq evaluated.config.oh-my-pi.profiles true)).success;
 
@@ -262,6 +324,23 @@ let
 in
 assert lib.all (name: !(profileNameSucceeds name)) invalidProfileNames;
 assert lib.all profileNameSucceeds validProfileNames;
+assert mcpServerSucceeds { command = "local-mcp"; };
+assert
+  !(mcpServerSucceeds {
+    type = "http";
+    command = "local-mcp";
+  });
+assert
+  !(mcpServerSucceeds {
+    type = "http";
+    url = null;
+  });
+assert
+  !(mcpServerSucceeds {
+    type = "stdio";
+    command = "local-mcp";
+    url = "http://local.invalid";
+  });
 assert disabledFiles == { };
 assert emptyFiles == { };
 assert builtins.attrNames homeFiles == expectedPaths;
@@ -326,7 +405,18 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.workspace.additionalDirectories | join(",") == "/tmp/x"' ${defaultConfig} >/dev/null
     yq -e '.bash.direnv == "off"' ${defaultConfig} >/dev/null
     yq -e '.retry.usageReservePolicy == "auto"' ${defaultConfig} >/dev/null
-    yq -e '.tui.scrollbackRebuild == false' ${sharedDefaultConfig} >/dev/null
+    yq -e '.tui.resizeScrollback == "append"' ${defaultConfig} >/dev/null
+    yq -e '.edit.mode == "sloppy"' ${defaultConfig} >/dev/null
+    yq -e '.edit.autoRepair.enabled == true' ${defaultConfig} >/dev/null
+    yq -e '.task.agentAdvisor.scout == "off"' ${defaultConfig} >/dev/null
+    yq -e '.compaction.methodOrder | join(",") == "snapcompact,soft"' ${defaultConfig} >/dev/null
+    yq -e '.providers["openai-codex"].codeMode == "auto"' ${defaultConfig} >/dev/null
+    yq -e '.features.unexpectedStopDetection == "smart"' ${defaultConfig} >/dev/null
+    yq -e '.compaction | has("strategy") | not' ${defaultConfig} >/dev/null
+    yq -e '.tui | has("scrollbackRebuild") | not' ${defaultConfig} >/dev/null
+    yq -e '.tui | has("scrollbackRebuild") | not' ${sharedDefaultConfig} >/dev/null
+    yq -e '.task.enableEffort == true' ${sharedDefaultConfig} >/dev/null
+    yq -e '.composer.shape == "borderless"' ${sharedDefaultConfig} >/dev/null
     yq -e '.tools == null or (.tools | has("discoveryMode") | not)' ${sharedDefaultConfig} >/dev/null
     yq -e 'has("modelRoleStorage") | not' ${sharedDefaultConfig} >/dev/null
     yq -e 'has("generate_image") | not' ${sharedDefaultConfig} >/dev/null
@@ -334,6 +424,10 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.providers.local.api == "openai-completions"' ${defaultModels} >/dev/null
     yq -e '.providers.local.compat.supportsEagerToolInputStreaming == false' ${defaultModels} >/dev/null
     yq -e '.providers.local.compat.allowAnthropicHeaderOverrides == true' ${defaultModels} >/dev/null
+    yq -e '.providers.local.compat.supportsContextManagement == true' ${defaultModels} >/dev/null
+    yq -e '.providers.local.guardrailTrace == "enabled"' ${defaultModels} >/dev/null
+    yq -e '.providers.local.discovery.injectV1 == false' ${defaultModels} >/dev/null
+    yq -e '.providers.local.discovery.type == "openai-models-list"' ${defaultModels} >/dev/null
 
     yq -e '.personality == "pragmatic"' ${personalConfig} >/dev/null
     yq -e '.modelRoleStorage == "project"' ${personalConfig} >/dev/null
@@ -377,7 +471,7 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
 
     cmp ${expectedWorkCommand} ${workCommand}
 
-    jq -e --arg schema '${mcpSchemaUrl}' '."$schema" == $schema and .mcpServers.local.type == "stdio" and .mcpServers.local.command == "local-mcp"' ${workMcp} >/dev/null
+    jq -e --arg schema '${mcpSchemaUrl}' '."$schema" == $schema and .mcpServers.local == { "type": "stdio", "command": "local-mcp", "env": { "TOKEN": "local" }, "requestIdFormat": "string" }' ${workMcp} >/dev/null
     jq -e '."$schema" == "https://example.invalid/mcp-schema.json" and .mcpServers == {}' ${work2Mcp} >/dev/null
 
     yq -o=json '.modelRoles' ${openaiProfileConfig} \

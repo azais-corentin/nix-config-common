@@ -53,6 +53,7 @@ in
         showHookStatus = true;
         transparent = true;
       };
+      composer.shape = "borderless";
       compaction.dropUseless = true;
       compaction.thresholdPercent = 50;
       terminal.showImages = true;
@@ -64,7 +65,6 @@ in
       tui.hyperlinks = "auto";
       tui.tight = true;
       tui.renderMermaid = true;
-      tui.scrollbackRebuild = false;
       display = {
         shimmer = "kitt";
         showTokenUsage = false;
@@ -78,6 +78,7 @@ in
         showSplash = false;
       };
       task.showResolvedModelBadge = false;
+      task.enableEffort = true;
       task.isolation.mode = "auto";
       task.isolation.merge = "branch";
       task.disabledAgents = [ "librarian" ];

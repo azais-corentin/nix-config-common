@@ -1,27 +1,32 @@
-# Context settings: context promotion, compaction, branch summaries, TTSR.
+# Context settings: extended context, context promotion, compaction, branch
+# summaries, TTSR.
 { lib, helpers }:
 let
   inherit (helpers) mkOpt mkSection num;
   t = lib.types;
+
+  compactionMethods = [
+    "remote"
+    "snapcompact"
+    "handoff"
+    "soft"
+    "shake"
+  ];
 in
 {
+  extendedContext = mkOpt t.bool "Use premium long-context windows on models that bill extra past a threshold (e.g. GPT-5.6 1M charges 2x input above 272K); off caps them at the standard-pricing window.";
+
   contextPromotion = mkSection "Context promotion on overflow." {
     enabled = mkOpt t.bool "Promote to a larger-context model on overflow instead of compacting.";
   };
 
   compaction = mkSection "Context compaction." {
     enabled = mkOpt t.bool "Automatically compact context when it gets too large.";
-    strategy = mkOpt (t.enum [
-      "context-full"
-      "handoff"
-      "shake"
-      "snapcompact"
-      "off"
-    ]) "Compaction strategy.";
+    methodOrder = mkOpt (t.listOf (t.enum compactionMethods)) "Preferred fallback order for automatic context maintenance; unavailable or failed methods advance to the next choice (default: remote, snapcompact, handoff, shake, soft). Successor to the removed compaction.strategy and compaction.remoteEnabled.";
+    asyncEnabled = mkOpt t.bool "Speculatively summarize in the background as context nears the compaction threshold, then splice the ready result in when the threshold is crossed.";
     thresholdPercent = mkOpt num "Percent threshold for context maintenance (-1 = legacy reserve-based).";
     thresholdTokens = mkOpt num "Fixed token limit for context maintenance (-1 = use percentage).";
     handoffSaveToDisk = mkOpt t.bool "Save generated handoff documents to markdown files.";
-    remoteEnabled = mkOpt t.bool "Use remote compaction endpoints when available.";
     reserveTokens = mkOpt num "Tokens reserved below the limit before compaction.";
     keepRecentTokens = mkOpt num "Recent tokens always kept during compaction.";
     autoContinue = mkOpt t.bool "Automatically continue after compaction.";
