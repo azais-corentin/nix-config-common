@@ -23,6 +23,28 @@
       set fish_greeting
     '';
 
+    # Tide 6.2 runs the tool binary without checking it exists, so entering a
+    # tree with package.json/bun.lockb while node/bun is off PATH (e.g. after
+    # leaving a direnv shell that provided it) prints "Unknown command: node"
+    # from the async right prompt. Same bodies as upstream plus the
+    # `command -q` guard that _tide_item_python already has; ~/.config/fish/
+    # functions precedes the plugin dir on fish_function_path, so these shadow
+    # it. Drop once upstream guards them.
+    functions = {
+      _tide_item_node = ''
+        if path is $_tide_parent_dirs/package.json; and command -q node
+            node --version | string match -qr "v(?<v>.*)"
+            _tide_print_item node $tide_node_icon' ' $v
+        end
+      '';
+      _tide_item_bun = ''
+        if path is $_tide_parent_dirs/bun.lockb; and command -q bun
+            bun --version | string match -qr "(?<v>.*)"
+            _tide_print_item bun $tide_bun_icon' ' $v
+        end
+      '';
+    };
+
     # Ported from the previous zsh shellAliases. Abbreviations expand inline
     # in fish so the user sees the resolved command before pressing enter.
     shellAbbrs = {
