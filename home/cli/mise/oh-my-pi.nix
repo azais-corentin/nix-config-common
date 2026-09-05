@@ -125,17 +125,18 @@ in
     '';
 
     profiles.openai.settings.modelRoles = lib.mkForce {
-      default = "openai-codex/gpt-5.6-sol:xhigh";
-      smol = "openai-codex/gpt-5.6-luna:medium";
-      slow = "openai-codex/gpt-5.6-sol:xhigh";
-      vision = "openai-codex/gpt-5.6-sol:xhigh";
-      plan = "openai-codex/gpt-5.6-sol:xhigh";
-      designer = "openai-codex/gpt-5.6-sol:xhigh";
-      commit = "openai-codex/gpt-5.6-luna:medium";
-      tiny = "openai-codex/gpt-5.6-luna:medium";
-      task = "openai-codex/gpt-5.6-sol:xhigh";
-      advisor = "openai-codex/gpt-5.6-sol:xhigh";
+      default = "openai-codex/gpt-6-astra:high";
+      smol = "openai-codex/gpt-6-astra:low";
+      slow = "openai-codex/gpt-6-astra:xhigh";
+      vision = "openai-codex/gpt-6-astra:high";
+      plan = "openai-codex/gpt-6-astra:xhigh";
+      designer = "openai-codex/gpt-6-astra:high";
+      commit = "openai-codex/gpt-6-astra:low";
+      tiny = "openai-codex/gpt-6-astra:low";
+      task = "openai-codex/gpt-6-astra:high";
+      advisor = "openai-codex/gpt-6-astra:xhigh";
     };
+    profiles.openai.settings.compaction.thresholdPercent = 80;
 
     profiles.gemini.settings.modelRoles = lib.mkForce {
       default = "google-antigravity/gemini-3.7-flash:high";
