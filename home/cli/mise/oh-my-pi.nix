@@ -10,6 +10,11 @@ in
   programs.mise.globalConfig.tools."github:can1357/oh-my-pi".version = "latest";
   programs.mise.globalConfig.settings.minimum_release_age_excludes = [ "github:can1357/oh-my-pi" ];
 
+  # Puppeteer's downloaded Chrome lacks its runtime libraries on NixOS.
+  programs.mise.globalConfig.env = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    PUPPETEER_EXECUTABLE_PATH = lib.getExe pkgs.chromium;
+  };
+
   # omp's eval tool needs a Python 3.8+ interpreter. It resolves one from an
   # active/project venv, then ~/.omp/python-env, then PATH; NixOS ships no
   # global python, so provision that managed venv with uv. Seeded with pip so

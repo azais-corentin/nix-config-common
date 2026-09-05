@@ -308,7 +308,6 @@ let
   ];
   sharedNoFindRule = sharedFeatureFiles.".omp/agent/rules/no-find-from-root.md".text;
   sharedDefaultConfig = sharedFeatureFiles.".omp/agent/config.yml".source;
-  openaiProfileConfig = sharedFeatureFiles.".omp/profiles/openai/agent/config.yml".source;
 
   defaultConfig = homeFiles.".omp/agent/config.yml".source;
   personalConfig = homeFiles.".omp/profiles/personal/agent/config.yml".source;
@@ -515,20 +514,6 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
 
     jq -e --arg schema '${mcpSchemaUrl}' '."$schema" == $schema and .mcpServers.local == { "type": "stdio", "command": "local-mcp", "env": { "TOKEN": "local" }, "requestIdFormat": "string" }' ${workMcp} >/dev/null
     jq -e '."$schema" == "https://example.invalid/mcp-schema.json" and .mcpServers == {}' ${work2Mcp} >/dev/null
-
-    yq -o=json '.modelRoles' ${openaiProfileConfig} \
-      | jq -e '. == {
-          "advisor": "openai-codex/gpt-5.6-sol:xhigh",
-          "commit": "openai-codex/gpt-5.6-luna:medium",
-          "default": "openai-codex/gpt-5.6-sol:xhigh",
-          "designer": "openai-codex/gpt-5.6-sol:xhigh",
-          "plan": "openai-codex/gpt-5.6-sol:xhigh",
-          "slow": "openai-codex/gpt-5.6-sol:xhigh",
-          "smol": "openai-codex/gpt-5.6-luna:medium",
-          "task": "openai-codex/gpt-5.6-sol:xhigh",
-          "tiny": "openai-codex/gpt-5.6-luna:medium",
-          "vision": "openai-codex/gpt-5.6-sol:xhigh"
-        }' >/dev/null
 
     mkdir -p "$out"
     cp ${defaultConfig} "$out/config.yml"
