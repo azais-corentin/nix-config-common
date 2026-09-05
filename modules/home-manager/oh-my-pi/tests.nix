@@ -273,7 +273,6 @@ let
     "agents/shared.md"
     "extensions/shared.ts"
     "commands/shared.md"
-    "config.yml"
     "dap.json"
     "hooks/post/shared"
     "hooks/pre/shared"
@@ -307,11 +306,11 @@ let
     ".omp/profiles/deepseek/agent/rules/no-find-from-root.md"
   ];
   sharedNoFindRule = sharedFeatureFiles.".omp/agent/rules/no-find-from-root.md".text;
-  sharedDefaultConfig = sharedFeatureFiles.".omp/agent/config.yml".source;
+  sharedDefaultConfig = ''"$shared_home/.omp/agent/config.yml"'';
 
-  defaultConfig = homeFiles.".omp/agent/config.yml".source;
-  personalConfig = homeFiles.".omp/profiles/personal/agent/config.yml".source;
-  workConfig = homeFiles.".omp/profiles/work/agent/config.yml".source;
+  defaultConfig = ''"$HOME/.omp/agent/config.yml"'';
+  personalConfig = ''"$HOME/.omp/profiles/personal/agent/config.yml"'';
+  workConfig = ''"$HOME/.omp/profiles/work/agent/config.yml"'';
   defaultModels = homeFiles.".omp/agent/models.yml".source;
   workModels = homeFiles.".omp/profiles/work/agent/models.yml".source;
   workMcp = homeFiles.".omp/profiles/work/agent/mcp.json".source;
@@ -342,7 +341,9 @@ let
       homeFiles.".omp/profiles/work/agent/commands/shared.md".text;
   expectedWorkCommand = pkgs.writeText "expected-work-command.md" "work command";
 
-  hasArtifactName = target: name: lib.hasSuffix "-${name}" (toString homeFiles.${target}.source);
+  configActivation =
+    entries: lib.concatMapStringsSep "\n" (entry: entry.data) (builtins.attrValues entries);
+  oldConfig = pkgs.writeText "old-omp-config.yml" "old: true\n";
 in
 assert lib.all (name: !(profileNameSucceeds name)) invalidProfileNames;
 assert lib.all profileNameSucceeds validProfileNames;
@@ -377,28 +378,10 @@ assert lib.all (
     builtins.attrNames inlineResourceContents
   )
 ) inheritedResourcePrefixes;
-assert builtins.hasAttr ".omp/agent/config.yml" sharedFeatureFiles;
-assert builtins.hasAttr ".omp/profiles/openai/agent/config.yml" sharedFeatureFiles;
 assert lib.all (path: builtins.hasAttr path sharedFeatureFiles) sharedRulePaths;
 assert lib.all (path: sharedFeatureFiles.${path}.text == sharedNoFindRule) sharedRulePaths;
 assert lib.hasInfix ''condition: "\\bfind\\s+/(?:\\s|$)"'' sharedNoFindRule;
 assert lib.hasInfix ''scope: "tool:bash"'' sharedNoFindRule;
-assert hasArtifactName ".omp/agent/config.yml" "omp-config.yml";
-assert hasArtifactName ".omp/agent/models.yml" "omp-models.yml";
-assert hasArtifactName ".omp/agent/keybindings.yml" "omp-keybindings.yml";
-assert hasArtifactName ".omp/agent/ssh.json" "omp-ssh.json";
-assert hasArtifactName ".omp/agent/lsp.json" "omp-lsp.json";
-assert hasArtifactName ".omp/agent/dap.json" "omp-dap.json";
-assert hasArtifactName ".omp/agent/WATCHDOG.yml" "omp-watchdog.yml";
-assert hasArtifactName ".omp/profiles/work/agent/config.yml" "omp-profile-work-config.yml";
-assert hasArtifactName ".omp/profiles/work/agent/models.yml" "omp-profile-work-models.yml";
-assert hasArtifactName ".omp/profiles/work/agent/keybindings.yml"
-  "omp-profile-work-keybindings.yml";
-assert hasArtifactName ".omp/profiles/work/agent/ssh.json" "omp-profile-work-ssh.json";
-assert hasArtifactName ".omp/profiles/work/agent/mcp.json" "omp-profile-work-mcp.json";
-assert hasArtifactName ".omp/profiles/work/agent/lsp.json" "omp-profile-work-lsp.json";
-assert hasArtifactName ".omp/profiles/work/agent/dap.json" "omp-profile-work-dap.json";
-assert hasArtifactName ".omp/profiles/work/agent/WATCHDOG.yml" "omp-profile-work-watchdog.yml";
 pkgs.runCommand "oh-my-pi-profile-module-tests"
   {
     nativeBuildInputs = [
@@ -408,6 +391,34 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
   }
   ''
     set -euo pipefail
+
+    export HOME="$TMPDIR/home with spaces"
+    shared_home="$TMPDIR/shared home"
+    run() { "$@"; }
+    for directory in .omp/agent .omp/profiles/work/agent; do
+      mkdir -p "$HOME/$directory"
+      ln -s ${oldConfig} "$HOME/$directory/config.yml"
+    done
+
+    ${configActivation main.config.home.activation}
+    for directory in .omp/agent .omp/profiles/{personal,work,work-2.0_a}/agent; do
+      test -f "$HOME/$directory/config.yml"
+      test ! -L "$HOME/$directory/config.yml"
+      test "$(stat -c %a "$HOME/$directory/config.yml")" = 600
+    done
+    test "$(cat ${oldConfig})" = "old: true"
+
+    printf '\nruntime: true\n' >> ${defaultConfig}
+    ${configActivation main.config.home.activation}
+    yq -e 'has("runtime") | not' ${defaultConfig} >/dev/null
+    (
+      export HOME="$shared_home"
+      ${configActivation (builtins.removeAttrs sharedFeature.config.home.activation [ "ompPythonEnv" ])}
+    )
+    test -f "$shared_home/.omp/profiles/openai/agent/config.yml"
+    test ! -L "$shared_home/.omp/profiles/openai/agent/config.yml"
+    yq -e '.modelRoles.default == "openai-codex/gpt-6-astra:high"' \
+      "$shared_home/.omp/profiles/openai/agent/config.yml" >/dev/null
 
     yq -e '.personality == "pragmatic"' ${defaultConfig} >/dev/null
     yq -e '.task.disabledAgents | join(",") == "scout,oracle"' ${defaultConfig} >/dev/null

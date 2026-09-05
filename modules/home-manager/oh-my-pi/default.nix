@@ -175,43 +175,43 @@ let
       profileConfig,
       mcp ? null,
     }:
-    lib.mkMerge [
-      (settingsComponent.mkFiles {
+    {
+      files = lib.mkMerge [
+        (modelsComponent.mkFiles {
+          inherit agentDir artifactPrefix;
+          config = profileConfig;
+        })
+        (filesComponent.mkFiles {
+          inherit agentDir artifactPrefix;
+          config = profileConfig;
+        })
+        (lib.optionalAttrs (mcp != null) {
+          # Keep explicitly empty mcpServers objects after pruning.
+          "${agentDir}/mcp.json".source = jsonFormat.generate "${artifactPrefix}-mcp.json" (
+            pruneNulls mcp // { mcpServers = lib.mapAttrs (_: pruneNulls) mcp.mcpServers; }
+          );
+        })
+      ];
+      activation = settingsComponent.mkActivation {
         inherit agentDir artifactPrefix;
         config = profileConfig;
-      })
-      (modelsComponent.mkFiles {
-        inherit agentDir artifactPrefix;
-        config = profileConfig;
-      })
-      (filesComponent.mkFiles {
-        inherit agentDir artifactPrefix;
-        config = profileConfig;
-      })
-      (lib.optionalAttrs (mcp != null) {
-        # pruneNulls drops empty attrsets, but an explicitly-empty mcpServers
-        # object is meaningful, so re-add it after pruning each server entry.
-        "${agentDir}/mcp.json".source = jsonFormat.generate "${artifactPrefix}-mcp.json" (
-          pruneNulls mcp // { mcpServers = lib.mapAttrs (_: pruneNulls) mcp.mcpServers; }
-        );
-      })
-    ];
+      };
+    };
 
-  defaultFiles = renderProfile {
-    agentDir = ".omp/agent";
-    artifactPrefix = "omp";
-    profileConfig = cfg;
-  };
-
-  namedProfileFiles = lib.mapAttrsToList (
-    name: profile:
-    renderProfile {
-      agentDir = ".omp/profiles/${name}/agent";
-      artifactPrefix = "omp-profile-${name}";
-      profileConfig = profile;
-      inherit (profile) mcp;
+  profileConfigurations = [
+    {
+      agentDir = ".omp/agent";
+      artifactPrefix = "omp";
+      profileConfig = cfg;
     }
-  ) cfg.profiles;
+  ]
+  ++ lib.mapAttrsToList (name: profile: {
+    agentDir = ".omp/profiles/${name}/agent";
+    artifactPrefix = "omp-profile-${name}";
+    profileConfig = profile;
+    inherit (profile) mcp;
+  }) cfg.profiles;
+  renderedProfiles = map renderProfile profileConfigurations;
 in
 {
   options.oh-my-pi = profileOptions // {
@@ -237,6 +237,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.file = lib.mkMerge ([ defaultFiles ] ++ namedProfileFiles);
+    home.file = lib.mkMerge (map (profile: profile.files) renderedProfiles);
+    home.activation = lib.mkMerge (map (profile: profile.activation) renderedProfiles);
   };
 }

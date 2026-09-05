@@ -2,9 +2,18 @@
 # module namespace is top-level `oh-my-pi.*` (declared in
 # modules/home-manager/oh-my-pi). Consumers add their own secrets and provider
 # credentials in a per-repo layer.
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   noSlopSkill = import ./no-slop-skill.nix pkgs;
+  pythonProfilePaths = [
+    ""
+  ]
+  ++ map (name: "/profiles/${name}") (builtins.attrNames config.oh-my-pi.profiles);
 in
 {
   programs.mise.globalConfig.tools."github:can1357/oh-my-pi".version = "latest";
@@ -15,13 +24,9 @@ in
     PUPPETEER_EXECUTABLE_PATH = lib.getExe pkgs.chromium;
   };
 
-  # omp's eval tool needs a Python 3.8+ interpreter. It resolves one from an
-  # active/project venv, then ~/.omp/python-env, then PATH; NixOS ships no
-  # global python, so provision that managed venv with uv. Seeded with pip so
-  # the in-cell `%pip` magic works. `python.interpreter` is deliberately left
-  # unset — setting it disables discovery, which would stop a project's own
-  # .venv from winning. Created only when absent, so packages a session
-  # installs survive rebuilds.
+  # Provision each profile's managed fallback without selecting an interpreter.
+  # Leaving python.interpreter unset preserves active/project venv precedence.
+  # Keep existing environments so installed packages survive activation.
   #
   # uv ships alongside because omp exports the venv to the kernel (VIRTUAL_ENV
   # plus its bin/ on PATH), so a bare `uv pip install X` inside a cell targets
@@ -30,11 +35,17 @@ in
   home.packages = [ pkgs.uv ];
 
   home.activation.ompPythonEnv = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    if [ ! -x "$HOME/.omp/python-env/bin/python" ]; then
-      run ${pkgs.uv}/bin/uv venv --seed --managed-python --python 3.14 \
-        "$HOME/.omp/python-env" \
-        || echo "omp: could not create ~/.omp/python-env; the Python kernel stays unavailable"
-    fi
+    for omp_profile_path in ${lib.escapeShellArgs pythonProfilePaths}; do
+      omp_python_root="$HOME/.omp$omp_profile_path"
+      if [ -n "''${XDG_DATA_HOME:-}" ] && [ -d "$XDG_DATA_HOME/omp$omp_profile_path" ]; then
+        omp_python_root="$XDG_DATA_HOME/omp$omp_profile_path"
+      fi
+      omp_python_env="$omp_python_root/python-env"
+      if [ ! -x "$omp_python_env/bin/python" ]; then
+        run ${pkgs.uv}/bin/uv venv --seed --managed-python --python 3.14 \
+          "$omp_python_env"
+      fi
+    done
   '';
 
   oh-my-pi = {

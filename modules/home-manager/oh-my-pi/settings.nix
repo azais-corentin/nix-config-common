@@ -40,10 +40,12 @@ in
       profile's agent directory. Every SETTINGS_SCHEMA key (except the
       runtime-state setupVersion) is reachable as a typed option; unknown keys
       remain settable via the per-section freeform escape hatch.
+      Activation installs a writable file with mode 0600. Each activation
+      restores these declarations, replacing runtime changes made by OMP.
     '';
   };
 
-  mkFiles =
+  mkActivation =
     {
       agentDir,
       artifactPrefix,
@@ -51,8 +53,26 @@ in
     }:
     let
       rendered = pruneNulls config.settings;
+      source = yamlFormat.generate "${artifactPrefix}-config.yml" rendered;
+      installConfig = pkgs.writeShellScript "${artifactPrefix}-install-config" ''
+        set -euo pipefail
+        export PATH=${lib.makeBinPath [ pkgs.coreutils ]}
+        directory="$1"
+        mkdir -p -- "$directory"
+        temporary=$(mktemp "$directory/.config.yml.XXXXXX")
+        trap 'rm -f -- "$temporary"' EXIT
+        install -m 600 -- ${source} "$temporary"
+        mv -fT -- "$temporary" "$directory/config.yml"
+      '';
     in
     lib.optionalAttrs (rendered != { }) {
-      "${agentDir}/config.yml".source = yamlFormat.generate "${artifactPrefix}-config.yml" rendered;
+      "${artifactPrefix}-config" = {
+        before = [ ];
+        # Remove old Home Manager links before installing their replacements.
+        after = [ "linkGeneration" ];
+        data = ''
+          run ${installConfig} "$HOME"/${lib.escapeShellArg agentDir}
+        '';
+      };
     };
 }
