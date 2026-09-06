@@ -155,16 +155,16 @@ in
     profiles.openai.settings.compaction.thresholdPercent = 80;
 
     profiles.gemini.settings.modelRoles = lib.mkForce {
-      default = "google-antigravity/gemini-3.7-flash:high";
-      smol = "google-antigravity/gemini-3.7-flash:high";
-      slow = "google-antigravity/gemini-3.7-flash:high";
-      vision = "google-antigravity/gemini-3.7-flash:high";
-      plan = "google-antigravity/gemini-3.7-flash:high";
-      designer = "google-antigravity/gemini-3.7-flash:high";
-      commit = "google-antigravity/gemini-3.7-flash:high";
-      tiny = "google-antigravity/gemini-3.7-flash:high";
-      task = "google-antigravity/gemini-3.7-flash:high";
-      advisor = "google-antigravity/gemini-3.7-flash:high";
+      default = "google-antigravity/gemini-3.8-flash:high";
+      smol = "google-antigravity/gemini-3.8-flash:high";
+      slow = "google-antigravity/gemini-3.8-flash:high";
+      vision = "google-antigravity/gemini-3.8-flash:high";
+      plan = "google-antigravity/gemini-3.8-flash:high";
+      designer = "google-antigravity/gemini-3.8-flash:high";
+      commit = "google-antigravity/gemini-3.8-flash:high";
+      tiny = "google-antigravity/gemini-3.8-flash:high";
+      task = "google-antigravity/gemini-3.8-flash:high";
+      advisor = "google-antigravity/gemini-3.8-flash:high";
     };
 
     profiles.deepseek.settings.modelRoles = lib.mkForce {
