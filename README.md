@@ -99,15 +99,52 @@ mise trust && mise install  # hk/bun/pkl/gitleaks; auto-installs the git hooks
 bun install --cwd .mise # commitlint dependencies
 ```
 
-Then `mise run format` / `mise run format:check`, or let the pre-commit hook
-enforce it. Commit messages must be conventional commits.
+Run `mise tasks` to list public tasks and `mise run <task> --help` for arguments.
+
+| Command                                     | Purpose                                                                 |
+| ------------------------------------------- | ----------------------------------------------------------------------- |
+| `mise run check`                            | Check working-tree formatting, Pkl, and secrets without modifying files |
+| `mise run check:nix`                        | Evaluate this flake without building or changing its lockfile           |
+| `mise run format` / `mise run format:check` | Format with dprint or check formatting only                             |
+| `mise run pre-commit`                       | Check staged changes with the existing stashing behavior                |
+| `mise run update`                           | Update flake inputs, applications, then agent skills                    |
+| `mise run update:inputs nixpkgs`            | Update named flake inputs, or all inputs when omitted                   |
+| `mise run update:apps fastpotify mise`      | Update named applications, or all managed applications when omitted     |
+| `mise run update:skills anthropics`         | Update named skill sources, or all sources when omitted                 |
+
+`check` does not evaluate Nix, build, fix files, or stash changes. `check:nix`
+checks this flake's outputs only. It does not validate modules inside a
+consumer's NixOS or Home Manager configuration.
+The hidden `commitlint <file>` and `pkl-format` tasks support the hooks and dprint.
+Commit messages must follow Conventional Commits.
 
 ## Update workflow
 
-Edit a shared module here, then:
+Application targets are `fastpotify`, `mise`, `paseo`, and `ff-ultima`.
+Fastpotify and mise update their version and both Linux architecture hashes
+together. Paseo keeps Node on major 24 and preserves the build-script allowlist.
+
+FF-ULTIMA selects a stable release containing the current commit, or advances
+its Git pin when the release is older. Other applications use stable releases.
+
+Skill sources are `anthropics`, `wshobson`, `apollographql`, `antfu`, `boileau`,
+and `no-slop`. Each target resolves the upstream default-branch commit, verifies
+the referenced skill files, and updates all matching OMP and jcode declarations.
+The no-slop target also checks that the existing Bun substitutions still apply.
+
+Each updater prepares all changes for a target before replacing its files.
+A failed target leaves earlier successful targets in place and stops the task.
+
+Updates affect this repository only. They do not install tools, activate
+configurations, restart services, commit, or push. They leave tooling dependency
+versions, such as commitlint and dprint plugins, alone.
+
+Use `GH_TOKEN` or `GITHUB_TOKEN` for authenticated GitHub API requests if needed.
+Source and hash updates do not prove runtime compatibility.
+
+Commit and push validated shared changes before updating a consumer's normal
+GitHub input. Then run this command in the consumer repository:
 
 ```sh
-git -C ~/dev/nix-config-common commit -am "..." && git push
-# in each consumer repo:
 nix flake update nix-config-common
 ```

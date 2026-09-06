@@ -1,3 +1,11 @@
+[tasks.check]
+description = "Check working-tree formatting, Pkl, and secrets without modifying files"
+run = "hk check --all --check --no-stage --stash none"
+
+[tasks."check:nix"]
+description = "Evaluate this flake without building or validating consumer configurations"
+run = "nix flake check --no-build --no-write-lock-file"
+
 [tasks."format:check"]
 description = "Check code formatting"
 run = "dprint check"
@@ -7,6 +15,7 @@ description = "Format code"
 run = "dprint fmt"
 
 [tasks.pre-commit]
+description = "Run checks on staged changes using the pre-commit hook"
 run = "hk run pre-commit"
 
 [tools]

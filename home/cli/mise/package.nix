@@ -2,7 +2,7 @@
 # upstream mise releases by days-to-weeks; this guarantees a floor version and
 # retires itself: as soon as pkgs.mise reaches `version`, it is used instead
 # (at which point this pin can be bumped or the file inlined away).
-# Bump via `mise run bump:mise`.
+# Update via `mise run update:apps mise`.
 pkgs:
 let
   source = builtins.fromJSON (builtins.readFile ./source.json);

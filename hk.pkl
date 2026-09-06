@@ -2,11 +2,8 @@ amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.
 
 import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
 
-local preCommitSteps = new Mapping<String, Step> {
+local validationSteps = new Mapping<String, Step> {
   ["dprint"] = Builtins.dprint
-  ["gitleaks"] {
-    check = "gitleaks git --pre-commit --redact --staged --verbose"
-  }
   ["pkl"] = Builtins.pkl
 }
 
@@ -14,7 +11,11 @@ hooks {
   ["pre-commit"] {
     fix = false
     stash = "git"
-    steps = preCommitSteps
+    steps = (validationSteps) {
+      ["gitleaks"] {
+        check = "gitleaks git --pre-commit --redact --staged --verbose"
+      }
+    }
   }
   ["commit-msg"] {
     steps {
@@ -23,11 +24,13 @@ hooks {
       }
     }
   }
-  // ["fix"] {
-  //     fix = true
-  //     steps = linters
-  // }
-  // ["check"] {
-  //     steps = linters
-  // }
+  ["check"] {
+    fix = false
+    stash = "none"
+    steps = (validationSteps) {
+      ["gitleaks"] {
+        check = "gitleaks dir --redact ."
+      }
+    }
+  }
 }

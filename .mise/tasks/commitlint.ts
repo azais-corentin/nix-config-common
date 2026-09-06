@@ -1,13 +1,15 @@
 #!/usr/bin/env bun
 /*
-#MISE description="Lint a commit message from stdin"
+#MISE description="Lint a commit message file"
+#MISE hide=true
+#USAGE arg "<file>" help="File containing the commit message"
 */
 
 import lint from "@commitlint/lint";
 import load from "@commitlint/load";
 import path from "node:path";
 
-const file = Bun.argv[2];
+const file = process.env.usage_file ?? Bun.argv[2];
 if (!file) {
   console.error("Usage: commitlint <file>");
   process.exit(1);
@@ -15,7 +17,7 @@ if (!file) {
 const message = (await Bun.file(file).text()).trim();
 
 if (!message) {
-  console.error("No commit message provided on stdin.");
+  console.error("Commit message file is empty.");
   process.exit(1);
 }
 
