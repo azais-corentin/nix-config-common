@@ -14,6 +14,7 @@
     mcp = ./cli/mcp.nix;
     mise = ./cli/mise;
     mise-oh-my-pi = ./cli/mise/oh-my-pi.nix;
+    mise-paseo = ./cli/mise/paseo.nix;
     nix-search-tv = ./cli/nix-search-tv.nix;
     qalculate = ./cli/qalculate.nix;
     ssh = ./cli/ssh.nix;
