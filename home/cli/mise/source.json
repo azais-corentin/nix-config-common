@@ -1,7 +1,7 @@
 {
-  "version": "2026.7.7",
+  "version": "2026.9.1",
   "hashes": {
-    "x86_64-linux": "sha256-742hWxs4KaUfAWm5FnPbRRflIOX6zX0Q0xH/0S6/s1g=",
-    "aarch64-linux": "sha256-H+oyVtxSBs4KqpG4mSASHwoKWpBuTaWBMYa6bUdKAjk="
+    "x86_64-linux": "sha256-sTvNi8UWdz/ZtgBojObmwBtiBxrlf2quRL4HE6bYNPE=",
+    "aarch64-linux": "sha256-32ldvPpUN5IIG9uG+Z/5HD3FuQQ5YXGzCLbvHhVzAYI="
   }
 }

@@ -180,11 +180,11 @@ in
     };
 
     skills = {
-      pdf = "github:anthropics/skills/skills/pdf@3b3fad96af16a10759d930941b4520ba0c40edae";
-      pptx = "github:anthropics/skills/skills/pptx@3b3fad96af16a10759d930941b4520ba0c40edae";
-      frontend-design = "github:anthropics/skills/skills/frontend-design@3b3fad96af16a10759d930941b4520ba0c40edae";
-      web-artifacts-builder = "github:anthropics/skills/skills/web-artifacts-builder@3b3fad96af16a10759d930941b4520ba0c40edae";
-      uv = "github:wshobson/agents/plugins/python-development/skills/uv-package-manager@38e19c20d2b154510b0e624a2e3e186b19b5c527";
+      pdf = "github:anthropics/skills/skills/pdf@41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f";
+      pptx = "github:anthropics/skills/skills/pptx@41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f";
+      frontend-design = "github:anthropics/skills/skills/frontend-design@41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f";
+      web-artifacts-builder = "github:anthropics/skills/skills/web-artifacts-builder@41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f";
+      uv = "github:wshobson/agents/plugins/python-development/skills/uv-package-manager@a30778f8c4e6b0a87567941b7cca4f534bf642b6";
       rust-best-practices = "github:apollographql/skills/skills/rust-best-practices@c288eb80629dd2309eed81f23d693f66a452d043";
       vitepress = "github:antfu/skills/skills/vitepress@a74f281a27dadc02397bc1a174b0f2c97531b6ae";
       boileau = "github:alxbd/boileau@5b272a70b1d5387984c12a08c4edc45af3f4fbda";

@@ -8,8 +8,8 @@ let
   ultimaTheme = pkgs.fetchFromGitHub {
     owner = "soulhotel";
     repo = "FF-ULTIMA";
-    rev = "299811dc2d4ffe898bc3de43d26bff8b9b03e05c";
-    sha256 = "sha256-9nEtNmarNRDlz3nzYJDPQ1zLw4KEzD5I/TQjSoz+foE=";
+    rev = "d5ce77f5948db13393939208757d08ae1fc4fb90";
+    sha256 = "sha256-Cua5pPq55cTo7OSITUzPWpweZ5pqmSQ5DEsm1hQ/fuQ=";
   };
 
   sharedExtensions = with pkgs.inputs.firefox-addons; [
