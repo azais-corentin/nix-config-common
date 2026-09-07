@@ -7,6 +7,7 @@ let
 in
 {
   imports = [
+    ./codex.nix
     ./jcode.nix
     ./worktrunk.nix
   ];

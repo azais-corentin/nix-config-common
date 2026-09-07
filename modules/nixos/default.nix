@@ -8,4 +8,5 @@
   bluetooth = ./bluetooth.nix;
   systemd-initrd = ./systemd-initrd.nix;
   dconf = ./dconf.nix;
+  codex = ./codex.nix;
 }
