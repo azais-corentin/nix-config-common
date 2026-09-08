@@ -78,7 +78,7 @@ service startup never installs tools. Consumers must configure lingering,
 permit the port on the Tailscale interface, and order the service after any
 credential-file service used by their mise environment.
 
-Paseo uses no password or public relay. Tailnet access grants access to the
+Paseo enables the public relay and uses no password. Tailnet access grants access to the
 user's OMP credentials and unrestricted agent sessions. The service preserves
 unrelated settings in `~/.paseo/config.json`, saves the original once as
 `config.pre-nix.json`, and replaces the provider set on every start. Existing

@@ -117,7 +117,7 @@ let
       ."$schema" = "https://paseo.sh/schemas/paseo.config.v1.json"
       | .version = 1
       | .daemon.listen = $listen
-      | .daemon.relay.enabled = false
+      | .daemon.relay.enabled = true
       | del(.daemon.auth.password)
       | .agents.providers = $providers
     ' "$source")
@@ -143,7 +143,7 @@ let
     fi
     ${prepare}
     exec paseo daemon start --foreground --home "$HOME/.paseo" \
-      --listen ${lib.escapeShellArg listen} --no-relay
+      --listen ${lib.escapeShellArg listen} --relay
   '';
   launcher = pkgs.writeShellScript "paseo-service" ''
     set -eo pipefail
