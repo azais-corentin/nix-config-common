@@ -18,6 +18,7 @@
     nix-search-tv = ./cli/nix-search-tv.nix;
     qalculate = ./cli/qalculate.nix;
     ssh = ./cli/ssh.nix;
+    zellij = ./cli/zellij.nix;
   };
   desktop = {
     fastpotify = ./desktop/fastpotify;
