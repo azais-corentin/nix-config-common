@@ -17,7 +17,9 @@ in
     enableZshIntegration = config.programs.zsh.enable;
     globalConfig = {
       settings = {
+        all_compile = false;
         experimental = true;
+        not_found_auto_install = false;
       };
       tools = {
         "github:beaconbay/ck" = "latest";
