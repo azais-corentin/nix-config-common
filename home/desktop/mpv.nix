@@ -2,18 +2,16 @@
 {
   programs.mpv = {
     enable = true;
-    package = (
-      pkgs.mpv.override {
-        scripts = with pkgs.mpvScripts; [
-          uosc
-          sponsorblock
-        ];
+    package = pkgs.mpv.override {
+      scripts = with pkgs.mpvScripts; [
+        uosc
+        sponsorblock
+      ];
 
-        mpv-unwrapped = pkgs.mpv-unwrapped.override {
-          waylandSupport = true;
-        };
-      }
-    );
+      mpv-unwrapped = pkgs.mpv-unwrapped.override {
+        waylandSupport = true;
+      };
+    };
     config = {
       hwdec = "auto-safe";
       vo = "gpu-next";
