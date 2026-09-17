@@ -70,6 +70,8 @@ stdenv.mkDerivation {
     install -Dm755 fastpotify $out/bin/fastpotify
     install -Dm644 packaging/applications/fastpotify.desktop \
       $out/share/applications/fastpotify.desktop
+    substituteInPlace $out/share/applications/fastpotify.desktop \
+      --replace-fail "Exec=spotifast" "Exec=$out/bin/fastpotify"
     install -Dm644 packaging/icons/fastpotify.svg \
       $out/share/icons/hicolor/scalable/apps/fastpotify.svg
     runHook postInstall
