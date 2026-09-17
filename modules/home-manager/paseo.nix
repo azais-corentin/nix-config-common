@@ -46,7 +46,7 @@ let
     let
       model = modelFor profile;
     in
-    model == null || builtins.match "[a-zA-Z0-9_-]+/[a-zA-Z0-9_./:-]+" model != null;
+    model == null || builtins.match "[a-zA-Z0-9_-]+/[a-zA-Z0-9_./:~-]+" model != null;
   providerId =
     name:
     if name == "default" then
