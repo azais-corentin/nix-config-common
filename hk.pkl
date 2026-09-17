@@ -1,6 +1,6 @@
-amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
 
-import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
 
 local validationSteps = new Mapping<String, Step> {
   ["dprint"] = Builtins.dprint
@@ -12,8 +12,8 @@ hooks {
     fix = false
     stash = "git"
     steps = (validationSteps) {
-      ["gitleaks"] {
-        check = "gitleaks git --pre-commit --redact --staged --verbose"
+      ["gitleaks"] = (Builtins.gitleaks) {
+        scan = "staged"
       }
     }
   }
@@ -28,9 +28,7 @@ hooks {
     fix = false
     stash = "none"
     steps = (validationSteps) {
-      ["gitleaks"] {
-        check = "gitleaks dir --redact ."
-      }
+      ["gitleaks"] = Builtins.gitleaks
     }
   }
 }
