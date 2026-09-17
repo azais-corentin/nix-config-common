@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   chmodSync,
   lstatSync,
@@ -323,23 +322,6 @@ export async function assetHash(
   if (expected && expected !== hash)
     throw new Error(`SHA-256 mismatch for ${name}: expected ${expected}, downloaded ${hash}`);
   return hash;
-}
-
-export async function verifyDownload(url: string, integrity: string): Promise<void> {
-  const match = /^(sha256|sha512)-([A-Za-z0-9+/]+={0,2})$/.exec(integrity);
-  if (!match) throw new Error(`Unsupported download integrity: ${integrity}`);
-  const expected = Buffer.from(match[2]!, "base64");
-  if (
-    expected.length !== (match[1] === "sha512" ? 64 : 32) ||
-    expected.toString("base64") !== match[2]
-  ) {
-    throw new Error(`Invalid download integrity: ${integrity}`);
-  }
-  const response = await request(url);
-  if (!response?.body) throw new Error(`Empty download response: ${url}`);
-  const hash = createHash(match[1]!);
-  for await (const chunk of response.body) hash.update(chunk);
-  if (!hash.digest().equals(expected)) throw new Error(`Download integrity mismatch: ${url}`);
 }
 
 export async function githubFile(repo: string, rev: string, path: string): Promise<string> {

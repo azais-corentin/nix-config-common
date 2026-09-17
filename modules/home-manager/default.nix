@@ -2,5 +2,4 @@
 {
   oh-my-pi = ./oh-my-pi;
   jcode = ./jcode.nix;
-  paseo = ./paseo.nix;
 }

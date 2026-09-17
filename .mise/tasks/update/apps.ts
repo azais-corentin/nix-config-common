@@ -2,7 +2,7 @@
 /*
 #MISE description="Update pinned applications and the Firefox theme"
 #USAGE arg "[targets]" var=#true help="Targets to update (default: all)" {
-#USAGE   choices "fastpotify" "mise" "paseo" "ff-ultima"
+#USAGE   choices "fastpotify" "mise" "ff-ultima"
 #USAGE }
 */
 
@@ -11,7 +11,6 @@ import {
   commit,
   defaultCommit,
   github,
-  json,
   latestRelease,
   nixString,
   object,
@@ -23,7 +22,6 @@ import {
   runTargets,
   sha256,
   text,
-  verifyDownload,
 } from "../../lib/update.ts";
 
 const systems = ["x86_64-linux", "aarch64-linux"] as const;
@@ -104,32 +102,6 @@ async function mise(root: string): Promise<void> {
   publish([source], `mise ${version}`);
 }
 
-async function paseo(root: string): Promise<void> {
-  const source = readSource(root, "home/cli/mise/paseo.nix");
-  one(source.body, /\bnode\s*=\s*lib\.mkDefault\s+"24"\s*;/, "Paseo Node 24 declaration");
-  const packagePattern = /("npm:@getpaseo\/cli"\s*=\s*\{)([^{}]*)(\}\s*;)/;
-  const block = one(source.body, packagePattern, "Paseo npm declaration")[2]!;
-  text(nixString(block, "version").value, "Paseo pinned version", /^\d+\.\d+\.\d+$/);
-  const release = object(
-    await json("https://registry.npmjs.org/@getpaseo%2fcli/latest"),
-    "Paseo npm release",
-  );
-  if (release.name !== "@getpaseo/cli") throw new Error("Unexpected npm package for Paseo");
-  const version = text(release.version, "Paseo stable version", /^\d+\.\d+\.\d+$/);
-  const dist = object(release.dist, "Paseo npm distribution");
-  const url = text(dist.tarball, "Paseo npm tarball");
-  if (url !== `https://registry.npmjs.org/@getpaseo/cli/-/cli-${version}.tgz`)
-    throw new Error(`Unexpected Paseo tarball URL: ${url}`);
-  await verifyDownload(url, text(dist.integrity, "Paseo npm integrity"));
-  source.body = replaceOne(
-    source.body,
-    packagePattern,
-    (match) => `${match[1]}${nixString(match[2]!, "version").set(version)}${match[3]}`,
-    "Paseo npm declaration",
-  );
-  publish([source], `paseo ${version}`);
-}
-
 async function ffUltima(root: string): Promise<void> {
   const source = readSource(root, "home/desktop/firefox.nix");
   const pattern = /(\bultimaTheme\s*=\s*pkgs\.fetchFromGitHub\s*\{)([^{}]*)(\}\s*;)/;
@@ -183,4 +155,4 @@ async function ffUltima(root: string): Promise<void> {
   publish([source], `ff-ultima ${revision}`);
 }
 
-await runTargets("update:apps", { fastpotify, mise, paseo, "ff-ultima": ffUltima });
+await runTargets("update:apps", { fastpotify, mise, "ff-ultima": ffUltima });

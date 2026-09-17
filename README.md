@@ -13,7 +13,7 @@ nixpkgs (passed through the module system), so consumers declare
 
 | Output                 | Contents                                                                              |
 | ---------------------- | ------------------------------------------------------------------------------------- |
-| `homeModules`          | `{ oh-my-pi, jcode, paseo }` — leaf HM modules, safe to `attrValues`-import.          |
+| `homeModules`          | `{ oh-my-pi, jcode }` — leaf HM modules, safe to `attrValues`-import.                 |
 | `nixosModules`         | `{ desktop, plasma6, stylix-theme }`.                                                 |
 | `homeFeatures`         | Nested attrset of opt-in HM feature **paths** (`cli.*`, `desktop.*`, `stylix-theme`). |
 | `lib.kwinOutputConfig` | `{ pkgs, outputs, setups }` → generated `kwinoutputconfig.json` derivation.           |
@@ -61,29 +61,6 @@ palette/fonts via `lib.mkDefault`; neither sets `stylix.enable` or
 (`homeManagerIntegration`) must import **only** the NixOS one — the HM values
 propagate automatically, and importing both would double-define.
 
-### Paseo
-
-Import `homeFeatures.cli.mise-paseo` alongside the shared mise and OMP features,
-and set `services.paseo.listenAddress` to the host's assigned Tailscale IPv4
-address. The optional `services.paseo.port` defaults to 6767.
-
-The Linux user service exposes the default OMP profile and every declared named
-profile through Paseo's native OMP provider. Model defaults must be direct
-`provider/model` selectors. Thinking suffixes are removed from these defaults;
-live model and reasoning discovery remain available.
-
-Provision Node 24 and `npm:@getpaseo/cli` 0.7.2 as the user before activation.
-The mise declaration allows build scripts only for `esbuild` and `node-pty`;
-service startup never installs tools. Consumers must configure lingering,
-permit the port on the Tailscale interface, and order the service after any
-credential-file service used by their mise environment.
-
-Paseo enables the public relay and uses no password. Tailnet access grants access to the
-user's OMP credentials and unrestricted agent sessions. The service preserves
-unrelated settings in `~/.paseo/config.json`, saves the original once as
-`config.pre-nix.json`, and replaces the provider set on every start. Existing
-identity and session files remain user-owned.
-
 ## Development
 
 Formatting and hooks mirror [`nix-config`](https://github.com/azais-corentin/nix-config):
@@ -120,9 +97,9 @@ Commit messages must follow Conventional Commits.
 
 ## Update workflow
 
-Application targets are `fastpotify`, `mise`, `paseo`, and `ff-ultima`.
+Application targets are `fastpotify`, `mise`, and `ff-ultima`.
 Fastpotify and mise update their version and both Linux architecture hashes
-together. Paseo keeps Node on major 24 and preserves the build-script allowlist.
+together.
 
 FF-ULTIMA selects a stable release containing the current commit, or advances
 its Git pin when the release is older. Other applications use stable releases.
