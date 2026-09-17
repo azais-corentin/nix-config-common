@@ -56,6 +56,7 @@ in
         tinyModel = "online";
         anthropic.serverSideFallback = true;
         webSearchGeminiModel = "gemini-3.8-flash-high";
+        imageOrder = [ "openai-codex" ];
       };
       theme = {
         dark = "dark-nebula";
@@ -79,6 +80,7 @@ in
         autoResize = true;
         blockImages = false;
       };
+      generate_image.enabled = true;
       tui.hyperlinks = "auto";
       tui.tight = true;
       tui.renderMermaid = true;

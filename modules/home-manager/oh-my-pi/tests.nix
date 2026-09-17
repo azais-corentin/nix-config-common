@@ -454,7 +454,8 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.composer.shape == "borderless"' ${sharedDefaultConfig} >/dev/null
     yq -e '.tools == null or (.tools | has("discoveryMode") | not)' ${sharedDefaultConfig} >/dev/null
     yq -e 'has("modelRoleStorage") | not' ${sharedDefaultConfig} >/dev/null
-    yq -e 'has("generate_image") | not' ${sharedDefaultConfig} >/dev/null
+    yq -e '.generate_image.enabled == true' ${sharedDefaultConfig} >/dev/null
+    yq -e '.providers.imageOrder | join(",") == "openai-codex"' ${sharedDefaultConfig} >/dev/null
     yq -e '.providers.local.baseUrl == "http://default.invalid"' ${defaultModels} >/dev/null
     yq -e '.providers.local.api == "openai-completions"' ${defaultModels} >/dev/null
     yq -e '.providers.local.compat.supportsEagerToolInputStreaming == false' ${defaultModels} >/dev/null
