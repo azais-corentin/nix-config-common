@@ -45,16 +45,11 @@ async function fastpotify(root: string): Promise<void> {
   }
   const versionPin = nixString(source.body, "version");
   text(versionPin.value, "fastpotify pinned version", /^\d+\.\d+\.\d+$/);
-  const release = (await latestRelease("crmne/fastpotify"))!;
+  const release = (await latestRelease("crmne/spotifast"))!;
   const version = text(release.tag, "fastpotify release tag", /^v\d+\.\d+\.\d+$/).slice(1);
   const hashes = await Promise.all(
     systems.map((system) =>
-      assetHash(
-        root,
-        "crmne/fastpotify",
-        release,
-        `fastpotify-v${version}-${arches[system]}.tar.gz`,
-      ),
+      assetHash(root, "crmne/spotifast", release, `spotifast-v${version}-${arches[system]}.tar.gz`),
     ),
   );
   source.body = versionPin.set(version);

@@ -18,7 +18,7 @@
   libxrandr,
 }:
 let
-  version = "0.7.0";
+  version = "0.8.0";
   arch =
     {
       x86_64-linux = "x86_64-unknown-linux-gnu";
@@ -27,8 +27,8 @@ let
     .${stdenv.hostPlatform.system};
   hash =
     {
-      x86_64-linux = "sha256-T6ENx1DA4Mqrpthu+tVHdkI3ni9Brtma7TLWjzGeZOw=";
-      aarch64-linux = "sha256-2mJJdUZNcKJzhlOgspinesMy1rGM5Vc19gkLRcmp0G8=";
+      x86_64-linux = "sha256-J5yvNjiX4WWp+VwDo0MTqK+hYSgDLro79rLLiHIzlKQ=";
+      aarch64-linux = "sha256-oJ5LEalvCjbcS6ZqfvXEI4dBrNJw+RJKl/cMyrEW41k=";
     }
     .${stdenv.hostPlatform.system};
 in
@@ -37,7 +37,7 @@ stdenv.mkDerivation {
   inherit version;
 
   src = fetchurl {
-    url = "https://github.com/crmne/fastpotify/releases/download/v${version}/fastpotify-v${version}-${arch}.tar.gz";
+    url = "https://github.com/crmne/spotifast/releases/download/v${version}/spotifast-v${version}-${arch}.tar.gz";
     inherit hash;
   };
 
@@ -77,7 +77,7 @@ stdenv.mkDerivation {
 
   meta = {
     description = "Fast native Spotify client with local playback and Spotify Connect";
-    homepage = "https://fastpotify.rocks";
+    homepage = "https://spotifast.rocks";
     license = lib.licenses.mit;
     mainProgram = "fastpotify";
     platforms = [

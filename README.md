@@ -100,6 +100,7 @@ Commit messages must follow Conventional Commits.
 Application targets are `fastpotify`, `mise`, and `ff-ultima`.
 Fastpotify and mise update their version and both Linux architecture hashes
 together.
+The `fastpotify` target tracks upstream Spotifast releases.
 
 FF-ULTIMA selects a stable release containing the current commit, or advances
 its Git pin when the release is older. Other applications use stable releases.
