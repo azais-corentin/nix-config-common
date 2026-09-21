@@ -39,6 +39,7 @@ in
     midTurnEnabled = mkOpt t.bool "Check compaction thresholds at safe mid-turn tool-loop boundaries before the next request.";
     remoteStreamingV2Enabled = mkOpt t.bool "Use Responses streaming compaction for compatible remote compaction models.";
     v2RetainedMessageBudget = mkOpt num "Message-token budget retained by remote compaction V2.";
+    experimentalContextManagement = mkOpt t.bool "Keep persistent notes and searchable raw history across context windows (experimental; restart to update available tools).";
   };
 
   branchSummary = mkSection "Branch summaries." {

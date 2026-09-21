@@ -12,6 +12,8 @@ in
   plan = mkSection "Plan mode." {
     enabled = mkOpt t.bool "Enable plan mode for read-only exploration before execution.";
     defaultOnStartup = mkOpt t.bool "Enter plan mode by default on startup.";
+    autosave = mkOpt t.bool "Automatically save approved plans to disk when plan mode completes.";
+    autosaveDir = mkOpt t.str "Directory for autosaved plans (supports ~, absolute and cwd-relative paths); unset uses <project>/.omp/plans/.";
   };
 
   goal = mkSection "Goal mode." {
@@ -22,18 +24,7 @@ in
 
   task = mkSection "Subagent delegation and isolation." {
     isolation = mkSection "Subagent filesystem isolation." {
-      mode = mkOpt (t.enum [
-        "none"
-        "auto"
-        "apfs"
-        "btrfs"
-        "zfs"
-        "reflink"
-        "overlayfs"
-        "projfs"
-        "block-clone"
-        "rcopy"
-      ]) "Isolation backend for subagents.";
+      enabled = mkOpt t.bool "Run subagents in an isolated copy of the checkout and integrate their changes afterwards.";
       merge = mkOpt (t.enum [
         "patch"
         "branch"
@@ -75,6 +66,24 @@ in
           "max"
         ])
         "Ceiling for the task tool's per-spawn effort hint (upstream default: max, preserving the model's full range).";
+    agentServiceTierOverrides = mkOpt (t.attrsOf t.str) "Per-agent service-tier overrides keyed by agent id (hidden upstream setting, no settings-panel UI).";
+  };
+
+  isolation = mkSection "Subagent/worktree isolation backend." {
+    backend =
+      mkOpt
+        (t.enum [
+          "auto"
+          "apfs"
+          "btrfs"
+          "zfs"
+          "reflink"
+          "overlayfs"
+          "projfs"
+          "block-clone"
+          "rcopy"
+        ])
+        "Backend used for subagent isolation and worktree cloning (auto lets the PAL pick the best available).";
   };
 
   title = mkSection "Session title behaviour." {
@@ -83,6 +92,8 @@ in
 
   worktree = mkSection "Agent-managed worktrees." {
     base = mkOpt t.str "Base directory for agent-managed worktrees (task isolation, PR checkouts, omp worktree). Unset uses ~/.omp/wt; must be absolute or ~-relative; OMP_WORKTREE_DIR overrides.";
+    clone = mkOpt t.bool "New worktrees from github pr_checkout and bash git worktree add start as a copy-on-write clone of the current checkout so ignored build artifacts carry over; falls back to a plain checkout when the filesystem cannot clone.";
+    cleanSource = mkOpt t.bool "When creating a worktree with /wt, reset tracked changes and remove untracked files from the original checkout after carrying them over.";
   };
 
   tasks = mkSection "Todo list lifecycle." {

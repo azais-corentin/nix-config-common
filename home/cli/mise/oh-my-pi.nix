@@ -52,12 +52,7 @@ in
     enable = true;
 
     settings = {
-      providers = {
-        tinyModel = "online";
-        anthropic.serverSideFallback = true;
-        webSearchGeminiModel = "gemini-3.8-flash-high";
-        imageOrder = [ "openai-codex" ];
-      };
+      providers.anthropic.serverSideFallback = true;
       theme = {
         dark = "dark-nebula";
         light = "light";
@@ -72,6 +67,8 @@ in
         transparent = true;
       };
       composer.shape = "borderless";
+      composer.tokenRate = true;
+      composer.recallClearedDrafts = false;
       compaction.dropUseless = true;
       compaction.thresholdPercent = 50;
       terminal.showImages = true;
@@ -98,7 +95,7 @@ in
       };
       task.showResolvedModelBadge = false;
       task.enableEffort = true;
-      task.isolation.mode = "auto";
+      task.isolation.enabled = true;
       task.isolation.merge = "branch";
       task.disabledAgents = [ "librarian" ];
       edit.mode = "hashline";
@@ -110,11 +107,12 @@ in
         slow = "anthropic/claude-opus-5:high";
         vision = "anthropic/claude-opus-5:high";
         plan = "anthropic/claude-opus-5:high";
-        designer = "anthropic/claude-opus-5:high";
         commit = "anthropic/claude-sonnet-5:low";
         tiny = "anthropic/claude-sonnet-5:high";
         task = "anthropic/claude-opus-5:low";
         advisor = "anthropic/claude-opus-5:medium";
+        image = "openai-codex/gpt-image-1";
+        web = "google/gemini-3.8-flash-high";
       };
       personality = "pragmatic";
       memory.backend = "mnemopi";
@@ -148,7 +146,6 @@ in
       slow = "openai-codex/gpt-6-astra:xhigh";
       vision = "openai-codex/gpt-6-astra:high";
       plan = "openai-codex/gpt-6-astra:xhigh";
-      designer = "openai-codex/gpt-6-astra:high";
       commit = "openai-codex/gpt-6-astra:low";
       tiny = "openai-codex/gpt-6-astra:low";
       task = "openai-codex/gpt-6-astra:high";
@@ -162,7 +159,6 @@ in
       slow = "google-antigravity/gemini-3.8-flash:high";
       vision = "google-antigravity/gemini-3.8-flash:high";
       plan = "google-antigravity/gemini-3.8-flash:high";
-      designer = "google-antigravity/gemini-3.8-flash:high";
       commit = "google-antigravity/gemini-3.8-flash:high";
       tiny = "google-antigravity/gemini-3.8-flash:high";
       task = "google-antigravity/gemini-3.8-flash:high";
@@ -174,7 +170,6 @@ in
       smol = "openrouter/~deepseek/deepseek-flash-latest:high";
       slow = "openrouter/~deepseek/deepseek-flash-latest:high";
       plan = "openrouter/~deepseek/deepseek-flash-latest:high";
-      designer = "openrouter/~deepseek/deepseek-flash-latest:high";
       commit = "openrouter/~deepseek/deepseek-flash-latest:high";
       tiny = "openrouter/~deepseek/deepseek-flash-latest:high";
       task = "openrouter/~deepseek/deepseek-flash-latest:high";

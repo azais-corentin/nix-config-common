@@ -111,7 +111,6 @@ in
     retainTimeoutMs = mkOpt num "Retain request timeout in milliseconds (upstream default: 60000; HINDSIGHT_RETAIN_TIMEOUT_MS takes precedence).";
     mentalModelsEnabled = mkOpt t.bool "Read curated reflect summaries into developer instructions at boot.";
     mentalModelAutoSeed = mkOpt t.bool "Auto-create built-in mental models that do not yet exist on the bank.";
-    mentalModelRefreshIntervalMs = mkOpt num "Mental model refresh interval in milliseconds.";
     mentalModelMaxRenderChars = mkOpt num "Maximum characters rendered for mental models.";
   };
 

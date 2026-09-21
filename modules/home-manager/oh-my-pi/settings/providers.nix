@@ -1,18 +1,10 @@
-# Providers settings: secret handling, web/image/tiny-model provider selection,
-# append-only context, Exa, SearXNG, live voice and the commit changelog knobs.
+# Providers settings: secret handling, per-provider request behaviour, local
+# tiny-model runtime, reader/fetch backend, append-only context, Exa, SearXNG,
+# local TTS voice, live voice and the commit changelog knobs.
 { lib, helpers }:
 let
   inherit (helpers) mkOpt mkSection num;
   t = lib.types;
-
-  tinyMemoryModels = [
-    "online"
-    "qwen3-1.7b"
-    "llama3.2:3b"
-    "gemma-3-1b"
-    "qwen2.5-1.5b"
-    "lfm2-1.2b"
-  ];
 
   liveVoices = [
     "arbor"
@@ -47,61 +39,11 @@ in
   };
 
   providers = mkSection "Provider selection for built-in tools." {
-    webSearchOrder =
-      mkOpt
-        (t.listOf (
-          t.enum [
-            "perplexity"
-            "gemini"
-            "anthropic"
-            "codex"
-            "xai"
-            "zai"
-            "exa"
-            "tinyfish"
-            "jina"
-            "kagi"
-            "tavily"
-            "firecrawl"
-            "brave"
-            "kimi"
-            "parallel"
-            "synthetic"
-            "searxng"
-            "startpage"
-            "duckduckgo"
-            "ecosia"
-            "google"
-            "mojeek"
-            "public"
-          ]
-        ))
-        "Prioritized providers for the web_search tool; unlisted providers keep their default order afterward.";
-    imageOrder =
-      mkOpt
-        (t.listOf (
-          t.enum [
-            "openai"
-            "openai-codex"
-            "antigravity"
-            "xai"
-            "gemini"
-            "openrouter"
-          ]
-        ))
-        "Prioritized providers for image generation; unlisted providers follow the active session provider and the built-in order.";
-    tinyModel = mkOpt (t.enum [
-      "online"
-      "lfm2-350m"
-      "qwen3-0.6b"
-      "gemma-270m"
-      "qwen2.5-0.5b"
-      "lfm2-700m"
-    ]) "Session-title model: online pi/smol or a local on-device model.";
     tinyModelDevice = mkOpt (t.enum [
       "default"
       "gpu"
       "cpu"
+      "mlx"
       "metal"
       "webgpu"
       "cuda"
@@ -130,8 +72,6 @@ in
       "q1f16"
       "auto"
     ]) "ONNX quantization/precision for local tiny models.";
-    memoryModel = mkOpt (t.enum tinyMemoryModels) "Mnemopi fact-extraction model: online or a local on-device model.";
-    autoThinkingModel = mkOpt (t.enum tinyMemoryModels) "Difficulty classifier for the auto thinking level.";
     kimiApiFormat = mkOpt (t.enum [
       "auto"
       "openai"
@@ -156,15 +96,8 @@ in
       "lynx"
       "parallel"
       "jina"
+      "firecrawl"
     ]) "Reader backend priority for the fetch/read URL tool.";
-    tts = mkOpt (t.enum [
-      "auto"
-      "local"
-      "xai"
-      "deepinfra"
-    ]) "Backend for the tts tool: local on-device (Kokoro-82M), xAI Grok Voice, or DeepInfra speech.";
-    unexpectedStopModel = mkOpt (t.enum tinyMemoryModels) "Classifier model for unexpected-stop detection.";
-    webSearchExclude = mkOpt (t.listOf t.str) "Web-search provider ids to exclude from auto-selection.";
     antigravityEndpoint = mkOpt (t.enum [
       "auto"
       "production"
@@ -175,7 +108,6 @@ in
       "priority"
     ]) "Default Fireworks serving path.";
     maxInFlightRequests = mkOpt (t.attrsOf num) "Max concurrent LLM requests per provider id (e.g. openai, anthropic); omitted providers are unlimited.";
-    webSearchGeminiModel = mkOpt t.str "Model id for Gemini Google Search grounding (default gemini-2.5-flash).";
     streamFirstEventTimeoutSeconds = mkOpt num "Seconds to wait for the first model stream event (-1 = provider/env default, 0 = disable watchdog).";
     streamIdleTimeoutSeconds = mkOpt num "Seconds a model stream may stay silent between events (-1 = provider/env default, 0 = disable).";
     autoThinkingMaxEffort =
@@ -259,7 +191,6 @@ in
   };
 
   tts = mkSection "Local TTS model/voice selection." {
-    localModel = mkOpt (t.enum [ "kokoro" ]) "On-device neural TTS model.";
     localVoice = mkOpt (t.enum kokoroVoices) "Kokoro voice used by the local TTS backend.";
   };
 

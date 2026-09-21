@@ -17,6 +17,7 @@ in
   extensions = mkOpt (t.listOf t.str) "Explicit extension module file or directory paths to load.";
   enabledModels = mkOpt (t.listOf t.str) "Explicit allow-list of model ids to expose.";
   disabledProviders = mkOpt (t.listOf t.str) "Provider ids to hide.";
+  enabledProviders = mkOpt (t.listOf t.str) "Explicit allow-list of provider ids to expose.";
   disabledExtensions = mkOpt (t.listOf t.str) "Extension ids to disable.";
   modelProviderOrder = mkOpt (t.listOf t.str) "Preferred ordering of model providers.";
   cycleOrder = mkOpt (t.listOf t.str) "Model-role cycle order (default: smol, default, slow).";
@@ -33,20 +34,29 @@ in
         canonical id — with an optional `:level` thinking suffix
         (`:minimal`/`:low`/`:medium`/`:high`/`:xhigh`/`:max`). A role may alias
         another via `@<role>` (`pi/<role>` still accepted as legacy), and a
-        comma-separated list forms a fallback chain. Built-in roles are described
-        below; custom roles are accepted via the freeform escape hatch.
+        comma-separated list forms a fallback chain. Chat roles (`default`, `smol`,
+        `slow`, `vision`, `plan`, `commit`, `tiny`, `memory`, `task`, `advisor`)
+        resolve against chat models; kind roles (`image`, `web`, `speech`,
+        `dictation`, `judge`) resolve against models of the matching kind. Ordered
+        fallbacks live in `retry.fallbackChains.<role>`. Custom roles are accepted
+        via the freeform escape hatch.
       ''
       {
         default = mkOpt t.str "Primary model for the main agent (DEFAULT role).";
         smol = mkOpt t.str "Fast/cheap model (Fast role); also the fallback chain for the tiny and advisor roles.";
         slow = mkOpt t.str "Strong reasoning model (Thinking role).";
-        vision = mkOpt t.str "Vision-capable model used by inspect_image and automatic image description.";
+        vision = mkOpt t.str "Vision-capable model used for automatic image description and read's ?q= image questions.";
         plan = mkOpt t.str "Architect model used in plan mode.";
-        designer = mkOpt t.str "Model for the designer subagent.";
         commit = mkOpt t.str "Model for commit-message and session-title generation.";
-        tiny = mkOpt t.str "Lightweight background-task model (session titles, memory extraction, auto-thinking classifier, unexpected-stop detection); falls back to smol (pi/smol) when unset.";
+        tiny = mkOpt t.str "Lightweight background-task model; accepts tiny on-device models as well as chat models.";
+        memory = mkOpt t.str "Memory extraction/consolidation model; accepts tiny on-device models as well as chat models.";
         task = mkOpt t.str "Model for spawned task/subtask subagents.";
-        advisor = mkOpt t.str "Passive per-turn reviewer model (only active when advisor.enabled is set); falls back to the slow priority chain when unset.";
+        advisor = mkOpt t.str "Passive per-turn reviewer model (only active when advisor.enabled is set).";
+        image = mkOpt t.str "Image-generation model backing the generate_image tool.";
+        web = mkOpt t.str "Web-search model or web/<provider> backend used by the web_search tool.";
+        speech = mkOpt t.str "Text-to-speech model used by the tts tool and spoken output.";
+        dictation = mkOpt t.str "Speech-to-text model used for microphone dictation.";
+        judge = mkOpt t.str "Judge model used by eval's judge()/judge_batch(), the jevify keyword and the find tool.";
       };
 
   modelTags = mkOpt (t.attrsOf (subType {

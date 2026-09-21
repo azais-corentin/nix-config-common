@@ -94,6 +94,7 @@ let
     supportsForcedToolChoice = mkOpt t.bool "Provider supports forcing a specific tool via tool_choice.";
     disableReasoningOnForcedToolChoice = mkOpt t.bool "Disable reasoning when tool choice is forced.";
     disableReasoningOnToolChoice = mkOpt t.bool "Disable reasoning whenever tool_choice is set.";
+    disableReasoningWithTools = mkOpt t.bool "Disable reasoning whenever any tool is present in the request.";
     thinkingFormat = mkOpt (t.enum [
       "openai"
       "openrouter"
@@ -124,6 +125,8 @@ let
     alwaysSendMaxTokens = mkOpt t.bool "Always include max tokens in the request.";
     strictResponsesPairing = mkOpt t.bool "Enforce strict request/response message pairing (Responses API).";
     supportsImageDetailOriginal = mkOpt t.bool "Provider supports image detail: original.";
+    supportsConfigurationUpdate = mkOpt t.bool "Provider supports Responses configuration-update requests.";
+    stripImageInput = mkOpt t.bool "Strip image parts from requests to this provider/model.";
     supportsContextManagement = mkOpt t.bool "Provider supports Anthropic context management (anthropic-messages).";
     supportsEagerToolInputStreaming = mkOpt t.bool "Allow Anthropic's per-tool eager_input_streaming flag.";
     allowAnthropicHeaderOverrides = mkOpt t.bool "Allow explicit Anthropic fingerprint headers to replace OAuth defaults on non-official endpoints.";
@@ -280,6 +283,7 @@ let
       "disabled"
       "enabled_full"
     ]) "Bedrock guardrail trace verbosity.";
+    requestMetadata = mkOpt (t.attrsOf t.str) "Bedrock invocation-log tags attached to every Converse request under this provider (max 16 entries; keys/values limited to [a-zA-Z0-9\\s:_@$#=/+,-.]).";
     transport = mkOpt (t.enum [
       "pi-native"
     ]) "Streaming transport override (pi-native routes via the auth gateway).";

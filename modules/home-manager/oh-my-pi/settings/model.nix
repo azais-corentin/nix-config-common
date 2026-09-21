@@ -26,6 +26,7 @@ in
   ]) "Reasoning depth for thinking-capable models.";
   hideThinkingBlock = mkOpt t.bool "Hide thinking blocks in assistant responses.";
   includeModelInPrompt = mkOpt t.bool "Surface the active model id in the system prompt so the agent knows which model it is.";
+  skillful = mkOpt t.bool "List available skills in the system prompt; disable to save context (per-session /skillful).";
   inlineToolDescriptors =
     mkOpt
       (t.enum [
@@ -75,6 +76,7 @@ in
       "auto"
       "fail-closed"
     ]) "Action when every same-provider coding-plan account is inside the reserve margin.";
+    waitForUsageReset = mkOpt t.bool "On a provider usage-limit reset time (5-hour or weekly quota windows), sleep until the reset instead of failing fast past retry.maxDelayMs; waits are abortable but also hold subagents.";
   };
 
   thinkingBudgets = mkSection "Token budgets per thinking level (budget-mode models)." {
@@ -95,6 +97,7 @@ in
       "3"
       "5"
     ]) "Pause the main agent up to 30s if the advisor falls behind by this many turns.";
+    maxNotesPerUpdate = mkOpt num "Maximum non-blocker advice notes accepted per advisor prompt update (1-32); blockers are exempt.";
   };
 
   prewalk = mkSection "Prewalk: strong model plans, cheap model implements." {

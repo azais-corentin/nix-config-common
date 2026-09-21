@@ -45,6 +45,7 @@ in
       "compact"
       "reset"
     ]) "What happens between /loop iterations before re-submitting the prompt.";
+    conditionTimeoutMs = mkOpt num "Max wait for a /loop --while|--until condition command before treating it as broken and stopping the loop (0 = wait indefinitely).";
   };
 
   spelling = mkSection "macOS dictionary integration for the prompt editor." {
@@ -92,12 +93,6 @@ in
   stt = mkSection "Speech-to-text input." {
     enabled = mkOpt t.bool "Enable speech-to-text input via microphone.";
     language = mkOpt t.str "Spoken language code (default: en).";
-    modelName = mkOpt (t.enum [
-      "fast"
-      "balanced"
-      "turbo"
-      "parakeet"
-    ]) "Speech-to-text model.";
     submitTrigger = mkOpt (t.enum [
       "never"
       "release"
@@ -108,9 +103,10 @@ in
 
   magicKeywords = mkSection "Magic keyword triggers in user input." {
     enabled = mkOpt t.bool "Enable magic-keyword detection.";
-    ultrathink = mkOpt t.bool "`ultrathink` keyword bumps the thinking level.";
-    orchestrate = mkOpt t.bool "`orchestrate`/`parallel` keyword encourages subagent fan-out.";
-    workflow = mkOpt t.bool "Enable workflow magic keywords.";
+    ultrathink = mkOpt t.bool "Let standalone `ultrathink` request maximum automatic thinking and append its hidden notice.";
+    orchestrate = mkOpt t.bool "Let standalone `orchestrate` append its hidden multi-agent orchestration notice.";
+    workflow = mkOpt t.bool "Let standalone `workflowz` append its hidden eval workflow notice.";
+    jevify = mkOpt t.bool "Let standalone `jevify` append its hidden bulk-judge classification notice.";
   };
 
   paste = mkSection "Paste handling." {
@@ -121,6 +117,14 @@ in
     relayUrl = mkOpt t.str "Collab relay server URL.";
     displayName = mkOpt t.str "Display name shown to other collaborators.";
     webUrl = mkOpt t.str "Browser UI for /collab links; empty derives from relayUrl (explicit http:// is localhost-only).";
+    autoStart =
+      mkOpt
+        (t.enum [
+          "off"
+          "view"
+          "control"
+        ])
+        "Host every interactive session via collab.relayUrl as it starts and publish it to the local registry; view hands out view-only links, control hands out links that can prompt the session.";
   };
 
   share = mkSection "Session sharing." {
@@ -130,6 +134,11 @@ in
       "blob"
       "gist"
     ]) "Where /share uploads the encrypted session blob.";
+  };
+
+  stream = mkSection "Live session streaming (omp stream)." {
+    serverUrl = mkOpt t.str "Live stream server used by `omp stream` (https://host[:port]); viewers watch at <base>/<your Stencil username>.";
+    redactPatterns = mkOpt (t.listOf t.str) "Additional regular expressions redacted from every streamed row, on top of env/secrets.yml values and built-in credential shapes.";
   };
 
   features = mkSection "Experimental feature flags." {

@@ -51,6 +51,8 @@ in
 
   composer = mkSection "Input composer layout." {
     shape = mkOpt t.str "Visual layout of the input editor and status line. Upstream types this as a free string because extensions register shapes at runtime; the built-ins are band (default), box, claude, pi, borderless, rule, field and rail.";
+    recallClearedDrafts = mkOpt t.bool "Keep drafts cleared with Ctrl+C in local Up/Down history until exit.";
+    tokenRate = mkOpt t.bool "Show a live generation tok/s readout on the working row next to the session title.";
   };
 
   statusLine = mkSection "Status line configuration." {
@@ -99,6 +101,7 @@ in
     autoResize = mkOpt t.bool "Resize large images to 2000x2000 max for better model compatibility.";
     blockImages = mkOpt t.bool "Prevent images from being sent to LLM providers.";
     describeForTextModels = mkOpt t.bool "For non-vision models, save attached images under local:// and inject a vision-model description instead of dropping them.";
+    questionTimeoutMs = mkOpt helpers.num "Per-request timeout in ms for the vision-model call behind read's ?q= image questions (0 disables).";
     urls = mkSection "Serve outgoing images as URLs instead of inline base64." {
       enabled = mkOpt t.bool "Publish outgoing images through the backend chain and send URL-fetching providers short URLs instead of inline base64 (falls back to inline when every backend or a provider fetch fails).";
       backends = mkOpt (t.listOf t.str) "Ordered blob-destination ids tried when publishing images (default: provider-files, tailscale, cloudflared, litterbox). Not enumerated here because the valid set is filtered at runtime.";
@@ -136,6 +139,20 @@ in
         "How a settled terminal resize refreshes transcript rows retained in terminal scrollback (append replays below history, rebuild erases and replays, preserve repaints only the viewport).";
     imeSafeCursor = mkOpt t.bool "Move the prompt's bottom border to a separate row so macOS IME preedit cannot displace it.";
     titleState = mkOpt t.bool "Show the agent run state in the terminal title separator (spinner/>/!).";
+    mouse = mkOpt t.bool "Capture mouse clicks so live subagent cards and HUD rows focus on click; native selection becomes Shift+drag and wheel becomes Shift+wheel.";
+    reactions = mkOpt t.bool "Invite the agent to react to your message with an emoji badge on its bubble.";
+    titleSpinner = mkOpt (t.enum [
+      "braille"
+      "pulse"
+      "dots"
+      "line"
+    ]) "Glyph set for the working-state spinner in the terminal title.";
+    vimMode = mkOpt t.bool "Modal prompt editing: Normal mode motions, operators, text objects and Visual selection.";
+    vimModeDisplay = mkOpt (t.enum [
+      "text"
+      "icon"
+      "none"
+    ]) "How the current Vim mode appears in the status line.";
   };
 
   display = mkSection "Display rendering." {
@@ -150,5 +167,13 @@ in
     collapseCompacted = mkOpt t.bool "Collapse pre-compaction history behind the summary divider on the live transcript (disable to keep the full transcript inline).";
     hideToolActivity = mkOpt t.bool "Hide model-initiated tool calls and results from the transcript.";
     showTurnTime = mkOpt t.bool "Show the total prompt-to-yield time (including tool calls) on assistant message usage rows.";
+    pinnedAgents =
+      mkOpt
+        (t.enum [
+          "off"
+          "collapsed"
+          "full"
+        ])
+        "Pinned live-agent jump list above the editor (off hides it; collapsed shows a few rows with an expander; full lists all).";
   };
 }

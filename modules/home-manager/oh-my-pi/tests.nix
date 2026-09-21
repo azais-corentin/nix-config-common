@@ -98,7 +98,7 @@ let
         retainTimeoutMs = 61000;
       };
       providers = {
-        imageOrder = [ "openai-codex" ];
+        fetch = "firecrawl";
         kimiApiFormat = "auto";
         "openai-codex".codeMode = "auto";
       };
@@ -147,6 +147,7 @@ let
     hooks.post.shared = "shared post-hook";
     agentsMd = "shared agents document";
     systemPrompt = "shared system prompt";
+    systemPromptTemplate = "shared system prompt template";
     rulesMd = "shared rules document";
     extensions."shared.ts" = "export default () => {};\n";
     lsp = {
@@ -267,6 +268,7 @@ let
     "PERSONALITY.md"
     "RULES.md"
     "SYSTEM.md"
+    "SYSTEM_TEMPLATE.md"
     "TITLE_SYSTEM.md"
     "WATCHDOG.md"
     "WATCHDOG.yml"
@@ -419,6 +421,8 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     test ! -L "$shared_home/.omp/profiles/openai/agent/config.yml"
     yq -e '.modelRoles.default == "openai-codex/gpt-6-astra:high"' \
       "$shared_home/.omp/profiles/openai/agent/config.yml" >/dev/null
+    yq -e '.modelRoles | has("designer") | not' \
+      "$shared_home/.omp/profiles/openai/agent/config.yml" >/dev/null
 
     yq -e '.personality == "pragmatic"' ${defaultConfig} >/dev/null
     yq -e '.task.disabledAgents | join(",") == "scout,oracle"' ${defaultConfig} >/dev/null
@@ -433,7 +437,7 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.hindsight.reflectTimeoutMs == 121000' ${defaultConfig} >/dev/null
     yq -e '.hindsight.recallTimeoutMs == 32000' ${defaultConfig} >/dev/null
     yq -e '.hindsight.retainTimeoutMs == 61000' ${defaultConfig} >/dev/null
-    yq -e '.providers.imageOrder | join(",") == "openai-codex"' ${defaultConfig} >/dev/null
+    yq -e '.providers.fetch == "firecrawl"' ${defaultConfig} >/dev/null
     yq -e '.providers.kimiApiFormat == "auto"' ${defaultConfig} >/dev/null
     yq -e '.computer.enabled == true' ${defaultConfig} >/dev/null
     yq -e '.tui.titleState == false' ${defaultConfig} >/dev/null
@@ -455,7 +459,9 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.tools == null or (.tools | has("discoveryMode") | not)' ${sharedDefaultConfig} >/dev/null
     yq -e 'has("modelRoleStorage") | not' ${sharedDefaultConfig} >/dev/null
     yq -e '.generate_image.enabled == true' ${sharedDefaultConfig} >/dev/null
-    yq -e '.providers.imageOrder | join(",") == "openai-codex"' ${sharedDefaultConfig} >/dev/null
+    yq -e '.modelRoles.image == "openai-codex/gpt-image-1"' ${sharedDefaultConfig} >/dev/null
+    yq -e '.modelRoles.web == "google/gemini-3.8-flash-high"' ${sharedDefaultConfig} >/dev/null
+    yq -e '.task.isolation.enabled == true' ${sharedDefaultConfig} >/dev/null
     yq -e '.providers.local.baseUrl == "http://default.invalid"' ${defaultModels} >/dev/null
     yq -e '.providers.local.api == "openai-completions"' ${defaultModels} >/dev/null
     yq -e '.providers.local.compat.supportsEagerToolInputStreaming == false' ${defaultModels} >/dev/null
@@ -471,7 +477,7 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.hindsight.reflectTimeoutMs == 121000' ${personalConfig} >/dev/null
     yq -e '.hindsight.recallTimeoutMs == 32000' ${personalConfig} >/dev/null
     yq -e '.hindsight.retainTimeoutMs == 61000' ${personalConfig} >/dev/null
-    yq -e '.providers.imageOrder | join(",") == "openai-codex"' ${personalConfig} >/dev/null
+    yq -e '.providers.fetch == "firecrawl"' ${personalConfig} >/dev/null
     yq -e '.providers.kimiApiFormat == "auto"' ${personalConfig} >/dev/null
     yq -e 'has("personality") == false' ${workConfig} >/dev/null
     yq -e '.task.disabledAgents | join(",") == "oracle"' ${workConfig} >/dev/null
@@ -529,6 +535,7 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
 
     mkdir -p "$out"
     cp ${defaultConfig} "$out/config.yml"
+    cp ${sharedDefaultConfig} "$out/shared-config.yml"
     cp ${defaultModels} "$out/models.yml"
     cp ${defaultLsp} "$out/lsp.json"
     cp ${defaultDap} "$out/dap.json"

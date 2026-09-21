@@ -249,6 +249,12 @@ in
       description = "Global system prompt written to the selected profile's agent directory.";
     };
 
+    systemPromptTemplate = lib.mkOption {
+      type = t.nullOr contentType;
+      default = null;
+      description = "Handlebars system-prompt template written to SYSTEM_TEMPLATE.md in the selected profile's agent directory; takes precedence over SYSTEM.md when both exist.";
+    };
+
     personalityPrompt = lib.mkOption {
       type = t.nullOr contentType;
       default = null;
@@ -340,6 +346,7 @@ in
       ))
       (mkDocFile "${agentDir}/AGENTS.md" config.agentsMd)
       (mkDocFile "${agentDir}/SYSTEM.md" config.systemPrompt)
+      (mkDocFile "${agentDir}/SYSTEM_TEMPLATE.md" config.systemPromptTemplate)
       (mkDocFile "${agentDir}/PERSONALITY.md" config.personalityPrompt)
       (mkDocFile "${agentDir}/APPEND_SYSTEM.md" config.appendSystemPrompt)
       (mkDocFile "${agentDir}/TITLE_SYSTEM.md" config.titleSystemPrompt)

@@ -55,6 +55,10 @@ in
         ])
         "Which mounted-device docs/schemas are inlined in the system prompt (inline = all, builtins = core only, catalog = none).";
     xdevInlineDevices = mkOpt (t.listOf t.str) "When xdevDocs = builtins, glob patterns of dynamic devices to inline anyway.";
+    speculativeExecution = mkSection "Experimental speculative execution." {
+      enabled = mkOpt t.bool "Run the discard-safe first slice: validated local reads through direct read calls and nested eval (no network, provider completions or live writes).";
+      maxInFlight = mkOpt num "Maximum validated local reads allowed to run before normal dispatch.";
+    };
   };
 
   todo = mkSection "Todo tool." {
@@ -76,6 +80,10 @@ in
     enabled = mkOpt t.bool "Enable the grep tool for regex content search.";
     contextBefore = mkOpt num "Lines of context before each grep match.";
     contextAfter = mkOpt num "Lines of context after each grep match.";
+  };
+
+  find = mkSection "Find tool (semantic grep)." {
+    enabled = mkOpt t.bool "Enable the find tool: natural-language search for files and line ranges, judged by the judge model role (upstream default: disabled).";
   };
 
   astGrep = mkSection "AST grep tool." {
@@ -104,19 +112,6 @@ in
 
   speechgen = mkSection "Speech generation tool." {
     enabled = mkOpt t.bool "Enable the tts tool for on-device (Kokoro) or xAI Grok Voice speech-file synthesis.";
-  };
-
-  inspect_image = mkSection "Inspect image tool." {
-    enabled = mkOpt t.bool "Enable the inspect_image tool, delegating to a vision-capable model.";
-    mode =
-      mkOpt
-        (t.enum [
-          "auto"
-          "on"
-          "off"
-        ])
-        "Expose the inspect_image tool: auto only when the active model lacks native image input, on always, off never.";
-    timeoutMs = mkOpt num "Per-request timeout in ms for the inspect_image vision-model call (0 disables the timeout).";
   };
 
   checkpoint = mkSection "Checkpoint/rewind tools." {
@@ -152,6 +147,8 @@ in
     cdpUrl = mkOpt t.str "Default HTTP CDP discovery endpoint (e.g. http://127.0.0.1:9222) to attach to instead of launching a browser; explicit app.cdp_url or app.path on the tool call take precedence.";
     relay = mkOpt t.bool "Drive your own Chrome tabs through the omp browser relay (install the extension once with `omp browser-relay install`). Takes precedence over browser.cdpUrl.";
     relayUrl = mkOpt t.str "omp browser relay endpoint (default http://127.0.0.1:9224).";
+    freezeOnTurnEnd = mkOpt t.bool "Freeze OMP-owned headless browser tabs when a turn settles so animated pages stop burning CPU/GPU; tabs unfreeze on next use.";
+    idleCloseSec = mkOpt num "Close OMP-owned headless browser tabs idle longer than this many seconds (0 = never); never applies to relay/CDP/spawned browsers.";
   };
 
   computer = mkSection "Computer-use tool (native desktop screenshots + input)." {
@@ -164,14 +161,6 @@ in
   async = mkSection "Async background jobs." {
     enabled = mkOpt t.bool "Enable async bash commands and background task execution.";
     maxJobs = mkOpt num "Maximum concurrent background jobs.";
-    pollWaitDuration = mkOpt (t.enum [
-      "5s"
-      "10s"
-      "30s"
-      "1m"
-      "5m"
-      "smart"
-    ]) "How long a hub wait watches background jobs before returning the current state.";
   };
 
   mcp = mkSection "MCP runtime behaviour (server definitions live in mcp.json, not here)." {
