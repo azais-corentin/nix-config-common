@@ -26,6 +26,7 @@
     losslesscut = ./desktop/losslesscut.nix;
     mpv = ./desktop/mpv.nix;
     plasma = ./desktop/plasma.nix;
+    scrcpy = ./desktop/scrcpy.nix;
     vscode = ./desktop/vscode.nix;
   };
   stylix-theme = ./stylix-theme.nix;

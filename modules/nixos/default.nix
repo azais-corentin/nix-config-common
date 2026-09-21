@@ -9,4 +9,5 @@
   systemd-initrd = ./systemd-initrd.nix;
   dconf = ./dconf.nix;
   codex = ./codex.nix;
+  v4l2loopback = ./v4l2loopback.nix;
 }
