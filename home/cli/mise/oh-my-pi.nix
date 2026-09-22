@@ -9,7 +9,6 @@
   ...
 }:
 let
-  noSlopSkill = import ./no-slop-skill.nix pkgs;
   pythonProfilePaths = [
     ""
   ]
@@ -184,10 +183,6 @@ in
       uv = "github:wshobson/agents/plugins/python-development/skills/uv-package-manager@a30778f8c4e6b0a87567941b7cca4f534bf642b6";
       rust-best-practices = "github:apollographql/skills/skills/rust-best-practices@c288eb80629dd2309eed81f23d693f66a452d043";
       vitepress = "github:antfu/skills/skills/vitepress@a74f281a27dadc02397bc1a174b0f2c97531b6ae";
-      boileau = "github:alxbd/boileau@5b272a70b1d5387984c12a08c4edc45af3f4fbda";
-      no-slop = {
-        src = noSlopSkill;
-      };
     };
   };
 }

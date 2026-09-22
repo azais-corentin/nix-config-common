@@ -105,10 +105,9 @@ The `fastpotify` target tracks upstream Spotifast releases.
 FF-ULTIMA selects a stable release containing the current commit, or advances
 its Git pin when the release is older. Other applications use stable releases.
 
-Skill sources are `anthropics`, `wshobson`, `apollographql`, `antfu`, `boileau`,
-and `no-slop`. Each target resolves the upstream default-branch commit, verifies
-the referenced skill files, and updates all matching OMP and jcode declarations.
-The no-slop target also checks that the existing Bun substitutions still apply.
+Skill sources are `anthropics`, `wshobson`, `apollographql`, and `antfu`. Each
+target resolves the upstream default-branch commit, verifies the referenced
+skill files, and updates all matching OMP and jcode declarations.
 
 Each updater prepares all changes for a target before replacing its files.
 A failed target leaves earlier successful targets in place and stops the task.
