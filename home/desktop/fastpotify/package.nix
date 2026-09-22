@@ -41,6 +41,9 @@ stdenv.mkDerivation {
     inherit hash;
   };
 
+  # The tarball also carries a binary-only fastpotify-* compatibility directory.
+  sourceRoot = "spotifast-v${version}-${arch}";
+
   nativeBuildInputs = [ autoPatchelfHook ];
 
   # NEEDED: libasound, libpulse, libpulse-simple, libgcc_s.
@@ -68,12 +71,12 @@ stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
     install -Dm755 fastpotify $out/bin/fastpotify
-    install -Dm644 packaging/applications/fastpotify.desktop \
-      $out/share/applications/fastpotify.desktop
-    substituteInPlace $out/share/applications/fastpotify.desktop \
+    install -Dm644 packaging/applications/spotifast.desktop \
+      $out/share/applications/spotifast.desktop
+    substituteInPlace $out/share/applications/spotifast.desktop \
       --replace-fail "Exec=spotifast" "Exec=$out/bin/fastpotify"
-    install -Dm644 packaging/icons/fastpotify.svg \
-      $out/share/icons/hicolor/scalable/apps/fastpotify.svg
+    install -Dm644 packaging/icons/spotifast.svg \
+      $out/share/icons/hicolor/scalable/apps/spotifast.svg
     runHook postInstall
   '';
 
