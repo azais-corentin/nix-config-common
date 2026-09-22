@@ -10,6 +10,12 @@
 # full integration, so worktrunk upgrades take effect without reinstalling.
 { config, lib, ... }:
 {
+  # Commit generation shells out to `omp`, so pull in the oh-my-pi feature.
+  imports = [
+    ./.
+    ./oh-my-pi.nix
+  ];
+
   # aqua registry resolves `worktrunk` and extracts the `wt`/`git-wt` binaries.
   programs.mise.globalConfig.tools.worktrunk = "latest";
 
@@ -21,7 +27,7 @@
     # `omp -p` reads the prompt from an ARGUMENT, not stdin; worktrunk pipes the
     # templated prompt to stdin, so bridge it with "$(cat)". Flags keep the run
     # fast + hermetic: no session/tools/LSP/skills/rules/extensions/title/system
-    # prompt; haiku + thinking off for quick one-line subjects.
+    # prompt; gemini flash-lite with no thinking suffix keeps it fast.
     [commit.generation]
     command = "omp -p --no-session --no-tools --no-lsp --no-skills --no-rules --no-extensions --no-title --system-prompt='You write git commit messages. Explain WHY the change was made, not what changed: the diff already shows what changed, so capture the motivation, intent, or problem being solved. If the prompt tells you to describe the change and not the intent or benefit, disregard that and explain the reason instead. Use an imperative subject under 50 chars, then a body paragraph giving the rationale.' --model google-antigravity/gemini-3.1-flash-lite \"$(cat)\""
   '';

@@ -4,6 +4,7 @@
   cli = {
     bat = ./cli/bat.nix;
     btop = ./cli/btop.nix;
+    codex = ./cli/mise/codex.nix;
     direnv = ./cli/direnv.nix;
     fish = ./cli/fish.nix;
     fzf = ./cli/fzf.nix;
@@ -17,6 +18,7 @@
     nix-search-tv = ./cli/nix-search-tv.nix;
     qalculate = ./cli/qalculate.nix;
     ssh = ./cli/ssh.nix;
+    worktrunk = ./cli/mise/worktrunk.nix;
     zellij = ./cli/zellij.nix;
   };
   desktop = {

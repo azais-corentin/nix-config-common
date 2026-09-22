@@ -7,6 +7,8 @@
 # that file cannot be a home-manager symlink; /etc/codex/config.toml is codex's
 # lowest-precedence layer, which keeps the user's own file authoritative.
 {
+  imports = [ ./. ];
+
   programs.mise.globalConfig.tools.codex = "latest";
 
   # mise's built-in minimum_release_age default of 24h would hold `latest` a
