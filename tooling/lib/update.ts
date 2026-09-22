@@ -11,6 +11,8 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 
 export type Source = { path: string; name: string; original: string; body: string; mode: number };
 export type Release = { tag: string; assets: unknown[] };
+export type VersionedRelease = Release & { version: string; prerelease: boolean };
+export type Commit = { rev: string; date: string };
 type Target = (root: string) => Promise<void>;
 
 export function object(value: unknown, label: string): Record<string, unknown> {
@@ -271,12 +273,44 @@ export function sha256(value: unknown, label: string): string {
   return hash;
 }
 
+// Runs a command in root and captures its output. Nix commands get the GitHub
+// token as an access token so tarball fetches share the API rate limit.
+export async function command(
+  root: string,
+  args: string[],
+  allowFailure = false,
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const env: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: "1" };
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+  if (args[0] === "nix" && token) {
+    if (/[\s#]/.test(token)) throw new Error("GitHub token contains invalid characters");
+    env.NIX_CONFIG = `${env.NIX_CONFIG ?? ""}\nextra-access-tokens = github.com=${token}\n`;
+  }
+  const child = Bun.spawn(args, {
+    cwd: root,
+    stdin: "ignore",
+    stdout: "pipe",
+    stderr: "pipe",
+    env,
+  });
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ]);
+  if (exitCode !== 0 && !allowFailure)
+    throw new Error(`${args[0]} failed (${exitCode}):\n${stderr.trim() || stdout.trim()}`);
+  return { stdout, stderr, exitCode };
+}
+
+// Unpacked prefetches are named `source`, like fetchFromGitHub's output (the
+// NAR hash itself does not depend on the name).
 export async function prefetch(
   root: string,
   url: string,
   unpack = false,
 ): Promise<{ hash: string; storePath: string }> {
-  const command = [
+  const args = [
     "nix",
     "--extra-experimental-features",
     "nix-command",
@@ -286,16 +320,109 @@ export async function prefetch(
     "--hash-type",
     "sha256",
   ];
-  if (unpack) command.push("--unpack");
-  command.push(url);
-  const process = Bun.spawn(command, { cwd: root, stdout: "pipe", stderr: "inherit" });
-  const [stdout, status] = await Promise.all([new Response(process.stdout).text(), process.exited]);
-  if (status !== 0) throw new Error(`Nix prefetch failed (${status}): ${url}`);
+  if (unpack) args.push("--unpack", "--name", "source");
+  args.push(url);
+  const { stdout } = await command(root, args);
   const raw = object(JSON.parse(stdout), "Nix prefetch output");
   return {
     hash: sha256(raw.hash, `${url} hash`),
     storePath: text(raw.storePath, "Nix store path", /^\//),
   };
+}
+
+export function prefetchSource(
+  root: string,
+  repo: string,
+  ref: string,
+  tag = false,
+): Promise<{ hash: string; storePath: string }> {
+  const revision = tag ? `refs/tags/${ref}` : ref;
+  return prefetch(root, `https://github.com/${repo}/archive/${revision}.tar.gz`, true);
+}
+
+export function version(tag: string): string {
+  const value = tag.replace(/^v/, "");
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/.test(value)) {
+    throw new Error(`Unsupported release version: ${tag}`);
+  }
+  return value;
+}
+
+export function compareVersions(left: string, right: string): number {
+  const [leftCore, ...leftPre] = version(left).split("-");
+  const [rightCore, ...rightPre] = version(right).split("-");
+  const a = leftCore!.split(".").map(Number);
+  const b = rightCore!.split(".").map(Number);
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i]! - b[i]!;
+  if (!leftPre.length || !rightPre.length)
+    return Number(!leftPre.length) - Number(!rightPre.length);
+  // Accept beta9/beta10 as well as SemVer's beta.9/beta.10 spelling.
+  const x = leftPre.join("-").match(/[0-9]+|[A-Za-z]+/g)!;
+  const y = rightPre.join("-").match(/[0-9]+|[A-Za-z]+/g)!;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    if (x[i] === y[i]) continue;
+    if (x[i] === undefined) return -1;
+    if (y[i] === undefined) return 1;
+    if (/^\d+$/.test(x[i]!) && /^\d+$/.test(y[i]!)) return Number(x[i]) - Number(y[i]);
+    return x[i]! < y[i]! ? -1 : 1;
+  }
+  return 0;
+}
+
+// Parses a published (non-draft) GitHub release, stable or prerelease.
+export function versionedRelease(value: unknown, repo: string): VersionedRelease {
+  const raw = object(value, `${repo} release`);
+  if (raw.draft !== false || typeof raw.prerelease !== "boolean" || !Array.isArray(raw.assets)) {
+    throw new Error(`Invalid published release from ${repo}`);
+  }
+  const tag = text(raw.tag_name, `${repo} release tag`, /^[A-Za-z0-9][A-Za-z0-9._-]*$/);
+  return { tag, version: version(tag), prerelease: raw.prerelease, assets: raw.assets };
+}
+
+export async function stableRelease(repo: string): Promise<VersionedRelease> {
+  const result = versionedRelease(await github(repo, "/releases/latest"), repo);
+  if (result.prerelease || result.version.includes("-"))
+    throw new Error(`No stable release returned for ${repo}`);
+  return result;
+}
+
+export function noDowngrade(current: string, next: string): void {
+  if (compareVersions(next, current) < 0)
+    throw new Error(`Refusing to downgrade ${current} to ${next}`);
+}
+
+export function releaseAsset(repo: string, release: Release, name: string): string {
+  const assets = release.assets
+    .map((value) => object(value, `${repo} release asset`))
+    .filter((asset) => asset.name === name);
+  if (assets.length !== 1)
+    throw new Error(`Release ${repo}@${release.tag} must contain one ${name} asset`);
+  const asset = assets[0]!;
+  if (asset.state !== "uploaded" || typeof asset.size !== "number" || asset.size <= 0) {
+    throw new Error(`Release asset is not available: ${repo}@${release.tag}/${name}`);
+  }
+  const url = text(asset.browser_download_url, `${name} download URL`);
+  const expected = `https://github.com/${repo}/releases/download/${release.tag}/${name}`;
+  if (url !== expected) throw new Error(`Unexpected release asset URL: ${url}`);
+  return url;
+}
+
+// Latest default-branch commit, optionally the last one touching `file`.
+export async function latestCommit(repo: string, file?: string): Promise<Commit> {
+  const repository = object(await github(repo), `${repo} repository`);
+  const branch = text(repository.default_branch, `${repo} default branch`);
+  const query = new URLSearchParams({ sha: branch, per_page: "1" });
+  if (file) query.set("path", file);
+  const values = await github(repo, `/commits?${query}`);
+  if (!Array.isArray(values) || values.length !== 1)
+    throw new Error(`No upstream commit found for ${repo}${file ? `/${file}` : ""}`);
+  const data = object(values[0], `${repo} commit`);
+  const rev = text(data.sha, `${repo} commit SHA`, /^[a-f0-9]{40}$/);
+  const details = object(data.commit, `${repo} commit details`);
+  const committer = object(details.committer, `${repo} committer`);
+  const timestamp = text(committer.date, `${repo} commit date`, /^\d{4}-\d{2}-\d{2}T/);
+  if (Number.isNaN(Date.parse(timestamp))) throw new Error(`Invalid commit date from ${repo}`);
+  return { rev, date: timestamp.slice(0, 10) };
 }
 
 export async function assetHash(
@@ -322,12 +449,4 @@ export async function assetHash(
   if (expected && expected !== hash)
     throw new Error(`SHA-256 mismatch for ${name}: expected ${expected}, downloaded ${hash}`);
   return hash;
-}
-
-export async function githubFile(repo: string, rev: string, path: string): Promise<string> {
-  const endpoint = `/contents/${path.split("/").map(encodeURIComponent).join("/")}?ref=${rev}`;
-  const raw = object(await github(repo, endpoint), `${repo}/${path} at ${rev}`);
-  if (raw.type !== "file" || raw.encoding !== "base64")
-    throw new Error(`Expected a file: ${repo}/${path} at ${rev}`);
-  return Buffer.from(text(raw.content, `${repo}/${path} content`), "base64").toString("utf8");
 }

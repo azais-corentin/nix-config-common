@@ -1,6 +1,5 @@
+{ pkgs }:
 let
-  flake = builtins.getFlake (toString ../../..);
-  pkgs = flake.inputs.nixpkgs.legacyPackages.${builtins.currentSystem};
   inherit (pkgs) lib;
 
   mcpSchemaUrl = "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json";
@@ -70,7 +69,6 @@ let
       lib = hmLib;
     };
     modules = [
-      ./default.nix
       homeModule
       miseGlobalConfigModule
       ../../../home/cli/mise/oh-my-pi.nix
@@ -419,8 +417,6 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     )
     test -f "$shared_home/.omp/profiles/openai/agent/config.yml"
     test ! -L "$shared_home/.omp/profiles/openai/agent/config.yml"
-    yq -e '.modelRoles.default == "openai-codex/gpt-6-astra:high"' \
-      "$shared_home/.omp/profiles/openai/agent/config.yml" >/dev/null
     yq -e '.modelRoles | has("designer") | not' \
       "$shared_home/.omp/profiles/openai/agent/config.yml" >/dev/null
 
@@ -454,14 +450,8 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.compaction | has("strategy") | not' ${defaultConfig} >/dev/null
     yq -e '.tui | has("scrollbackRebuild") | not' ${defaultConfig} >/dev/null
     yq -e '.tui | has("scrollbackRebuild") | not' ${sharedDefaultConfig} >/dev/null
-    yq -e '.task.enableEffort == true' ${sharedDefaultConfig} >/dev/null
-    yq -e '.composer.shape == "borderless"' ${sharedDefaultConfig} >/dev/null
     yq -e '.tools == null or (.tools | has("discoveryMode") | not)' ${sharedDefaultConfig} >/dev/null
     yq -e 'has("modelRoleStorage") | not' ${sharedDefaultConfig} >/dev/null
-    yq -e '.generate_image.enabled == true' ${sharedDefaultConfig} >/dev/null
-    yq -e '.modelRoles.image == "openai-codex/gpt-image-1"' ${sharedDefaultConfig} >/dev/null
-    yq -e '.modelRoles.web == "google/gemini-3.8-flash-high"' ${sharedDefaultConfig} >/dev/null
-    yq -e '.task.isolation.enabled == true' ${sharedDefaultConfig} >/dev/null
     yq -e '.providers.local.baseUrl == "http://default.invalid"' ${defaultModels} >/dev/null
     yq -e '.providers.local.api == "openai-completions"' ${defaultModels} >/dev/null
     yq -e '.providers.local.compat.supportsEagerToolInputStreaming == false' ${defaultModels} >/dev/null

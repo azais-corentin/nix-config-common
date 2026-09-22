@@ -1,0 +1,15 @@
+[check]
+description = "Check working-tree formatting, Pkl, and secrets without modifying files"
+run = "hk check --all --check --no-stage --stash none"
+
+["format:check"]
+description = "Check code formatting"
+run = "dprint check"
+
+[format]
+description = "Format code"
+run = "dprint fmt"
+
+[pre-commit]
+description = "Run checks on staged changes using the pre-commit hook"
+run = "hk run pre-commit"

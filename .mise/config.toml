@@ -1,28 +1,18 @@
-[tasks.check]
-description = "Check working-tree formatting, Pkl, and secrets without modifying files"
-run = "hk check --all --check --no-stage --stash none"
+[task_config]
+# Shared tasks live in tooling/ (consumers link it as .tooling); local tasks
+# come last so a same-named local task wins.
+includes = ["tooling/tasks", ".mise/tasks"]
 
 [tasks."check:nix"]
 description = "Evaluate this flake without building or validating consumer configurations"
 run = "nix flake check --no-build --no-write-lock-file"
 
-[tasks."format:check"]
-description = "Check code formatting"
-run = "dprint check"
-
-[tasks.format]
-description = "Format code"
-run = "dprint fmt"
-
-[tasks.pre-commit]
-description = "Run checks on staged changes using the pre-commit hook"
-run = "hk run pre-commit"
-
 [tools]
-hk = "latest"
+# hk matches the hk@2.0.1 Pkl package amended by tooling/hk/base.pkl.
+# gitleaks comes from the dev shell (flake.lock).
+hk = "2.0.1"
 bun = "latest"
 pkl = "latest"
-gitleaks = "latest"
 
 [hooks]
 postinstall = "hk install --mise"

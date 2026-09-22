@@ -22,7 +22,7 @@ import {
   runTargets,
   sha256,
   text,
-} from "../../lib/update.ts";
+} from "../../../tooling/lib/update.ts";
 
 const systems = ["x86_64-linux", "aarch64-linux"] as const;
 

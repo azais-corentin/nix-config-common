@@ -21,12 +21,10 @@ if (!message) {
   process.exit(1);
 }
 
-// Resolve @commitlint/config-conventional from .mise/node_modules (this
-// task's own dep tree) rather than process.cwd() (the repo root, which has
-// no node_modules). Without this, Bun auto-installs a mismatched
-// config-conventional into its global cache whose transitive deps are absent,
-// crashing the resolver.
-const miseDir = path.dirname(import.meta.dir);
+// Resolve @commitlint/config-conventional from the tooling bundle's
+// node_modules (built by Nix from package-lock.json, next to tasks/) rather
+// than process.cwd() (the consumer repo root, which has no node_modules).
+const toolingDir = path.dirname(import.meta.dir);
 const config = await load(
   {
     extends: ["@commitlint/config-conventional"],
@@ -36,7 +34,7 @@ const config = await load(
       "scope-case": [0],
     },
   },
-  { cwd: miseDir },
+  { cwd: toolingDir },
 );
 
 const result = await lint(
@@ -59,7 +57,7 @@ if (!result.valid) {
 // Manually enforce: scope must be lowercase letters and ':' only.
 const scopeMatch = message.match(/^\w+\(([^)]+)\)[!:]/);
 if (scopeMatch) {
-  const scope = scopeMatch[1];
+  const scope = scopeMatch[1]!;
   if (!/^[a-z:]+$/.test(scope)) {
     const subject = message.split("\n")[0];
     console.error(`❌ Commit message failed conventional commit lint:`);

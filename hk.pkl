@@ -1,34 +1,3 @@
-amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
-
-import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
-
-local validationSteps = new Mapping<String, Step> {
-  ["dprint"] = Builtins.dprint
-  ["pkl"] = Builtins.pkl
-}
-
-hooks {
-  ["pre-commit"] {
-    fix = false
-    stash = "git"
-    steps = (validationSteps) {
-      ["gitleaks"] = (Builtins.gitleaks) {
-        scan = "staged"
-      }
-    }
-  }
-  ["commit-msg"] {
-    steps {
-      ["commitlint"] {
-        check = "mise run commitlint {{commit_msg_file}}"
-      }
-    }
-  }
-  ["check"] {
-    fix = false
-    stash = "none"
-    steps = (validationSteps) {
-      ["gitleaks"] = Builtins.gitleaks
-    }
-  }
-}
+// Hooks live in tooling/hk/base.pkl (shared with consumers). Add repo-specific
+// steps here.
+amends "./tooling/hk/base.pkl"
