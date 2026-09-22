@@ -14,7 +14,7 @@ let
   num = types.either types.int types.float;
 
   # Nullable option that defaults to null, so unset keys are pruned and omp's
-  # own upstream default applies. The jcode module uses the same pattern.
+  # own upstream default applies.
   mkOpt =
     type: description:
     lib.mkOption {
@@ -48,7 +48,7 @@ let
 
   # Recursively strip `null` values and empty attrsets so the rendered config
   # stays minimal. Lists are walked element-wise but never collapsed when empty
-  # (an explicitly-empty list is a meaningful override). Mirrors jcode.
+  # (an explicitly-empty list is a meaningful override).
   pruneNulls =
     v:
     if lib.isAttrs v && !(lib.isDerivation v) then
@@ -81,49 +81,7 @@ let
     && builtins.match "^[a-z0-9][a-z0-9._-]{0,63}$" name != null
     && builtins.match "^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\\..*)?$" name == null;
 
-  # ── Skill / file source helpers (reused from the previous oh-my-pi.nix) ────
-
-  # Parse "github:owner/repo/subdir@ref" → { owner, repo, subdir, ref } or null.
-  parseGithubRef =
-    s:
-    let
-      m = builtins.match "github:([^/]+)/([^/@]+)(/[^@]*)?@(.+)" s;
-    in
-    if m == null then
-      null
-    else
-      {
-        owner = builtins.elemAt m 0;
-        repo = builtins.elemAt m 1;
-        subdir =
-          let
-            raw = builtins.elemAt m 2;
-          in
-          if raw == null then "" else lib.removePrefix "/" raw;
-        ref = builtins.elemAt m 3;
-      };
-
-  # 40-char lowercase hex → treat as commit SHA (allows pure eval with `rev`).
-  isCommitHash = s: builtins.match "[0-9a-f]{40}" s != null;
-
-  # Fetch a GitHub repo and return the store path to the (optionally nested) subdir.
-  fetchGithubSkill =
-    {
-      owner,
-      repo,
-      subdir,
-      ref,
-    }:
-    let
-      fetched = builtins.fetchGit (
-        {
-          url = "https://github.com/${owner}/${repo}";
-        }
-        // (if isCommitHash ref then { rev = ref; } else { inherit ref; })
-      );
-      base = builtins.toString fetched;
-    in
-    if subdir != "" then "${base}/${subdir}" else base;
+  # ── Skill / file source helpers ────────────────────────────────────────────
 
   # Submodule type for structured remote skill sources.
   skillSrcSubmodule = types.submodule {
@@ -183,7 +141,7 @@ let
     ) attrs;
 
   # Skills support directories (with assets), single files, inline strings,
-  # github: shorthand refs, and structured { src, subdir } attrsets.
+  # and structured { src, subdir } attrsets.
   mkSkillEntries =
     agentDir: attrs:
     lib.mapAttrs' (
@@ -199,18 +157,12 @@ let
         lib.nameValuePair "${agentDir}/skills/${name}/SKILL.md" {
           source = content;
         }
-      # 3. String: github: shorthand → fetch + recursive symlink
-      else if lib.isString content && parseGithubRef content != null then
-        lib.nameValuePair "${agentDir}/skills/${name}" {
-          source = fetchGithubSkill (parseGithubRef content);
-          recursive = true;
-        }
-      # 4. String: inline SKILL.md content
+      # 3. String: inline SKILL.md content
       else if lib.isString content then
         lib.nameValuePair "${agentDir}/skills/${name}/SKILL.md" {
           text = content;
         }
-      # 5. Attrset: structured { src, subdir } → recursive symlink
+      # 4. Attrset: structured { src, subdir } → recursive symlink
       else
         lib.nameValuePair "${agentDir}/skills/${name}" {
           source = if content.subdir != "" then "${content.src}/${content.subdir}" else "${content.src}";

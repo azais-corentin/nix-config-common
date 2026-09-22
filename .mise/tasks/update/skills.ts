@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /*
-#MISE description="Update pinned OMP and jcode skills by upstream source"
+#MISE description="Update pinned OMP skill sources"
 #USAGE arg "[targets]" var=#true help="Skill sources to update (default: all)" {
 #USAGE   choices "anthropics" "wshobson" "apollographql" "antfu"
 #USAGE }
@@ -8,13 +8,16 @@
 
 import {
   defaultCommit,
-  escapeRegex,
-  githubFile,
+  nixString,
+  one,
+  prefetch,
   publish,
   readSource,
+  replaceOne,
   runTargets,
+  sha256,
   text,
-} from "../../lib/update.ts";
+} from "../../../tooling/lib/update.ts";
 
 const repositories: Record<string, string> = {
   anthropics: "anthropics/skills",
@@ -35,39 +38,42 @@ function skillPath(path: string): string {
 }
 
 async function updateSource(root: string, name: string, repo: string): Promise<void> {
-  const sources = [
-    readSource(root, "home/cli/mise/oh-my-pi.nix"),
-    readSource(root, "home/cli/mise/jcode.nix"),
-  ];
+  const source = readSource(root, "home/cli/mise/oh-my-pi.nix");
   const pattern = new RegExp(
-    `"github:${escapeRegex(repo)}((?:/[^"@\\r\\n]+)?)(?:@([^"\\r\\n]+))?"`,
-    "g",
+    String.raw`(\b${name}\s*=\s*pkgs\.fetchFromGitHub\s*\{)([^{}]*)(\}\s*;)`,
   );
-  const paths = new Set<string>();
-  for (const source of sources) {
-    for (const match of source.body.matchAll(pattern)) {
-      paths.add(skillPath(match[1]!.replace(/^\//, "")));
-      text(match[2], `${source.name} ${repo} pin`, /^[a-f0-9]{40}$/);
-    }
-  }
+  const block = one(source.body, pattern, `${name} skill source`)[2]!;
+  if (`${nixString(block, "owner").value}/${nixString(block, "repo").value}` !== repo)
+    throw new Error(`Unexpected ${name} skill repository`);
+  text(nixString(block, "rev").value, `${name} pinned commit`, /^[a-f0-9]{40}$/);
+  sha256(nixString(block, "hash").value, `${name} pinned hash`);
 
+  const uses = new RegExp(String.raw`\bskill\s+"${name}"\s+"([^"\r\n]*)"`, "g");
+  const paths = new Set([...source.body.matchAll(uses)].map((match) => skillPath(match[1]!)));
   if (!paths.size) throw new Error(`No skill declarations found for ${name}`);
 
   const revision = await defaultCommit(repo);
-  await Promise.all(
-    [...paths].map(async (path) => {
-      const file = path ? `${path}/SKILL.md` : "SKILL.md";
-      // A missing SKILL.md also rejects moved directories before either consumer changes.
-      await githubFile(repo, revision, file);
-    }),
+  const fetched = await prefetch(
+    root,
+    `https://github.com/${repo}/archive/${revision}.tar.gz`,
+    true,
   );
-  for (const source of sources) {
-    source.body = source.body.replace(
-      pattern,
-      (_match, path: string) => `"github:${repo}${path}@${revision}"`,
-    );
+  for (const path of paths) {
+    const file = path ? `${path}/SKILL.md` : "SKILL.md";
+    // A missing SKILL.md also rejects moved directories before the pin changes.
+    if (!(await Bun.file(`${fetched.storePath}/${file}`).exists()))
+      throw new Error(`${repo} ${revision} is missing ${file}`);
   }
-  publish(sources, `${name} ${revision}`);
+  source.body = replaceOne(
+    source.body,
+    pattern,
+    (match) => {
+      const updated = nixString(match[2]!, "rev").set(revision);
+      return `${match[1]}${nixString(updated, "hash").set(fetched.hash)}${match[3]}`;
+    },
+    `${name} skill source`,
+  );
+  publish([source], `${name} ${revision}`);
 }
 
 await runTargets(

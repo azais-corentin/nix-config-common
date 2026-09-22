@@ -177,7 +177,6 @@ in
         - A path to a SKILL.md file (symlinked as skills/<name>/SKILL.md)
         - A path to a directory containing SKILL.md and assets (symlinked recursively)
         - An inline string (written as skills/<name>/SKILL.md)
-        - A "github:owner/repo/subdir@ref" string (fetched and symlinked recursively)
         - An attrset { src; subdir; } for pre-fetched sources (symlinked recursively)
       '';
     };
