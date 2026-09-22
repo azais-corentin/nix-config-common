@@ -7,6 +7,15 @@ let
   nodeModules = pkgs.importNpmLock.buildNodeModules {
     npmRoot = ./.;
     inherit (pkgs) nodejs;
+    derivationArgs = {
+      # Same as .npmrc, which the build doesn't see: the lockfile has no peers.
+      npmFlags = [ "--legacy-peer-deps" ];
+      # npmConfigHook exports npm_config_nodedir for node-gyp, which current npm
+      # warns about as an unknown config. Nothing here compiles native addons.
+      preConfigure = ''
+        npm() { env -u npm_config_nodedir npm "$@"; }
+      '';
+    };
   };
 in
 pkgs.runCommand "nix-config-tooling" { passthru = { inherit nodeModules; }; } ''

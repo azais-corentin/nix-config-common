@@ -97,8 +97,13 @@ direnv allow                # dev shell: mise, dprint, nixfmt, gitleaks, tooling
 mise trust && mise install  # hk/bun/pkl; auto-installs the git hooks
 ```
 
-After editing `tooling/package.json`, regenerate the lockfile with
-`npm install --package-lock-only` inside `tooling/`.
+After editing `tooling/package.json`, regenerate the lockfile in one command
+line (npm writes into `node_modules`, which the dev shell links read-only into
+the store and re-links on the next prompt; `tooling/.npmrc` keeps peers out):
+
+```sh
+rm tooling/node_modules && npm --prefix tooling install --package-lock-only
+```
 
 Run `mise tasks` to list public tasks and `mise run <task> --help` for arguments.
 
