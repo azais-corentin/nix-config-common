@@ -1,16 +1,16 @@
 { pkgs, ... }:
 {
-  home.packages = with pkgs; [
-    nix-search-tv
+  home.packages = [
+    pkgs.nix-search-tv
+    # Runs upstream's fzf wrapper from the source store path at runtime;
+    # builtins.readFile of it was import-from-derivation.
     (pkgs.writeShellApplication {
       name = "ns";
-      runtimeInputs = with pkgs; [
-        fzf
-        nix-search-tv
+      runtimeInputs = [
+        pkgs.fzf
+        pkgs.nix-search-tv
       ];
-      # Fix https://github.com/3timeslazy/nix-search-tv/issues/17
-      excludeShellChecks = [ "SC2016" ];
-      text = builtins.readFile "${pkgs.nix-search-tv.src}/nixpkgs.sh";
+      text = ''exec ${pkgs.runtimeShell} ${pkgs.nix-search-tv.src}/nixpkgs.sh "$@"'';
     })
   ];
 }

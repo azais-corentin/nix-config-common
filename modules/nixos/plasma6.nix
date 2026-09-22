@@ -1,5 +1,5 @@
 # KDE Plasma 6 + plasma-login-manager (PLM, SDDM's successor on unstable).
-# Gated on `host.desktop = "plasma6"` (declared in ./desktop.nix).
+# Gated on `host.desktop = "plasma6"` (declared in ./desktop.nix, imported below).
 #
 # `environment.plasma6.excludePackages` drops the listed apps from
 # systemPackages, but the Plasma 6 NixOS module *also* wires
@@ -16,6 +16,8 @@
   ...
 }:
 {
+  imports = [ ./desktop.nix ];
+
   options.host.plasma6.kwinOutputConfig = lib.mkOption {
     type = lib.types.nullOr lib.types.package;
     default = null;

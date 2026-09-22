@@ -72,7 +72,7 @@
           name = "Launch Work Firefox";
           comment = "Open Work Firefox";
           key = "Meta+Shift+Z";
-          command = "firefox -P work";
+          command = "firefox -P work --name FirefoxWork";
         };
 
         programs.plasma.hotkeys.commands."launch-vscode" = {

@@ -67,6 +67,14 @@
     };
   };
 
+  # The abbreviations above call eza and nh, so they ship together; consumers
+  # set programs.nh.flake.
+  programs.eza = {
+    enable = true;
+    enableFishIntegration = false;
+  };
+  programs.nh.enable = true;
+
   # Tide preset lives in conf.d so it loads at fish startup. The `00-` prefix
   # keeps it ahead of any future tide-shipped conf.d snippets lexically. The
   # preset only sets `tide_*` variables; the prompt functions in tide are

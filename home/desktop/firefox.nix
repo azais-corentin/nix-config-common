@@ -5,6 +5,7 @@
   ...
 }:
 let
+  firefoxWork = "${lib.getExe config.programs.firefox.finalPackage} -P work --name FirefoxWork";
   ultimaTheme = pkgs.fetchFromGitHub {
     owner = "soulhotel";
     repo = "FF-ULTIMA";
@@ -243,7 +244,7 @@ in
   xdg.desktopEntries.firefox-work = {
     name = "Firefox (Work)";
     genericName = "Web Browser";
-    exec = "${lib.getExe pkgs.firefox} -P work --name FirefoxWork %u";
+    exec = "${firefoxWork} %u";
     icon = "firefox";
     terminal = false;
     categories = [
@@ -263,11 +264,11 @@ in
     actions = {
       new-window = {
         name = "New Window";
-        exec = "${lib.getExe pkgs.firefox} -P work --name FirefoxWork --new-window %u";
+        exec = "${firefoxWork} --new-window %u";
       };
       new-private-window = {
         name = "New Private Window";
-        exec = "${lib.getExe pkgs.firefox} -P work --name FirefoxWork --private-window %u";
+        exec = "${firefoxWork} --private-window %u";
       };
     };
   };
