@@ -8,9 +8,9 @@ description = "Evaluate this flake without building or validating consumer confi
 run = "nix flake check --no-build --no-write-lock-file"
 
 [tools]
-# hk matches the hk@2.0.1 Pkl package amended by tooling/hk/base.pkl.
+# tooling/hk/base.pkl pins the hk@2.0.1 Pkl package; bump it on hk schema changes.
 # gitleaks comes from the dev shell (flake.lock).
-hk = "2.0.1"
+hk = "latest"
 bun = "latest"
 pkl = "latest"
 
