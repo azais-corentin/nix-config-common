@@ -82,11 +82,11 @@
           command = "code";
         };
 
-        programs.plasma.hotkeys.commands."launch-spotify" = {
-          name = "Launch Spotify";
-          comment = "Open Spotify";
+        programs.plasma.hotkeys.commands."launch-fastpotify" = {
+          name = "Launch Fastpotify";
+          comment = "Open Fastpotify";
           key = "Meta+S";
-          command = "spotify";
+          command = "fastpotify";
         };
 
         # Open each launcher target maximized on first show. `apply = "initially"`
@@ -107,17 +107,6 @@
             description = "VS Code: start maximized";
             match.window-class = {
               value = "Code";
-              type = "substring";
-            };
-            apply = {
-              maximizehoriz = true;
-              maximizevert = true;
-            };
-          }
-          {
-            description = "Spotify: start maximized";
-            match.window-class = {
-              value = "spotify";
               type = "substring";
             };
             apply = {
