@@ -135,6 +135,9 @@ in
       };
       task.showResolvedModelBadge = false;
       task.enableEffort = true;
+      # Caller `effort: "hi"` maps to the model's top tier (max on Claude);
+      # cap it one below so spawns never escalate to max.
+      task.maxEffort = "xhigh";
       task.isolation.enabled = true;
       task.isolation.merge = "branch";
       task.disabledAgents = [ "librarian" ];
