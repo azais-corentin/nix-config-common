@@ -46,6 +46,13 @@
         programs.firefox.nativeMessagingHosts.packages = lib.mkForce [ ];
         programs.chromium.enablePlasmaBrowserIntegration = lib.mkForce false;
 
+        # GTK >= 4.20 stops composing dead keys (AZERTY `^`, `¨`) and Compose
+        # sequences itself on Wayland, deferring to a text-input-v3 input
+        # method. Plasma runs none by default, so GTK4 apps (Ghostty, …) drop
+        # them. Force GTK's built-in composer; drop this if IBus/Fcitx is added.
+        # https://github.com/ghostty-org/ghostty/discussions/8899
+        environment.sessionVariables.GTK_IM_MODULE = "simple";
+
         # nixpkgs' graphical-desktop.nix writes 00-keyboard.conf with
         # `Option "XkbVariant" ""`; systemd >= 258 localed rejects empty
         # option values (string_is_safe) and discards the whole X11 context,
