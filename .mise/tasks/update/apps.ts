@@ -2,7 +2,7 @@
 /*
 #MISE description="Update pinned applications and the Firefox theme"
 #USAGE arg "[targets]" var=#true help="Targets to update (default: all)" {
-#USAGE   choices "fastpotify" "mise" "ff-ultima"
+#USAGE   choices "spotifast" "mise" "ff-ultima"
 #USAGE }
 */
 
@@ -26,8 +26,8 @@ import {
 
 const systems = ["x86_64-linux", "aarch64-linux"] as const;
 
-async function fastpotify(root: string): Promise<void> {
-  const source = readSource(root, "home/desktop/fastpotify/package.nix");
+async function spotifast(root: string): Promise<void> {
+  const source = readSource(root, "home/desktop/spotifast/package.nix");
   const arches = {
     "x86_64-linux": "x86_64-unknown-linux-gnu",
     "aarch64-linux": "aarch64-unknown-linux-gnu",
@@ -35,18 +35,18 @@ async function fastpotify(root: string): Promise<void> {
   const archBlock = one(
     source.body,
     /\barch\s*=\s*\{([^{}]*)\}\s*\.\$\{stdenv\.hostPlatform\.system\}/s,
-    "fastpotify architecture map",
+    "spotifast architecture map",
   )[1]!;
   if ([...archBlock.matchAll(/=/g)].length !== systems.length)
-    throw new Error("Unexpected fastpotify architecture map");
+    throw new Error("Unexpected spotifast architecture map");
   for (const system of systems) {
     if (nixString(archBlock, system).value !== arches[system])
-      throw new Error(`Unexpected fastpotify architecture: ${system}`);
+      throw new Error(`Unexpected spotifast architecture: ${system}`);
   }
   const versionPin = nixString(source.body, "version");
-  text(versionPin.value, "fastpotify pinned version", /^\d+\.\d+\.\d+$/);
+  text(versionPin.value, "spotifast pinned version", /^\d+\.\d+\.\d+$/);
   const release = (await latestRelease("crmne/spotifast"))!;
-  const version = text(release.tag, "fastpotify release tag", /^v\d+\.\d+\.\d+$/).slice(1);
+  const version = text(release.tag, "spotifast release tag", /^v\d+\.\d+\.\d+$/).slice(1);
   const hashes = await Promise.all(
     systems.map((system) =>
       assetHash(root, "crmne/spotifast", release, `spotifast-v${version}-${arches[system]}.tar.gz`),
@@ -60,14 +60,14 @@ async function fastpotify(root: string): Promise<void> {
       let block = match[2]!;
       for (const [index, system] of systems.entries()) {
         const pin = nixString(block, system);
-        sha256(pin.value, `fastpotify ${system} pin`);
+        sha256(pin.value, `spotifast ${system} pin`);
         block = pin.set(hashes[index]!);
       }
       return `${match[1]}${block}${match[3]}`;
     },
-    "fastpotify hash map",
+    "spotifast hash map",
   );
-  publish([source], `fastpotify ${version}`);
+  publish([source], `spotifast ${version}`);
 }
 
 async function mise(root: string): Promise<void> {
@@ -150,4 +150,4 @@ async function ffUltima(root: string): Promise<void> {
   publish([source], `ff-ultima ${revision}`);
 }
 
-await runTargets("update:apps", { fastpotify, mise, "ff-ultima": ffUltima });
+await runTargets("update:apps", { spotifast, mise, "ff-ultima": ffUltima });

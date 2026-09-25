@@ -115,7 +115,7 @@ Run `mise tasks` to list public tasks and `mise run <task> --help` for arguments
 | `mise run pre-commit`                       | Check staged changes with the existing stashing behavior                |
 | `mise run update`                           | Update flake inputs, applications, then agent skills                    |
 | `mise run update:inputs nixpkgs`            | Update named flake inputs, or all inputs when omitted                   |
-| `mise run update:apps fastpotify mise`      | Update named applications, or all managed applications when omitted     |
+| `mise run update:apps spotifast mise`       | Update named applications, or all managed applications when omitted     |
 | `mise run update:skills anthropics`         | Update named skill sources, or all sources when omitted                 |
 
 `check` does not evaluate Nix, build, fix files, or stash changes. `check:nix`
@@ -126,10 +126,9 @@ Commit messages must follow Conventional Commits.
 
 ## Update workflow
 
-Application targets are `fastpotify`, `mise`, and `ff-ultima`.
-Fastpotify and mise update their version and both Linux architecture hashes
+Application targets are `spotifast`, `mise`, and `ff-ultima`.
+Spotifast and mise update their version and both Linux architecture hashes
 together.
-The `fastpotify` target tracks upstream Spotifast releases.
 
 FF-ULTIMA selects a stable release containing the current commit, or advances
 its Git pin when the release is older. Other applications use stable releases.

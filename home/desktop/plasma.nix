@@ -82,11 +82,11 @@
           command = "code";
         };
 
-        programs.plasma.hotkeys.commands."launch-fastpotify" = {
-          name = "Launch Fastpotify";
-          comment = "Open Fastpotify";
+        programs.plasma.hotkeys.commands."launch-spotifast" = {
+          name = "Launch Spotifast";
+          comment = "Open Spotifast";
           key = "Meta+S";
-          command = "fastpotify";
+          command = "spotifast";
         };
 
         # Open each launcher target maximized on first show. `apply = "initially"`

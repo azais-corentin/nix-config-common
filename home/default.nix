@@ -22,13 +22,13 @@
     zellij = ./cli/zellij.nix;
   };
   desktop = {
-    fastpotify = ./desktop/fastpotify;
     firefox = ./desktop/firefox.nix;
     ghostty = ./desktop/ghostty.nix;
     losslesscut = ./desktop/losslesscut.nix;
     mpv = ./desktop/mpv.nix;
     plasma = ./desktop/plasma.nix;
     scrcpy = ./desktop/scrcpy.nix;
+    spotifast = ./desktop/spotifast;
     vscode = ./desktop/vscode.nix;
   };
   stylix-theme = ./stylix-theme.nix;
