@@ -46,6 +46,13 @@ let
     src = skillSrc.${source};
     inherit subdir;
   };
+
+  # `mise run update:apps omp-telegram` rewrites url and hash together. The
+  # npm tarball needs no install: omp maps its peer imports onto host copies.
+  ompTelegram = pkgs.fetchzip {
+    url = "https://registry.npmjs.org/@tickernelz/omp-telegram/-/omp-telegram-0.6.16.tgz";
+    hash = "sha256-nHhjMXHEgxAqgex8UacVBNHm40NfFPZ+gScmE/hincQ=";
+  };
 in
 {
   imports = [ ../../../modules/home-manager/oh-my-pi ];
@@ -170,6 +177,8 @@ in
         proactiveLinking = true;
       };
       autolearn.enabled = false;
+      # Telegram bridge; tokens are per consumer (telegram.json / env).
+      extensions = [ "${ompTelegram}" ];
     };
 
     rules.no-find-from-root = lib.removeSuffix "\n" ''

@@ -2,7 +2,7 @@
 /*
 #MISE description="Update pinned applications and the Firefox theme"
 #USAGE arg "[targets]" var=#true help="Targets to update (default: all)" {
-#USAGE   choices "spotifast" "mise" "ff-ultima"
+#USAGE   choices "spotifast" "mise" "ff-ultima" "omp-telegram"
 #USAGE }
 */
 
@@ -11,8 +11,10 @@ import {
   commit,
   defaultCommit,
   github,
+  json,
   latestRelease,
   nixString,
+  noDowngrade,
   object,
   one,
   prefetch,
@@ -150,4 +152,47 @@ async function ffUltima(root: string): Promise<void> {
   publish([source], `ff-ultima ${revision}`);
 }
 
-await runTargets("update:apps", { spotifast, mise, "ff-ultima": ffUltima });
+async function ompTelegram(root: string): Promise<void> {
+  const source = readSource(root, "home/cli/mise/oh-my-pi.nix");
+  const pattern = /^  ompTelegram = pkgs\.fetchzip \{[\s\S]*?^  \};/m;
+  const block = one(source.body, pattern, "omp-telegram source")[0];
+  const tarball =
+    /^https:\/\/registry\.npmjs\.org\/@tickernelz\/omp-telegram\/-\/omp-telegram-(\d+\.\d+\.\d+)\.tgz$/;
+  const current = one(nixString(block, "url").value, tarball, "omp-telegram pinned url")[1]!;
+  const registry = object(
+    await json("https://registry.npmjs.org/@tickernelz/omp-telegram"),
+    "omp-telegram registry",
+  );
+  const version = text(
+    object(registry["dist-tags"], "omp-telegram dist-tags").latest,
+    "omp-telegram latest version",
+    /^\d+\.\d+\.\d+$/,
+  );
+  noDowngrade(current, version);
+  const release = object(
+    object(registry.versions, "omp-telegram versions")[version],
+    `omp-telegram ${version}`,
+  );
+  const url = text(
+    object(release.dist, `omp-telegram ${version} dist`).tarball,
+    "omp-telegram tarball",
+    tarball,
+  );
+  if (nixString(block, "url").value !== url) {
+    const fetched = await prefetch(root, url, true);
+    source.body = replaceOne(
+      source.body,
+      pattern,
+      (match) => nixString(nixString(match[0], "url").set(url), "hash").set(fetched.hash),
+      "omp-telegram source",
+    );
+  }
+  publish([source], `omp-telegram ${version}`);
+}
+
+await runTargets("update:apps", {
+  spotifast,
+  mise,
+  "ff-ultima": ffUltima,
+  "omp-telegram": ompTelegram,
+});
