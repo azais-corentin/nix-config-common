@@ -53,6 +53,9 @@ let
     url = "https://registry.npmjs.org/@tickernelz/omp-telegram/-/omp-telegram-0.6.16.tgz";
     hash = "sha256-nHhjMXHEgxAqgex8UacVBNHm40NfFPZ+gScmE/hincQ=";
   };
+
+  # Profiles mkForce their whole modelRoles set, so each must restate `web`.
+  webModel = "google-antigravity/gemini-3.8-flash";
 in
 {
   imports = [ ../../../modules/home-manager/oh-my-pi ];
@@ -162,7 +165,7 @@ in
         task = "anthropic/claude-opus-5-5:low";
         advisor = "anthropic/claude-opus-5-5:medium";
         image = "openai-codex/gpt-image-1";
-        web = "google/gemini-3.8-flash-high";
+        web = webModel;
       };
       personality = "pragmatic";
       memory.backend = "mnemopi";
@@ -202,6 +205,7 @@ in
       tiny = "openai-codex/gpt-6-astra:low";
       task = "openai-codex/gpt-6-astra:high";
       advisor = "openai-codex/gpt-6-astra:xhigh";
+      web = webModel;
     };
     profiles.openai.settings.compaction.thresholdPercent = 80;
 
@@ -215,6 +219,7 @@ in
       tiny = "google-antigravity/gemini-3.8-flash:high";
       task = "google-antigravity/gemini-3.8-flash:high";
       advisor = "google-antigravity/gemini-3.8-flash:high";
+      web = webModel;
     };
 
     profiles.deepseek.settings.modelRoles = lib.mkForce {
@@ -226,6 +231,7 @@ in
       tiny = "openrouter/~deepseek/deepseek-flash-latest:high";
       task = "openrouter/~deepseek/deepseek-flash-latest:high";
       advisor = "openrouter/~deepseek/deepseek-flash-latest:high";
+      web = webModel;
     };
 
     skills = {
