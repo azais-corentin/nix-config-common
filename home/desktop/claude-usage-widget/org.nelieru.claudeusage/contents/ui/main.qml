@@ -8,9 +8,11 @@ import org.kde.kirigami as Kirigami
 PlasmoidItem {
     id: root
 
-    // Last good parse, sorted by label:
-    //   [{ key, label, email, orgName, limits: [{ id, title, usedFraction,
-    //                                             remainingPct, resetsAt, status }] }]
+    // Last good parse, sorted by provider then label:
+    //   [{ key, provider, providerName, label, title, panelLabel, email, orgName,
+    //      limits: [{ id, title, windowId, usedFraction, remainingPct, resetsAt, status }] }]
+    // `label` is the bare account name; `title` (popup, tooltip) and `panelLabel` (under
+    // the panel bars) are qualified only as far as needed to tell accounts apart.
     property var accounts: []
     property double lastUpdated: 0
     property string lastError: ""
@@ -20,6 +22,18 @@ PlasmoidItem {
     property double nowMs: Date.now()
 
     readonly property string command: Plasmoid.configuration.command
+
+    // Providers the widget renders; every other report in the omp output is ignored.
+    // panelIds are the two shared (non-tier) windows per provider: tier windows such as
+    // anthropic:7d:fable or openai-codex:spark:primary share a windowId with them, so
+    // matching has to go by exact id.
+    readonly property var providers: ({
+        "anthropic": { "name": "Claude", "panelIds": ["anthropic:5h", "anthropic:7d"] },
+        "openai-codex": { "name": "Codex", "panelIds": ["openai-codex:primary", "openai-codex:secondary"] }
+    })
+    // Fixed panel rows. Codex's primary window is 5h or 7d depending on the plan, so rows
+    // are keyed by window rather than by limit id.
+    readonly property var panelWindows: ["5h", "7d"]
 
     /** Bounds for the in-panel width, in px. Mirrored by the config spin box. */
     readonly property int minPanelWidth: 48
@@ -56,12 +70,12 @@ PlasmoidItem {
         return "in " + mins + "m";
     }
 
-    function accountKey(meta, idx) {
+    function accountKey(provider, meta, idx) {
         if (meta && meta.accountId)
-            return String(meta.accountId);
+            return provider + ":" + meta.accountId;
         if (meta && meta.email)
-            return String(meta.email);
-        return "report:" + idx;
+            return provider + ":" + meta.email;
+        return provider + ":report:" + idx;
     }
 
     function accountLabel(meta, idx) {
@@ -75,20 +89,38 @@ PlasmoidItem {
         return "account " + (idx + 1);
     }
 
-    // Panel bars are the two shared windows, in fixed order. Exact ids on purpose:
-    // scope.windowId is "7d" for both anthropic:7d and anthropic:7d:fable.
+    // Qualify with the provider only when several are present, and with the account name
+    // only when that provider has several accounts: "Claude alice", "Claude bob", "Codex".
+    function accountTitle(acct, multiProvider, perProvider) {
+        var parts = [];
+        if (multiProvider)
+            parts.push(acct.providerName);
+        if (perProvider[acct.provider] > 1 || !multiProvider)
+            parts.push(acct.label);
+        return parts.join(" ");
+    }
+
+    // Panel columns are a few dozen px wide and elide from the right, so lead with the one
+    // word that separates this column from its neighbours: "alice", "bob", "Codex".
+    function accountPanelLabel(acct, multiProvider, perProvider) {
+        return (multiProvider && perProvider[acct.provider] === 1) ? acct.providerName : acct.label;
+    }
+
+    // One entry per panelWindows row, in order; null renders an empty track so columns
+    // stay aligned when an account lacks a window.
     function panelLimits(account) {
-        var wanted = ["anthropic:5h", "anthropic:7d"];
+        var ids = providers[account.provider].panelIds;
         var out = [];
-        for (var w = 0; w < wanted.length; w++) {
+        for (var w = 0; w < panelWindows.length; w++) {
             var found = null;
             for (var i = 0; i < account.limits.length; i++) {
-                if (account.limits[i].id === wanted[w]) {
-                    found = account.limits[i];
+                var lim = account.limits[i];
+                if (ids.indexOf(lim.id) !== -1 && lim.windowId === panelWindows[w]) {
+                    found = lim;
                     break;
                 }
             }
-            out.push(found);   // null => render an empty track so columns stay aligned
+            out.push(found);
         }
         return out;
     }
@@ -118,9 +150,11 @@ PlasmoidItem {
         }
         var reports = (parsed && parsed.reports) || [];
         var out = [];
+        var perProvider = ({});
         for (var i = 0; i < reports.length; i++) {
             var rep = reports[i];
-            if (rep.provider !== "anthropic")
+            var info = providers[rep.provider];
+            if (info === undefined)
                 continue;
             var meta = rep.metadata || ({});
             var lims = rep.limits || [];
@@ -134,25 +168,36 @@ PlasmoidItem {
                 norm.push({
                     "id": lim.id,
                     // "Claude 7 Day (Fable)" -> "7 Day (Fable)"; the provider is already
-                    // implied by the widget, and the popup is only ~18 grid units wide.
+                    // implied by the account header, and the popup is only ~18 grid units wide.
                     "title": String(lim.label || lim.id).replace(/^Claude\s+/, ""),
+                    "windowId": lim.window ? lim.window.id : (lim.scope ? lim.scope.windowId : undefined),
                     "usedFraction": uf,
                     "remainingPct": Math.round(100 - 100 * uf),
                     "resetsAt": lim.window ? lim.window.resetsAt : undefined,
                     "status": lim.status || "unknown"
                 });
             }
+            perProvider[rep.provider] = (perProvider[rep.provider] || 0) + 1;
             out.push({
-                "key": accountKey(meta, i),
+                "key": accountKey(rep.provider, meta, i),
+                "provider": rep.provider,
+                "providerName": info.name,
                 "label": accountLabel(meta, i),
                 "email": (meta.email !== undefined && meta.email !== null) ? String(meta.email) : "",
                 "orgName": (meta.orgName !== undefined && meta.orgName !== null) ? String(meta.orgName) : "",
                 "limits": norm
             });
         }
+        var multiProvider = Object.keys(perProvider).length > 1;
+        for (var k = 0; k < out.length; k++) {
+            out[k].title = accountTitle(out[k], multiProvider, perProvider);
+            out[k].panelLabel = accountPanelLabel(out[k], multiProvider, perProvider);
+        }
         // Stable ordering: omp's report order is not guaranteed, and usage-based sorting
         // would make columns swap places between polls.
         out.sort(function (a, b) {
+            if (a.providerName !== b.providerName)
+                return a.providerName < b.providerName ? -1 : 1;
             if (a.label !== b.label)
                 return a.label < b.label ? -1 : 1;
             if (a.email !== b.email)
@@ -194,23 +239,22 @@ PlasmoidItem {
 
     onExpandedChanged: if (expanded) refresh()
 
-    toolTipMainText: "Claude Usage"
+    toolTipMainText: "AI Usage"
     toolTipSubText: {
         if (accounts.length === 0)
-            return lastError !== "" ? lastError : "No Claude usage data";
+            return lastError !== "" ? lastError : "No Claude or Codex usage data";
         var lines = [];
         for (var i = 0; i < accounts.length; i++) {
             var acct = accounts[i];
             if (accounts.length > 1)
-                lines.push(acct.label);
+                lines.push(acct.title);
             var rows = panelLimits(acct);
             for (var j = 0; j < rows.length; j++) {
                 var l = rows[j];
                 if (l === null)
                     continue;
                 var eta = formatEta(l.resetsAt, nowMs);
-                var short = (l.id === "anthropic:5h") ? "5h" : "7d";
-                var line = short + ": " + l.remainingPct + "% left";
+                var line = l.windowId + ": " + l.remainingPct + "% left";
                 if (eta !== "")
                     line += " · resets " + eta;
                 lines.push(accounts.length > 1 ? "  " + line : line);
@@ -296,7 +340,7 @@ PlasmoidItem {
                         elide: Text.ElideRight
                         opacity: 0.8
                         font: Kirigami.Theme.smallFont
-                        text: accountColumn.account ? accountColumn.account.label : ""
+                        text: accountColumn.account ? accountColumn.account.panelLabel : ""
                     }
 
                     Item { Layout.fillHeight: true }
@@ -389,7 +433,7 @@ PlasmoidItem {
             visible: root.accounts.length === 0 && root.lastError === ""
             text: (root.loading && !root.everLoaded)
                 ? "Loading…"
-                : "No Claude usage data — run omp and /login"
+                : "No Claude or Codex usage data — run omp and /login"
         }
 
         PlasmaComponents3.ScrollView {
@@ -423,7 +467,7 @@ PlasmoidItem {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             font.bold: true
-                            text: accountSection.modelData.label
+                            text: accountSection.modelData.title
                         }
                     }
 

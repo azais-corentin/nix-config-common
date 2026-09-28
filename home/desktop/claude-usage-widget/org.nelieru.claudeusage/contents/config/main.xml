@@ -11,7 +11,7 @@
       <default>70</default>
     </entry>
     <entry name="command" type="String">
-      <default>$HOME/.local/share/mise/shims/omp usage --json --provider anthropic</default>
+      <default>$HOME/.local/share/mise/shims/omp usage --json</default>
     </entry>
   </group>
 </kcfg>

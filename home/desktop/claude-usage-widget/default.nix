@@ -1,7 +1,7 @@
 { lib, stdenvNoCC }:
 stdenvNoCC.mkDerivation {
   pname = "claude-usage-widget";
-  version = "1.2.1";
+  version = "1.3.0";
 
   src = ./org.nelieru.claudeusage;
 
@@ -16,7 +16,7 @@ stdenvNoCC.mkDerivation {
   '';
 
   meta = {
-    description = "Plasma 6 applet showing per-account Anthropic Claude subscription usage via oh-my-pi";
+    description = "Plasma 6 applet showing per-account Anthropic Claude and OpenAI Codex subscription usage via oh-my-pi";
     license = lib.licenses.mit;
     platforms = lib.platforms.linux;
   };

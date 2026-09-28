@@ -30,7 +30,7 @@ KCM.SimpleKCM {
             id: commandField
             Kirigami.FormData.label: "Usage command:"
             Layout.fillWidth: true
-            placeholderText: "$HOME/.local/share/mise/shims/omp usage --json --provider anthropic"
+            placeholderText: "$HOME/.local/share/mise/shims/omp usage --json"
         }
     }
 }
