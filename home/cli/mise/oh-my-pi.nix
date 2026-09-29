@@ -156,12 +156,12 @@ in
       github.enabled = true;
       modelRoles = {
         default = "anthropic/claude-opus-5-5";
-        smol = "anthropic/claude-sonnet-5:high";
+        smol = "anthropic/claude-sonnet-5-5:high";
         slow = "anthropic/claude-opus-5-5:high";
         vision = "anthropic/claude-opus-5-5:high";
         plan = "anthropic/claude-opus-5-5:high";
-        commit = "anthropic/claude-sonnet-5:low";
-        tiny = "anthropic/claude-sonnet-5:high";
+        commit = "anthropic/claude-sonnet-5-5:low";
+        tiny = "anthropic/claude-sonnet-5-5:high";
         task = "anthropic/claude-opus-5-5:low";
         advisor = "anthropic/claude-opus-5-5:medium";
         image = "openai-codex/gpt-image-1";
