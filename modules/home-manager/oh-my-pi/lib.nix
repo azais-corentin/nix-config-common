@@ -48,18 +48,29 @@ let
 
   # Recursively strip `null` values and empty attrsets so the rendered config
   # stays minimal. Lists are walked element-wise but never collapsed when empty
-  # (an explicitly-empty list is a meaningful override).
-  pruneNulls =
-    v:
-    if lib.isAttrs v && !(lib.isDerivation v) then
-      lib.pipe v [
-        (lib.mapAttrs (_: pruneNulls))
-        (lib.filterAttrs (_: x: x != null && !(lib.isAttrs x && x == { })))
-      ]
-    else if lib.isList v then
-      map pruneNulls v
-    else
-      v;
+  # (an explicitly-empty list is a meaningful override). Attributes named in
+  # `keepEmpty` keep an explicitly-set empty attrset, for keys where `{}` itself
+  # is a meaningful value; an unset (null) one is still dropped.
+  pruneNullsKeeping =
+    keepEmpty:
+    let
+      prune =
+        v:
+        if lib.isAttrs v && !(lib.isDerivation v) then
+          lib.pipe v [
+            (lib.mapAttrs (_: prune))
+            (lib.filterAttrs (
+              name: x: x != null && !(lib.isAttrs x && x == { } && !(builtins.elem name keepEmpty))
+            ))
+          ]
+        else if lib.isList v then
+          map prune v
+        else
+          v;
+    in
+    prune;
+
+  pruneNulls = pruneNullsKeeping [ ];
 
   # Recursively lower the priority of inherited profile declarations while
   # keeping every nested leaf independently overridable. Derivations are
@@ -180,6 +191,7 @@ in
     mkSection
     subType
     pruneNulls
+    pruneNullsKeeping
     mkDefaultRecursive
     isValidProfileName
     skillType

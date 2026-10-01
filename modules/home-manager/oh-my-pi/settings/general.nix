@@ -9,15 +9,32 @@ let
     num
     ;
   t = lib.types;
+
+  strOrList = t.either t.str (t.listOf t.str);
+
+  # Element of a path-scoped array setting: a plain value, or an object whose
+  # values apply only when the working directory is under one of its path
+  # prefixes. Each field accepts a string or a list of strings.
+  pathScopedEntry =
+    valuesKey:
+    t.either t.str (subType {
+      path = mkOpt strOrList "Working-directory prefix this entry applies under.";
+      paths = mkOpt strOrList "Working-directory prefixes this entry applies under.";
+      pathPrefix = mkOpt strOrList "Alias of path.";
+      pathPrefixes = mkOpt strOrList "Alias of paths.";
+      values = mkOpt strOrList "Values applied under the matching prefixes.";
+      items = mkOpt strOrList "Alias of values.";
+      ${valuesKey} = mkOpt strOrList "Alias of values.";
+    });
 in
 {
   autoResume = mkOpt t.bool "Automatically resume the most recent session in the current directory.";
   shellPath = mkOpt t.str "Override the shell binary used for bash tool execution.";
 
   extensions = mkOpt (t.listOf t.str) "Explicit extension module file or directory paths to load.";
-  enabledModels = mkOpt (t.listOf t.str) "Explicit allow-list of model ids to expose.";
-  disabledProviders = mkOpt (t.listOf t.str) "Provider ids to hide.";
-  enabledProviders = mkOpt (t.listOf t.str) "Explicit allow-list of provider ids to expose.";
+  enabledModels = mkOpt (t.listOf (pathScopedEntry "models")) "Explicit allow-list of model ids to expose; entries may be scoped to working-directory prefixes.";
+  disabledProviders = mkOpt (t.listOf (pathScopedEntry "providers")) "Provider ids to hide; entries may be scoped to working-directory prefixes.";
+  enabledProviders = mkOpt (t.listOf (pathScopedEntry "providers")) "Explicit allow-list of provider ids to expose; entries may be scoped to working-directory prefixes.";
   disabledExtensions = mkOpt (t.listOf t.str) "Extension ids to disable.";
   modelProviderOrder = mkOpt (t.listOf t.str) "Preferred ordering of model providers.";
   cycleOrder = mkOpt (t.listOf t.str) "Model-role cycle order (default: smol, default, slow).";

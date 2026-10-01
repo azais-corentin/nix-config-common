@@ -49,7 +49,7 @@ in
     softRequestBudget = mkOpt num "Soft per-subagent request budget; crossing it injects a wrap-up notice, 1.5x aborts gracefully (0 disables).";
     softRequestBudgetNotice = mkOpt t.bool "Inject one steering notice when a subagent crosses its soft request budget (off by default).";
     disabledAgents = mkOpt (t.listOf t.str) "Agent ids that cannot be spawned.";
-    agentModelOverrides = mkOpt (t.attrsOf t.str) "Per-agent model overrides.";
+    agentModelOverrides = mkOpt (t.attrsOf (t.either t.str (t.listOf t.str))) "Per-agent model overrides keyed by agent id: a model pattern or an ordered fallback list.";
     showResolvedModelBadge = mkOpt t.bool "Display the actual model id used by each subagent in the task widget.";
     prewalk = mkOpt t.bool "Arm prewalk for the bundled generic task subagent (per-agent overrides via task.agentPrewalk and agent prewalk frontmatter apply regardless).";
     agentPrewalk = mkOpt (t.attrsOf t.str) "Per-agent prewalk overrides keyed by agent id (toggled with P in /agents).";

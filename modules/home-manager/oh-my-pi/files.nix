@@ -57,7 +57,7 @@ let
       initOptions = mkOpt (t.attrsOf jsonFormat.type) "Initialization options sent to the language server.";
       settings = mkOpt (t.attrsOf jsonFormat.type) "Language-server workspace settings.";
       disabled = mkOpt t.bool "Disable this language server.";
-      isLinter = mkOpt t.bool "Use this server only for diagnostics and code actions.";
+      isLinter = mkOpt t.bool "Dedicated linter/formatter server: excluded from type intelligence (definition, hover, references) but preferred over type-checkers as the formatOnWrite formatter.";
       workspaceReadyTimings = mkOpt (t.submodule {
         freeformType = jsonFormat.type;
         options = {
@@ -82,10 +82,7 @@ let
   dapAdapterType = t.submodule {
     freeformType = jsonFormat.type;
     options = {
-      command = lib.mkOption {
-        type = t.str;
-        description = "Debug adapter executable or path (required; omp drops an adapter whose command is missing or empty).";
-      };
+      command = mkOpt t.str "Debug adapter executable or path. Required for a new adapter; omit it to keep a built-in adapter's command when overriding other fields (omp drops an adapter whose merged command is missing or empty).";
       args = mkOpt (t.listOf t.str) "Arguments passed to the adapter. With connectMode = \"tcp\", the literal \${port} placeholder in an argument is replaced by the chosen port.";
       languages = mkOpt (t.listOf t.str) "Languages this adapter handles.";
       fileTypes = mkOpt (t.listOf t.str) "File extensions this adapter handles; omp lower-cases them on load.";

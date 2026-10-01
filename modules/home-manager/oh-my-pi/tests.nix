@@ -130,6 +130,17 @@ let
         modelRoles.default = "@smol";
         defaultThinkingLevel = "low";
       };
+      task.agentModelOverrides.scout = [
+        "anthropic/claude-sonnet-5"
+        "openai/gpt-5.2"
+      ];
+      enabledModels = [
+        "openai/*"
+        {
+          paths = [ "/tmp/proj" ];
+          models = [ "anthropic/*" ];
+        }
+      ];
     };
 
     models.providers.local = {
@@ -156,7 +167,12 @@ let
             long = 3600;
           };
         }
+        {
+          id = "no-warm";
+          promptCache = { };
+        }
       ];
+      modelOverrides.no-warm.promptCache = { };
     };
 
     keybindings."app.session.new" = "ctrl+n";
@@ -213,6 +229,7 @@ let
       connectMode = "tcp";
       acceptsDirectoryProgram = true;
     };
+    dap.adapters.gdb.connectMode = "tcp";
 
     profiles = {
       personal = { };
@@ -515,6 +532,9 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
       | jq -e '. == [{ "provider": "anthropic", "account": { "email": "work@example.invalid" }, "priority": 10, "reservePct": 12.5 }]' >/dev/null
     yq -e '.modelPresets.cheap.modelRoles.default == "@smol"' ${defaultConfig} >/dev/null
     yq -e '.modelPresets.cheap.defaultThinkingLevel == "low"' ${defaultConfig} >/dev/null
+    yq -e '.task.agentModelOverrides.scout | join(",") == "anthropic/claude-sonnet-5,openai/gpt-5.2"' ${defaultConfig} >/dev/null
+    yq -o=json '.enabledModels' ${defaultConfig} \
+      | jq -e '. == ["openai/*", { "paths": ["/tmp/proj"], "models": ["anthropic/*"] }]' >/dev/null
     yq -e '.display.subagentLivePreview == true' ${sharedDefaultConfig} >/dev/null
     yq -e '.compaction | has("strategy") | not' ${defaultConfig} >/dev/null
     yq -e '.tui | has("scrollbackRebuild") | not' ${defaultConfig} >/dev/null
@@ -532,6 +552,10 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.providers.local.compat.supportsSteering == true' ${defaultModels} >/dev/null
     yq -o=json '.providers.local.models[0]' ${defaultModels} \
       | jq -e '. == { "id": "local-model", "contextWindow": 200000, "maxContextWindow": 1000000, "promptCache": { "short": 300, "long": 3600 } }' >/dev/null
+    yq -o=json '.providers.local.models[1]' ${defaultModels} \
+      | jq -e '. == { "id": "no-warm", "promptCache": {} }' >/dev/null
+    yq -o=json '.providers.local.modelOverrides' ${defaultModels} \
+      | jq -e '. == { "no-warm": { "promptCache": {} } }' >/dev/null
 
     yq -e '.personality == "pragmatic"' ${personalConfig} >/dev/null
     yq -e '.modelRoleStorage == "project"' ${personalConfig} >/dev/null
@@ -570,6 +594,9 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
           "attachDefaults": { "skipAttachRequest": true },
           "connectMode": "tcp",
           "acceptsDirectoryProgram": true
+        },
+        "gdb": {
+          "connectMode": "tcp"
         }
       }
     }' ${defaultDap} >/dev/null
