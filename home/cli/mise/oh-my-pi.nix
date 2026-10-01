@@ -61,9 +61,9 @@ let
     web = "google-antigravity/gemini-3.8-flash";
   };
 
-  # Startup roles, also published as the `anthropic` preset so a switch back
+  # Startup roles, also published as the `claude` preset so a switch back
   # restores them without a rebuild.
-  anthropicRoles = sharedRoles // {
+  claudeRoles = sharedRoles // {
     default = "anthropic/claude-opus-5-5:high";
     slow = "anthropic/claude-opus-5-5:high";
     plan = "anthropic/claude-opus-5-5:high";
@@ -173,12 +173,12 @@ in
       edit.mode = "hashline";
       loop.mode = "reset";
       github.enabled = true;
-      modelRoles = anthropicRoles;
+      modelRoles = claudeRoles;
       # Switch with `/modelpreset switch <name>`; the next rebuild restores
-      # the anthropic roles above.
+      # the claude roles above.
       modelPresets = {
-        anthropic.modelRoles = anthropicRoles;
-        openai.modelRoles = sharedRoles // {
+        claude.modelRoles = claudeRoles;
+        gpt.modelRoles = sharedRoles // {
           default = "openai-codex/gpt-6.1-sol:high";
           slow = "openai-codex/gpt-6.1-sol:high";
           plan = "openai-codex/gpt-6.1-sol:high";

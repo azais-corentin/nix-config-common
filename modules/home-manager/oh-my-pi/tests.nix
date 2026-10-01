@@ -492,8 +492,8 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     )
     test ! -e "$shared_home/.omp/profiles"
     yq -o=json '.' ${sharedDefaultConfig} | jq -e '
-      (.modelPresets | keys) == ["anthropic", "deepseek", "gemini", "openai"]
-      and .modelPresets.anthropic.modelRoles == .modelRoles
+      (.modelPresets | keys) == ["claude", "deepseek", "gemini", "gpt"]
+      and .modelPresets.claude.modelRoles == .modelRoles
       and ([.modelPresets[].modelRoles | has("default") and has("image") and has("web")] | all)
     ' >/dev/null
 
