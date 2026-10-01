@@ -1,7 +1,7 @@
-# Spotifast is not in nixpkgs. Upstream's flake exposes a package, but its
-# cargoLock has no outputHashes for the librespot/projectm git patches, so it
-# fails to evaluate; and a source build needs cmake + bindgen for libprojectM.
-# The official release tarball carries the binary, desktop entry and icon.
+# nixpkgs' spotifast trails the release this pins (NixOS/nixpkgs#566927), and
+# upstream's flake source-builds libprojectM with an uncached rust-overlay
+# toolchain. The official release tarball carries the binary, desktop entry
+# and icon.
 {
   lib,
   stdenv,
