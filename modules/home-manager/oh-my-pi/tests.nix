@@ -353,11 +353,7 @@ let
   );
 
   sharedFeatureFiles = sharedFeature.config.home.file;
-  sharedRulePaths = [
-    ".omp/agent/rules/no-find-from-root.md"
-    ".omp/profiles/openai/agent/rules/no-find-from-root.md"
-    ".omp/profiles/deepseek/agent/rules/no-find-from-root.md"
-  ];
+  sharedRulePaths = [ ".omp/agent/rules/no-find-from-root.md" ];
   sharedNoFindRule = sharedFeatureFiles.".omp/agent/rules/no-find-from-root.md".text;
   sharedDefaultConfig = ''"$shared_home/.omp/agent/config.yml"'';
 
@@ -494,10 +490,12 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
       export HOME="$shared_home"
       ${configActivation (builtins.removeAttrs sharedFeature.config.home.activation [ "ompPythonEnv" ])}
     )
-    test -f "$shared_home/.omp/profiles/openai/agent/config.yml"
-    test ! -L "$shared_home/.omp/profiles/openai/agent/config.yml"
-    yq -e '.modelRoles | has("designer") | not' \
-      "$shared_home/.omp/profiles/openai/agent/config.yml" >/dev/null
+    test ! -e "$shared_home/.omp/profiles"
+    yq -o=json '.' ${sharedDefaultConfig} | jq -e '
+      (.modelPresets | keys) == ["anthropic", "deepseek", "gemini", "openai"]
+      and .modelPresets.anthropic.modelRoles == .modelRoles
+      and ([.modelPresets[].modelRoles | has("default") and has("image") and has("web")] | all)
+    ' >/dev/null
 
     yq -e '.personality == "pragmatic"' ${defaultConfig} >/dev/null
     yq -e '.task.disabledAgents | join(",") == "scout,oracle"' ${defaultConfig} >/dev/null

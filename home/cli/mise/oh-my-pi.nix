@@ -54,8 +54,26 @@ let
     hash = "sha256-nHhjMXHEgxAqgex8UacVBNHm40NfFPZ+gScmE/hincQ=";
   };
 
-  # Profiles mkForce their whole modelRoles set, so each must restate `web`.
-  webModel = "google-antigravity/gemini-3.8-flash";
+  # `/modelpreset switch` replaces the whole modelRoles set (omitted roles are
+  # cleared), so every preset restates the provider-independent roles.
+  sharedRoles = {
+    image = "openai-codex/gpt-image-2";
+    web = "google-antigravity/gemini-3.8-flash";
+  };
+
+  # Startup roles, also published as the `anthropic` preset so a switch back
+  # restores them without a rebuild.
+  anthropicRoles = sharedRoles // {
+    default = "anthropic/claude-opus-5-5:high";
+    slow = "anthropic/claude-opus-5-5:high";
+    plan = "anthropic/claude-opus-5-5:high";
+    advisor = "anthropic/claude-opus-5-5:high";
+    task = "anthropic/claude-opus-5-5:medium";
+    vision = "anthropic/claude-opus-5-5:medium";
+    smol = "anthropic/claude-sonnet-5-5:medium";
+    tiny = "anthropic/claude-sonnet-5-5:low";
+    commit = "anthropic/claude-sonnet-5-5:low";
+  };
 in
 {
   imports = [ ../../../modules/home-manager/oh-my-pi ];
@@ -155,18 +173,44 @@ in
       edit.mode = "hashline";
       loop.mode = "reset";
       github.enabled = true;
-      modelRoles = {
-        default = "anthropic/claude-opus-5-5";
-        smol = "anthropic/claude-sonnet-5-5:high";
-        slow = "anthropic/claude-opus-5-5:high";
-        vision = "anthropic/claude-opus-5-5:high";
-        plan = "anthropic/claude-opus-5-5:high";
-        commit = "anthropic/claude-sonnet-5-5:low";
-        tiny = "anthropic/claude-sonnet-5-5:high";
-        task = "anthropic/claude-opus-5-5:low";
-        advisor = "anthropic/claude-opus-5-5:medium";
-        image = "openai-codex/gpt-image-1";
-        web = webModel;
+      modelRoles = anthropicRoles;
+      # Switch with `/modelpreset switch <name>`; the next rebuild restores
+      # the anthropic roles above.
+      modelPresets = {
+        anthropic.modelRoles = anthropicRoles;
+        openai.modelRoles = sharedRoles // {
+          default = "openai-codex/gpt-6.1-sol:high";
+          slow = "openai-codex/gpt-6.1-sol:high";
+          plan = "openai-codex/gpt-6.1-sol:high";
+          advisor = "openai-codex/gpt-6.1-sol:high";
+          task = "openai-codex/gpt-6.1-sol:medium";
+          vision = "openai-codex/gpt-6.1-sol:medium";
+          smol = "openai-codex/gpt-6-luna:medium";
+          tiny = "openai-codex/gpt-6-luna:low";
+          commit = "openai-codex/gpt-6-luna:low";
+        };
+        gemini.modelRoles = sharedRoles // {
+          default = "google-antigravity/gemini-3.8-flash:high";
+          slow = "google-antigravity/gemini-3.8-flash:high";
+          plan = "google-antigravity/gemini-3.8-flash:high";
+          advisor = "google-antigravity/gemini-3.8-flash:high";
+          task = "google-antigravity/gemini-3.8-flash:high";
+          vision = "google-antigravity/gemini-3.8-flash:high";
+          smol = "google-antigravity/gemini-3.8-flash:low";
+          commit = "google-antigravity/gemini-3.8-flash:low";
+          tiny = "google-antigravity/gemini-3.8-flash:minimal";
+        };
+        deepseek.modelRoles = sharedRoles // {
+          slow = "openrouter/~deepseek/deepseek-flash-latest:max";
+          plan = "openrouter/~deepseek/deepseek-flash-latest:max";
+          default = "openrouter/~deepseek/deepseek-flash-latest:high";
+          advisor = "openrouter/~deepseek/deepseek-flash-latest:high";
+          task = "openrouter/~deepseek/deepseek-flash-latest:high";
+          vision = "openrouter/~deepseek/deepseek-flash-latest:high";
+          smol = "openrouter/~deepseek/deepseek-flash-latest:low";
+          tiny = "openrouter/~deepseek/deepseek-flash-latest:low";
+          commit = "openrouter/~deepseek/deepseek-flash-latest:low";
+        };
       };
       personality = "pragmatic";
       memory.backend = "mnemopi";
@@ -195,45 +239,6 @@ in
 
       Never invoke `find /` (scanning from the filesystem root). It is slow, noisy, and traverses the entire system. Scope the search to a concrete directory (e.g. `find ~/.cargo/registry/src -maxdepth 2 ...`) or, preferably, use the dedicated `find` tool with explicit `paths` globs. If you need a known cache/registry location, target it directly instead of walking root.
     '';
-
-    profiles.openai.settings.modelRoles = lib.mkForce {
-      default = "openai-codex/gpt-6-astra:high";
-      smol = "openai-codex/gpt-6-astra:low";
-      slow = "openai-codex/gpt-6-astra:xhigh";
-      vision = "openai-codex/gpt-6-astra:high";
-      plan = "openai-codex/gpt-6-astra:xhigh";
-      commit = "openai-codex/gpt-6-astra:low";
-      tiny = "openai-codex/gpt-6-astra:low";
-      task = "openai-codex/gpt-6-astra:high";
-      advisor = "openai-codex/gpt-6-astra:xhigh";
-      web = webModel;
-    };
-    profiles.openai.settings.compaction.thresholdPercent = 80;
-
-    profiles.gemini.settings.modelRoles = lib.mkForce {
-      default = "google-antigravity/gemini-3.8-flash:high";
-      smol = "google-antigravity/gemini-3.8-flash:high";
-      slow = "google-antigravity/gemini-3.8-flash:high";
-      vision = "google-antigravity/gemini-3.8-flash:high";
-      plan = "google-antigravity/gemini-3.8-flash:high";
-      commit = "google-antigravity/gemini-3.8-flash:high";
-      tiny = "google-antigravity/gemini-3.8-flash:high";
-      task = "google-antigravity/gemini-3.8-flash:high";
-      advisor = "google-antigravity/gemini-3.8-flash:high";
-      web = webModel;
-    };
-
-    profiles.deepseek.settings.modelRoles = lib.mkForce {
-      default = "openrouter/~deepseek/deepseek-flash-latest:high";
-      smol = "openrouter/~deepseek/deepseek-flash-latest:high";
-      slow = "openrouter/~deepseek/deepseek-flash-latest:high";
-      plan = "openrouter/~deepseek/deepseek-flash-latest:high";
-      commit = "openrouter/~deepseek/deepseek-flash-latest:high";
-      tiny = "openrouter/~deepseek/deepseek-flash-latest:high";
-      task = "openrouter/~deepseek/deepseek-flash-latest:high";
-      advisor = "openrouter/~deepseek/deepseek-flash-latest:high";
-      web = webModel;
-    };
 
     skills = {
       pdf = skill "anthropics" "skills/pdf";
