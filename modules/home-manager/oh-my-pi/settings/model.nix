@@ -2,7 +2,12 @@
 # and thinking budgets.
 { lib, helpers }:
 let
-  inherit (helpers) mkOpt mkSection num;
+  inherit (helpers)
+    mkOpt
+    mkSection
+    subType
+    num
+    ;
   t = lib.types;
   serviceTierInherit = t.enum [
     "inherit"
@@ -12,10 +17,9 @@ let
     "flex"
     "scale"
     "priority"
+    "ultrafast"
   ];
-in
-{
-  defaultThinkingLevel = mkOpt (t.enum [
+  thinkingLevel = t.enum [
     "minimal"
     "low"
     "medium"
@@ -23,7 +27,19 @@ in
     "xhigh"
     "auto"
     "max"
-  ]) "Reasoning depth for thinking-capable models.";
+  ];
+in
+{
+  defaultThinkingLevel = mkOpt thinkingLevel "Reasoning depth for thinking-capable models.";
+
+  modelPresets = mkOpt (t.attrsOf (subType {
+    modelRoles = lib.mkOption {
+      type = t.attrsOf t.str;
+      description = "Role → model-selector assignments re-applied as a whole (same value syntax as modelRoles).";
+    };
+    defaultThinkingLevel = mkOpt thinkingLevel "defaultThinkingLevel applied with the preset; unset leaves the current level alone.";
+  })) "Named model presets switched with /modelpreset switch <name> (no settings-panel UI).";
+
   hideThinkingBlock = mkOpt t.bool "Hide thinking blocks in assistant responses.";
   includeModelInPrompt = mkOpt t.bool "Surface the active model id in the system prompt so the agent knows which model it is.";
   skillful = mkOpt t.bool "List available skills in the system prompt; disable to save context (per-session /skillful).";
@@ -98,6 +114,7 @@ in
       "5"
     ]) "Pause the main agent up to 30s if the advisor falls behind by this many turns.";
     maxNotesPerUpdate = mkOpt num "Maximum non-blocker advice notes accepted per advisor prompt update (1-32); blockers are exempt.";
+    evictStaleResults = mkOpt t.bool "Before each review, replace the advisor's read/grep/glob output from older reviews with a short placeholder (the latest review is kept).";
   };
 
   prewalk = mkSection "Prewalk: strong model plans, cheap model implements." {
@@ -114,6 +131,7 @@ in
           "flex"
           "scale"
           "priority"
+          "ultrafast"
         ])
         "Processing tier for OpenAI/Codex requests and OpenAI-family OpenRouter models (none = omit service_tier).";
     anthropic = mkOpt (t.enum [

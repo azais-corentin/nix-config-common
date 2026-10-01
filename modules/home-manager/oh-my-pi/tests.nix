@@ -114,6 +114,22 @@ let
         "soft"
       ];
       features.unexpectedStopDetection = "smart";
+      task.agentCompactionThresholdOverrides = {
+        scout = 90000;
+        reviewer = "80%";
+      };
+      auth.accountPolicies = [
+        {
+          provider = "anthropic";
+          account.email = "work@example.invalid";
+          priority = 10;
+          reservePct = 12.5;
+        }
+      ];
+      modelPresets.cheap = {
+        modelRoles.default = "@smol";
+        defaultThinkingLevel = "low";
+      };
     };
 
     models.providers.local = {
@@ -123,12 +139,24 @@ let
         supportsEagerToolInputStreaming = false;
         allowAnthropicHeaderOverrides = true;
         supportsContextManagement = true;
+        supportsSteering = true;
       };
       guardrailTrace = "enabled";
       discovery = {
         type = "openai-models-list";
         injectV1 = false;
       };
+      models = [
+        {
+          id = "local-model";
+          contextWindow = 200000;
+          maxContextWindow = 1000000;
+          promptCache = {
+            short = 300;
+            long = 3600;
+          };
+        }
+      ];
     };
 
     keybindings."app.session.new" = "ctrl+n";
@@ -202,6 +230,7 @@ let
           command = "local-mcp";
           env.TOKEN = "local";
           requestIdFormat = "string";
+          instructions = false;
         };
       };
 
@@ -225,6 +254,13 @@ let
       evaluated = evaluate { profiles.probe.mcp.mcpServers.probe = server; };
     in
     (builtins.tryEval (builtins.deepSeq evaluated.config.oh-my-pi.profiles true)).success;
+
+  settingsSucceed =
+    settings:
+    let
+      evaluated = evaluate { inherit settings; };
+    in
+    (builtins.tryEval (builtins.deepSeq evaluated.config.oh-my-pi.settings true)).success;
 
   name64 = builtins.concatStringsSep "" (lib.replicate 64 "a");
   name65 = builtins.concatStringsSep "" (lib.replicate 65 "a");
@@ -364,6 +400,32 @@ assert
     command = "local-mcp";
     url = "http://local.invalid";
   });
+assert lib.all (value: !(settingsSucceed { task.agentCompactionThresholdOverrides.scout = value; }))
+  [
+    0
+    "80"
+    "80 %"
+    true
+  ];
+assert
+  !(settingsSucceed {
+    auth.accountPolicies = [
+      {
+        provider = " anthropic";
+        account.email = "work@example.invalid";
+      }
+    ];
+  });
+assert
+  !(settingsSucceed {
+    auth.accountPolicies = [
+      {
+        provider = "anthropic";
+        account.email = "work@example.invalid";
+        reservePct = 101;
+      }
+    ];
+  });
 assert disabledFiles == { };
 assert emptyFiles == { };
 assert builtins.attrNames homeFiles == expectedPaths;
@@ -447,6 +509,13 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.compaction.methodOrder | join(",") == "snapcompact,soft"' ${defaultConfig} >/dev/null
     yq -e '.providers["openai-codex"].codeMode == "auto"' ${defaultConfig} >/dev/null
     yq -e '.features.unexpectedStopDetection == "smart"' ${defaultConfig} >/dev/null
+    yq -e '.task.agentCompactionThresholdOverrides.scout == 90000' ${defaultConfig} >/dev/null
+    yq -e '.task.agentCompactionThresholdOverrides.reviewer == "80%"' ${defaultConfig} >/dev/null
+    yq -o=json '.auth.accountPolicies' ${defaultConfig} \
+      | jq -e '. == [{ "provider": "anthropic", "account": { "email": "work@example.invalid" }, "priority": 10, "reservePct": 12.5 }]' >/dev/null
+    yq -e '.modelPresets.cheap.modelRoles.default == "@smol"' ${defaultConfig} >/dev/null
+    yq -e '.modelPresets.cheap.defaultThinkingLevel == "low"' ${defaultConfig} >/dev/null
+    yq -e '.display.subagentLivePreview == true' ${sharedDefaultConfig} >/dev/null
     yq -e '.compaction | has("strategy") | not' ${defaultConfig} >/dev/null
     yq -e '.tui | has("scrollbackRebuild") | not' ${defaultConfig} >/dev/null
     yq -e '.tui | has("scrollbackRebuild") | not' ${sharedDefaultConfig} >/dev/null
@@ -460,6 +529,9 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.providers.local.guardrailTrace == "enabled"' ${defaultModels} >/dev/null
     yq -e '.providers.local.discovery.injectV1 == false' ${defaultModels} >/dev/null
     yq -e '.providers.local.discovery.type == "openai-models-list"' ${defaultModels} >/dev/null
+    yq -e '.providers.local.compat.supportsSteering == true' ${defaultModels} >/dev/null
+    yq -o=json '.providers.local.models[0]' ${defaultModels} \
+      | jq -e '. == { "id": "local-model", "contextWindow": 200000, "maxContextWindow": 1000000, "promptCache": { "short": 300, "long": 3600 } }' >/dev/null
 
     yq -e '.personality == "pragmatic"' ${personalConfig} >/dev/null
     yq -e '.modelRoleStorage == "project"' ${personalConfig} >/dev/null
@@ -520,7 +592,7 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
 
     cmp ${expectedWorkCommand} ${workCommand}
 
-    jq -e --arg schema '${mcpSchemaUrl}' '."$schema" == $schema and .mcpServers.local == { "type": "stdio", "command": "local-mcp", "env": { "TOKEN": "local" }, "requestIdFormat": "string" }' ${workMcp} >/dev/null
+    jq -e --arg schema '${mcpSchemaUrl}' '."$schema" == $schema and .mcpServers.local == { "type": "stdio", "command": "local-mcp", "env": { "TOKEN": "local" }, "requestIdFormat": "string", "instructions": false }' ${workMcp} >/dev/null
     jq -e '."$schema" == "https://example.invalid/mcp-schema.json" and .mcpServers == {}' ${work2Mcp} >/dev/null
 
     mkdir -p "$out"

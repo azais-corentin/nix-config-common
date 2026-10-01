@@ -26,9 +26,10 @@ in
     mkOpt
       (t.enum [
         "rewind"
+        "tree"
         "none"
       ])
-      "Action when pressing Escape twice with an empty editor (rewind opens the transcript rewind selector).";
+      "Action when pressing Escape twice with an empty editor: open the transcript rewind selector, open the session tree, or nothing.";
   treeFilterMode = mkOpt (t.enum [
     "default"
     "no-tools"
@@ -48,10 +49,24 @@ in
     conditionTimeoutMs = mkOpt num "Max wait for a /loop --while|--until condition command before treating it as broken and stopping the loop (0 = wait indefinitely).";
   };
 
-  spelling = mkSection "macOS dictionary integration for the prompt editor." {
-    autocomplete = mkOpt t.bool "Show macOS dictionary word completions as inline hints accepted with Tab.";
+  spelling = mkSection "Prompt-editor word completion and macOS dictionary integration." {
+    autocomplete =
+      mkOpt
+        (t.enum [
+          "off"
+          "auto"
+          "ngram"
+          "smollm"
+          "apple"
+        ])
+        "Word-completion engine for inline hints: auto (n-gram, nothing to download), ngram (learns from prompt history), smollm (on-device LM blended with n-gram), apple (macOS dictionary), or off.";
     autocorrect = mkOpt t.bool "Apply confident macOS spelling corrections after completed words.";
     typoDetection = mkOpt t.bool "Mark misspelled prompt words with the active macOS dictionaries.";
+  };
+
+  input = mkSection "Prompt submission shortcuts." {
+    bareExitOnEmptySession = mkOpt t.bool "Submitting exactly exit, quit or q (any case) before the first message quits instead of prompting the model.";
+    bareSlashCommands = mkOpt t.bool "Submitting exactly a command name without the leading / runs that slash command; once the session has messages, Enter must be pressed twice to confirm.";
   };
 
   startup = mkSection "Startup behaviour." {

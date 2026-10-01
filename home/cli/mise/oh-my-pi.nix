@@ -134,6 +134,7 @@ in
       display = {
         shimmer = "kitt";
         showTokenUsage = false;
+        subagentLivePreview = true;
       };
       recap = {
         enabled = true;

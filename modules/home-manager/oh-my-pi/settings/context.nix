@@ -66,6 +66,14 @@ in
     repeatGap = mkOpt num "Messages before a rule can trigger again.";
     builtinRules = mkOpt t.bool "Load the default rules shipped with the agent.";
     disabledRules = mkOpt (t.listOf t.str) "Rule names to ignore entirely.";
+    judge =
+      mkOpt
+        (t.enum [
+          "auto"
+          "on"
+          "off"
+        ])
+        "Ask the judge model role each question rule about completed replies, reasoning and tool calls; a yes injects the rule as a warning.";
   };
 
   snapcompact = mkSection "Experimental snapcompact inline imaging." {

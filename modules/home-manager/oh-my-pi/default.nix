@@ -90,6 +90,7 @@ let
             "number"
           ])
           "Encoding for outgoing JSON-RPC request ids (default: number). OMP-specific; servers imported from another tool's config ignore it.";
+      instructions = mkOpt t.bool "Include server-provided instructions in the system prompt (default: true); false omits them without disabling the server or its tools. OMP-specific; imported tool configs ignore it.";
       auth = mkOpt mcpAuthType "Persisted auth strategy for this server.";
       oauth = mkOpt mcpOauthType "Explicit OAuth client settings used during /mcp reauth or initial connect.";
     };

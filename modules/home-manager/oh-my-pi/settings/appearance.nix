@@ -10,6 +10,7 @@ let
 
   statusLineSegments = [
     "pi"
+    "status"
     "model"
     "mode"
     "path"
@@ -33,6 +34,8 @@ let
     "session_name"
     "usage"
     "collab"
+    "stream"
+    "vim"
   ];
 in
 {
@@ -167,6 +170,7 @@ in
     collapseCompacted = mkOpt t.bool "Collapse pre-compaction history behind the summary divider on the live transcript (disable to keep the full transcript inline).";
     hideToolActivity = mkOpt t.bool "Hide model-initiated tool calls and results from the transcript.";
     showTurnTime = mkOpt t.bool "Show the total prompt-to-yield time (including tool calls) on assistant message usage rows.";
+    subagentLivePreview = mkOpt t.bool "Show each pinned subagent's current (or most recent) tool call beneath its row.";
     pinnedAgents =
       mkOpt
         (t.enum [

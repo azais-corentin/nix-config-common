@@ -67,11 +67,28 @@ in
     color = mkOpt t.str "Optional tag color.";
   })) "Custom model tags keyed by model id.";
 
-  auth = mkSection "Auth broker — credentials proxied through a remote omp auth-broker host." {
+  auth = mkSection "Credential routing: remote auth broker and per-account selection policies." {
     broker = mkSection "Remote auth-broker connection." {
       url = mkOpt t.str "Auth-broker URL (env OMP_AUTH_BROKER_URL takes precedence).";
       token = mkOpt t.str "Auth-broker bearer token (env OMP_AUTH_BROKER_TOKEN takes precedence).";
     };
+    accountPolicies = mkOpt (t.listOf (subType {
+      provider = lib.mkOption {
+        type = t.strMatching "[^[:space:]](.*[^[:space:]])?";
+        description = "Provider id the policy applies to (non-empty, no surrounding whitespace).";
+      };
+      account = lib.mkOption {
+        type = subType {
+          email = mkOpt t.nonEmptyStr "Account email.";
+          accountId = mkOpt t.nonEmptyStr "Provider account id.";
+          projectId = mkOpt t.nonEmptyStr "Provider project id.";
+          orgId = mkOpt t.nonEmptyStr "Organization/workspace qualifier; not a base identity by itself.";
+        };
+        description = "Selector identifying the stored account; needs at least one of email, accountId or projectId.";
+      };
+      priority = mkOpt num "Higher values win after hard, plan, reserve, hot-window and measured-usage safety checks.";
+      reservePct = mkOpt (t.numbers.between 0 100) "Protected remaining quota percentage for this account (0-100).";
+    })) "Per-account priority and quota-reserve policies for multi-account providers.";
   };
 
   power = mkSection "macOS sleep prevention (caffeinate); no-op on other platforms." {

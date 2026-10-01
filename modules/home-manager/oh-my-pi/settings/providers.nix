@@ -1,6 +1,7 @@
-# Providers settings: secret handling, per-provider request behaviour, local
-# tiny-model runtime, reader/fetch backend, append-only context, Exa, SearXNG,
-# local TTS voice, live voice and the commit changelog knobs.
+# Providers settings: secret handling, telemetry export, per-provider request
+# behaviour, local tiny-model runtime, reader/fetch backend, append-only
+# context, Exa, SearXNG, saved rate-limit resets, local TTS voice, live voice
+# and the commit changelog knobs.
 { lib, helpers }:
 let
   inherit (helpers) mkOpt mkSection num;
@@ -36,6 +37,10 @@ in
 {
   secrets = mkSection "Secret handling." {
     enabled = mkOpt t.bool "Obfuscate secrets before sending to AI providers.";
+  };
+
+  telemetry = mkSection "Telemetry export." {
+    otlpExportEnabled = mkOpt t.bool "Allow omp to export traces, logs and metrics to OTEL_* endpoints (takes effect on the next launch).";
   };
 
   providers = mkSection "Provider selection for built-in tools." {
@@ -127,8 +132,24 @@ in
         ])
         "Prompt-cache retention forwarded to providers that support it (Anthropic, Bedrock, OpenRouter, OpenAI): auto = provider default, short = 5m, long = 1h, none = disable caching and cache-affinity routing.";
     webSearchTimeoutSeconds = mkOpt num "Hard timeout in seconds for each provider's search transport before web_search advances to the next fallback.";
+    cacheWarming =
+      mkOpt
+        (t.enum [
+          "off"
+          "streaming"
+          "idle"
+        ])
+        "Re-send the last request with a one-token output budget shortly before its prompt-cache entry expires.";
+    openaiLiveSteering = mkOpt t.bool "Deliver messages typed while a GPT-6 response streams into that response over the Codex WebSocket instead of waiting for the next tool boundary.";
     anthropic = mkSection "Anthropic-specific provider behaviour." {
       serverSideFallback = mkOpt t.bool "Retry safety-classifier-blocked Claude Fable 5 / Mythos 5 requests on Claude Opus 4.8 server-side (beta; opt-in).";
+      slowMode =
+        mkOpt
+          (t.enum [
+            "off"
+            "auto"
+          ])
+          "Anthropic subscription slow mode: auto switches to the low-priority lane when a Claude subscription hits its 5-hour limit and Anthropic offers it (no settings-panel UI; /slow toggles it).";
     };
     "ollama-cloud" = mkSection "Ollama Cloud provider limits." {
       maxConcurrency = mkOpt num "Max concurrent Ollama Cloud subagent runs per process (0 disables the limit).";
@@ -188,6 +209,20 @@ in
     minBlockedMinutes = mkOpt num "Minimum blocked minutes before redeeming a reset.";
     keepCredits = mkOpt num "Credits to keep in reserve when redeeming.";
     salvageHorizonHours = mkOpt num "Spend a saved Codex reset automatically when it would otherwise expire within this many hours and either chat window has meaningful usage to restore (0 disables expiry salvage).";
+  };
+
+  claudeResets = mkSection "Claude saved rate-limit reset auto-redeem." {
+    autoRedeem =
+      mkOpt
+        (t.enum [
+          "unset"
+          "yes"
+          "no"
+        ])
+        "Spend eligible Claude Cedar or Juniper resets automatically: unset asks before the first spend, yes spends without prompting, no disables blocked recovery and expiry salvage.";
+    minBlockedMinutes = mkOpt num "Only auto-redeem when the natural unblock is at least this many minutes away.";
+    keepCredits = mkOpt num "Keep at least this many Claude resets banked (0 allows the last eligible reset to be spent); also applies to expiry salvage.";
+    salvageHorizonHours = mkOpt num "Use a server-selected Cedar reset within this many hours of expiry when its covered windows have meaningful usage to restore (0 disables salvage).";
   };
 
   tts = mkSection "Local TTS model/voice selection." {

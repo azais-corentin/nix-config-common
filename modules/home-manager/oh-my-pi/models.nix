@@ -26,6 +26,8 @@ let
     "google-generative-ai"
     "google-gemini-cli"
     "google-vertex"
+    "openrouter-decisions"
+    "typesafe"
   ];
   effortEnum = t.enum [
     "minimal"
@@ -126,12 +128,14 @@ let
     strictResponsesPairing = mkOpt t.bool "Enforce strict request/response message pairing (Responses API).";
     supportsImageDetailOriginal = mkOpt t.bool "Provider supports image detail: original.";
     supportsConfigurationUpdate = mkOpt t.bool "Provider supports Responses configuration-update requests.";
+    supportsSteering = mkOpt t.bool "Accept mid-response steering input over the Codex WebSocket transport (gates providers.openaiLiveSteering).";
     stripImageInput = mkOpt t.bool "Strip image parts from requests to this provider/model.";
     supportsContextManagement = mkOpt t.bool "Provider supports Anthropic context management (anthropic-messages).";
     supportsEagerToolInputStreaming = mkOpt t.bool "Allow Anthropic's per-tool eager_input_streaming flag.";
     allowAnthropicHeaderOverrides = mkOpt t.bool "Allow explicit Anthropic fingerprint headers to replace OAuth defaults on non-official endpoints.";
     requiresToolResultId = mkOpt t.bool "Tool results must carry the tool-use id (anthropic-messages).";
     replayUnsignedThinking = mkOpt t.bool "Replay unsigned thinking blocks (anthropic-messages).";
+    bedrockMessagesApi = mkOpt t.bool "Fit anthropic-messages requests to Bedrock's Anthropic Messages API (drops tool strict and non-conforming metadata.user_id).";
     promptCacheMode = mkOpt (t.enum [
       "none"
       "automatic"
@@ -200,6 +204,12 @@ let
     cacheWrite = mkOpt num "Cache-write token cost.";
   };
 
+  # Configured prompt-cache lifetimes (seconds), applied over catalog policy.
+  promptCacheType = subType {
+    short = mkOpt num "Short prompt-cache lifetime in seconds.";
+    long = mkOpt num "Long prompt-cache lifetime in seconds.";
+  };
+
   # Fields shared by model definitions and overrides.
   sharedModelOptions = costType: {
     name = mkOpt t.str "Display name.";
@@ -218,8 +228,10 @@ let
       "glm5"
     ]) "Tokenizer used for local token counting.";
     cost = mkOpt costType "Per-token cost.";
+    promptCache = mkOpt promptCacheType "Prompt-cache lifetimes; a same-id definition without one reverts to catalog policy.";
     premiumMultiplier = mkOpt num "Premium request multiplier.";
     contextWindow = mkOpt num "Context window size in tokens.";
+    maxContextWindow = mkOpt t.ints.positive "Extended context window used when extended context is enabled (registry-only; must be no smaller than contextWindow).";
     maxTokens = mkOpt num "Maximum output tokens.";
     headers = mkOpt (t.attrsOf t.str) "Extra request headers.";
     compat = mkOpt compatType "OpenAI-compat quirk flags.";
@@ -267,6 +279,7 @@ let
           "openai-models-list"
           "proxy"
           "litellm"
+          "apple-foundation-models"
         ];
         description = "Model discovery mechanism.";
       };

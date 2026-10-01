@@ -9,18 +9,21 @@ let
     num
     ;
   t = lib.types;
+
+  editMode = t.enum [
+    "apply_patch"
+    "hashline"
+    "patch"
+    "replace"
+    "sloppy"
+  ];
 in
 {
   readLineNumbers = mkOpt t.bool "Prepend line numbers to read tool output by default.";
 
   edit = mkSection "Edit tool." {
-    mode = mkOpt (t.enum [
-      "apply_patch"
-      "hashline"
-      "patch"
-      "replace"
-      "sloppy"
-    ]) "Edit tool variant.";
+    mode = mkOpt editMode "Edit tool variant.";
+    modelVariants = mkOpt (t.attrsOf editMode) "Per-model edit variant: case-insensitive model-selector substring → edit mode (config-file only). omp takes the first matching entry, and Nix renders attrsets key-sorted, so overlapping patterns resolve alphabetically.";
     fuzzyMatch = mkOpt t.bool "Accept high-confidence fuzzy matches for whitespace differences.";
     fuzzyThreshold = mkOpt num "Similarity threshold for fuzzy matches.";
     streamingAbort = mkOpt t.bool "Abort streaming edit tool calls when patch preview fails.";
@@ -124,6 +127,7 @@ in
   eval = mkSection "Eval tool backends." {
     py = mkOpt t.bool "Allow the eval tool to dispatch to the IPython kernel.";
     js = mkOpt t.bool "Allow the eval tool to dispatch to the in-process JavaScript runtime.";
+    autoProvision = mkOpt t.bool "Automatically create the managed JavaScript eval package environment on first install.";
     tools = mkSection "Eval-defined tools." {
       enabled = mkOpt t.bool "Let eval cells define tools (@tool in Python, tool(fn) in JS) that task, agent() and workpool() subagents can call.";
     };

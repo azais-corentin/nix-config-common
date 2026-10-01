@@ -83,7 +83,14 @@ in
   };
 
   find = mkSection "Find tool (semantic grep)." {
-    enabled = mkOpt t.bool "Enable the find tool: natural-language search for files and line ranges, judged by the judge model role (upstream default: disabled).";
+    enabled =
+      mkOpt
+        (t.enum [
+          "auto"
+          "on"
+          "off"
+        ])
+        "Enable the find tool: natural-language search for files and line ranges, judged by the judge model role. auto (upstream default) enables it only when the judge role resolves to a native TypeSafe jev model.";
   };
 
   astGrep = mkSection "AST grep tool." {
@@ -92,10 +99,6 @@ in
 
   astEdit = mkSection "AST edit tool." {
     enabled = mkOpt t.bool "Enable the ast_edit tool for structural AST rewrites.";
-  };
-
-  irc = mkSection "Agent-to-agent messaging (hub)." {
-    timeoutMs = mkOpt num "Default timeout for hub message waits (and send await:true) in ms (0 disables).";
   };
 
   debug = mkSection "Debug tool." {
@@ -116,6 +119,18 @@ in
 
   checkpoint = mkSection "Checkpoint/rewind tools." {
     enabled = mkOpt t.bool "Enable the checkpoint and rewind tools for context checkpointing.";
+  };
+
+  ida = mkSection "IDA Pro (idalib) integration." {
+    enabled = mkOpt t.bool "Open executables read with the read tool in IDA Pro and enable the ida tool; inert when no IDA install is found.";
+    installDir = mkOpt t.str "Directory containing libidalib, exported as IDADIR; empty auto-detects ($IDADIR, ida-config.json, standard install paths).";
+    python = mkOpt t.str "Python interpreter that can import ida_domain and idapro; empty auto-detects.";
+    maxOpen = mkOpt num "Most IDA databases open at once per project; opening another saves and closes the least recently used idle one.";
+    idleCloseSec = mkOpt num "Save and close IDA databases idle longer than this many seconds (0 = never); the exec namespace resets on reopen.";
+  };
+
+  ratchet = mkSection "Ratchet eval/hillclimb prelude." {
+    enabled = mkOpt t.bool "Enable the ratchet eval/hillclimb prelude (/ratchet turns it on for the current session).";
   };
 
   fetch = mkSection "URL fetching." {
@@ -149,6 +164,7 @@ in
     relayUrl = mkOpt t.str "omp browser relay endpoint (default http://127.0.0.1:9224).";
     freezeOnTurnEnd = mkOpt t.bool "Freeze OMP-owned headless browser tabs when a turn settles so animated pages stop burning CPU/GPU; tabs unfreeze on next use.";
     idleCloseSec = mkOpt num "Close OMP-owned headless browser tabs idle longer than this many seconds (0 = never); never applies to relay/CDP/spawned browsers.";
+    tern = mkOpt t.bool "Inside a Tern pane, open browser tabs as picture-in-pictures over omp's pane instead of headless Chromium (falls back to Chromium when no Tern window can host them; PI_BROWSER_TERN overrides).";
   };
 
   computer = mkSection "Computer-use tool (native desktop screenshots + input)." {
@@ -165,6 +181,7 @@ in
 
   mcp = mkSection "MCP runtime behaviour (server definitions live in mcp.json, not here)." {
     enableProjectConfig = mkOpt t.bool "Load .mcp.json/mcp.json from the project root.";
+    startupTimeoutMs = mkOpt num "Wait this many milliseconds for initial MCP tool discovery (0 waits until connections settle).";
     notifications = mkOpt t.bool "Inject MCP resource updates into the agent conversation.";
     notificationDebounceMs = mkOpt num "Debounce window for MCP resource update notifications.";
     renderMarkdownResults = mkOpt t.bool "Render non-JSON MCP text results as Markdown in the transcript.";

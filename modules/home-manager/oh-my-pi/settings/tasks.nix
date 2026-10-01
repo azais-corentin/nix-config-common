@@ -67,6 +67,8 @@ in
         ])
         "Ceiling for the task tool's per-spawn effort hint (upstream default: max, preserving the model's full range).";
     agentServiceTierOverrides = mkOpt (t.attrsOf t.str) "Per-agent service-tier overrides keyed by agent id (hidden upstream setting, no settings-panel UI).";
+    agentCompactionThresholdOverrides = mkOpt (t.attrsOf (t.either t.ints.positive (t.strMatching "[0-9]+(\\.[0-9]+)?%"))) "Per-agent compaction threshold keyed by exact agent name: a positive token count (90000) or a percentage in (0, 100] (\"80%\").";
+    speculativeLaunch = mkOpt t.bool "Start each batch subagent as soon as its tasks[] item finishes streaming instead of waiting for the whole task call (requires auto-allowed task approval and no extension tool lifecycle handlers).";
   };
 
   isolation = mkSection "Subagent/worktree isolation backend." {
@@ -113,6 +115,7 @@ in
     customDirectories = mkOpt (t.listOf t.str) "Additional skill directories to scan.";
     ignoredSkills = mkOpt (t.listOf t.str) "Skill names to ignore.";
     includeSkills = mkOpt (t.listOf t.str) "Skill names to force-include.";
+    registryUrl = mkOpt t.str "Skillshare registry used by omp skill to install, search and publish skills (https://host[:port]).";
   };
 
   commands = mkSection "External command discovery toggles." {
