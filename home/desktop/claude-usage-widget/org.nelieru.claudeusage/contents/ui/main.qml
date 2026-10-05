@@ -9,10 +9,12 @@ PlasmoidItem {
     id: root
 
     // Last good parse, sorted by provider then label:
-    //   [{ key, provider, providerName, label, title, panelLabel, email, orgName,
+    //   [{ key, provider, providerName, label, title, panelLabel, email, orgName, exhausted,
     //      limits: [{ id, title, windowId, usedFraction, remainingPct, resetsAt, status }] }]
     // `label` is the bare account name; `title` (popup, tooltip) and `panelLabel` (under
     // the panel bars) are qualified only as far as needed to tell accounts apart.
+    // `exhausted` is true when the 5h or 7d window is used up: the account is blocked, so
+    // every one of its bars turns red.
     property var accounts: []
     property double lastUpdated: 0
     property string lastError: ""
@@ -44,12 +46,73 @@ PlasmoidItem {
     readonly property int effectiveWidth: Math.max(minPanelWidth, Math.min(maxPanelWidth,
         dragWidth >= 0 ? dragWidth : Plasmoid.configuration.panelWidth))
 
-    function barColor(status, usedFraction) {
-        if (status === "exhausted" || usedFraction >= 1)
-            return Kirigami.Theme.negativeTextColor;
-        if (status === "warning" || usedFraction >= 0.9)
-            return Kirigami.Theme.neutralTextColor;
-        return Kirigami.Theme.positiveTextColor;
+    // Bar fill: solid green up to gradientStart, then green → yellow → orange → red at 100%.
+    // Fixed Breeze-derived colours rather than theme roles: the stylix scheme maps
+    // neutralTextColor to cyan. Stops are mixed in OKLCH because straight RGB/OKLab mixes
+    // between distant hues pass through desaturated olive and salmon.
+    readonly property real gradientStart: 0.8
+    readonly property var gradientHex: ["#27ae60", "#fdbc4b", "#f67400", "#e0362a"]
+    readonly property var gradientStops: gradientHex.map(hexToOklch)
+
+    function srgbToLinear(c) {
+        return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    }
+
+    function linearToSrgb(c) {
+        var v = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+        return Math.max(0, Math.min(1, v));
+    }
+
+    function hexToOklch(hex) {
+        var r = srgbToLinear(parseInt(hex.substr(1, 2), 16) / 255);
+        var g = srgbToLinear(parseInt(hex.substr(3, 2), 16) / 255);
+        var b = srgbToLinear(parseInt(hex.substr(5, 2), 16) / 255);
+        var l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+        var m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+        var s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+        var labA = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+        var labB = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+        return {
+            "L": 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+            "C": Math.hypot(labA, labB),
+            "h": Math.atan2(labB, labA)
+        };
+    }
+
+    function oklchToColor(L, C, h) {
+        var labA = C * Math.cos(h);
+        var labB = C * Math.sin(h);
+        var l = Math.pow(L + 0.3963377774 * labA + 0.2158037573 * labB, 3);
+        var m = Math.pow(L - 0.1055613458 * labA - 0.0638541728 * labB, 3);
+        var s = Math.pow(L - 0.0894841775 * labA - 1.2914855480 * labB, 3);
+        return Qt.rgba(linearToSrgb(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+                       linearToSrgb(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+                       linearToSrgb(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s),
+                       1);
+    }
+
+    function barColor(usedFraction, exhausted) {
+        var stops = gradientStops;
+        var last = stops.length - 1;
+        if (exhausted)
+            return gradientHex[last];
+        var t = (usedFraction - gradientStart) / (1 - gradientStart);
+        t = Math.max(0, Math.min(1, t)) * last;
+        var i = Math.min(Math.floor(t), last - 1);
+        var f = t - i;
+        var a = stops[i];
+        var b = stops[i + 1];
+        // Shortest way round the hue circle.
+        var dh = b.h - a.h;
+        if (dh > Math.PI)
+            dh -= 2 * Math.PI;
+        else if (dh < -Math.PI)
+            dh += 2 * Math.PI;
+        return oklchToColor(a.L + (b.L - a.L) * f, a.C + (b.C - a.C) * f, a.h + dh * f);
+    }
+
+    function isExhausted(limit) {
+        return limit !== null && (limit.status === "exhausted" || limit.usedFraction >= 1);
     }
 
     function formatEta(resetsAt, now) {
@@ -192,6 +255,7 @@ PlasmoidItem {
         for (var k = 0; k < out.length; k++) {
             out[k].title = accountTitle(out[k], multiProvider, perProvider);
             out[k].panelLabel = accountPanelLabel(out[k], multiProvider, perProvider);
+            out[k].exhausted = panelLimits(out[k]).some(isExhausted);
         }
         // Stable ordering: omp's report order is not guaranteed, and usage-based sorting
         // would make columns swap places between polls.
@@ -263,6 +327,28 @@ PlasmoidItem {
         return lines.join("\n");
     }
 
+    // Rounded usage bar shared by panel and popup. Track keyed off the text color so it
+    // stays visible on both light and dark backgrounds (background-derived tracks vanish
+    // against the panel).
+    component UsageBar: Rectangle {
+        id: bar
+        property real fraction: 0
+        property color fillColor: Kirigami.Theme.disabledTextColor
+        radius: height / 2
+        color: Qt.rgba(Kirigami.Theme.textColor.r,
+                       Kirigami.Theme.textColor.g,
+                       Kirigami.Theme.textColor.b, 0.25)
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            height: parent.height
+            width: parent.width * Math.max(0, Math.min(1, bar.fraction))
+            radius: parent.radius
+            color: bar.fillColor
+        }
+    }
+
     compactRepresentation: MouseArea {
         id: compactRoot
         // One entry per account; a single null column keeps the placeholder bars
@@ -308,28 +394,14 @@ PlasmoidItem {
                         model: accountColumn.account
                             ? root.panelLimits(accountColumn.account)
                             : [null, null]
-                        delegate: Rectangle {
+                        delegate: UsageBar {
                             required property var modelData
                             Layout.fillWidth: true
                             Layout.preferredHeight: 5
-                            radius: height / 2
-                            // Track keyed off the panel text color so it stays visible
-                            // on both light and dark panels (background-derived tracks
-                            // vanish against the panel).
-                            color: Qt.rgba(Kirigami.Theme.textColor.r,
-                                           Kirigami.Theme.textColor.g,
-                                           Kirigami.Theme.textColor.b, 0.25)
-
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                height: parent.height
-                                width: parent.width * (modelData ? modelData.usedFraction : 0)
-                                radius: parent.radius
-                                color: modelData
-                                    ? root.barColor(modelData.status, modelData.usedFraction)
-                                    : Kirigami.Theme.disabledTextColor
-                            }
+                            fraction: modelData ? modelData.usedFraction : 0
+                            fillColor: modelData
+                                ? root.barColor(modelData.usedFraction, accountColumn.account.exhausted)
+                                : Kirigami.Theme.disabledTextColor
                         }
                     }
 
@@ -492,11 +564,11 @@ PlasmoidItem {
                                 }
                             }
 
-                            PlasmaComponents3.ProgressBar {
+                            UsageBar {
                                 Layout.fillWidth: true
-                                from: 0
-                                to: 1
-                                value: modelData.usedFraction
+                                Layout.preferredHeight: 6
+                                fraction: modelData.usedFraction
+                                fillColor: root.barColor(modelData.usedFraction, accountSection.modelData.exhausted)
                             }
 
                             PlasmaComponents3.Label {
