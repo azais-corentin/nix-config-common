@@ -4,7 +4,8 @@
 # disposable detached worktree under $XDG_CACHE_HOME/omp-at. The toolchain is
 # that version's own Nix dev shell; JS deps reinstall only when the tree
 # changes; Rust natives rebuild only when their inputs change (content-keyed,
-# shared across worktrees, incremental cargo target).
+# shared across worktrees, incremental cargo target). Disk use is bounded:
+# every run prunes least-recently-used worktrees and whatever only they used.
 
 repo=${OMP_AT_REPO:-$HOME/dev/oh-my-pi}
 remote=https://github.com/can1357/oh-my-pi.git
@@ -40,7 +41,15 @@ examples:
   omp-at main --resume
   omp-at main+14456+14470 -p 'hello'
 
---clean removes every omp-at worktree, refs/omp-at/* and all build caches.
+disk:
+  Each run keeps the $OMP_AT_KEEP (default 5) most recently used worktrees
+  that were used within $OMP_AT_KEEP_DAYS (default 14) days, plus any with a
+  running session; it removes the rest, then the refs and build caches no kept
+  worktree uses. The shared cargo target is reset before a build once it
+  exceeds $OMP_AT_CARGO_MAX_GIB (default 10) GiB.
+
+--clean removes every worktree, refs/omp-at/* and build cache that no running
+session uses.
 EOF
 }
 
@@ -52,21 +61,77 @@ lock() {
   flock 9
 }
 
+# A running session holds a shared lock on its worktree's use stamp for its
+# whole lifetime (fd 8, inherited across exec), so pruning never removes it.
+in_use() { [ -e "$1" ] && ! flock -n -x "$1" true; }
+
+# "<last use epoch> <worktree>" per worktree, most recently used first.
+list_worktrees() {
+  local wt gd
+  for wt in "$cache"/worktrees/*; do
+    [ -e "$wt" ] || continue
+    gd=
+    if [ -f "$wt/.git" ]; then
+      gd=$(git -C "$wt" rev-parse --absolute-git-dir 2>/dev/null) || gd=
+    fi
+    printf '%s %s\n' "$(stat -c %Y "$gd/omp-at-used" 2>/dev/null || echo 0)" "$wt"
+  done | sort -rn
+}
+
+# Keep the $1 most recently used worktrees that were used within $2 days, plus
+# any still running; remove the others, then the refs/omp-at/* entries, natives
+# and dev shells (with their GC roots) that no kept worktree uses.
+prune() {
+  local max=$1 days=$2 now used wt gd key slug dir kept=0 removed=0
+  local -a parts
+  local -A refs=() natives=() shells=()
+  now=$(date +%s)
+  while read -r used wt; do
+    gd=
+    if [ -f "$wt/.git" ]; then
+      gd=$(git -C "$wt" rev-parse --absolute-git-dir 2>/dev/null) || gd=
+    fi
+    if [ -n "$gd" ] && { in_use "$gd/omp-at-used" ||
+      { [ "$kept" -lt "$max" ] && [ $((now - used)) -le $((days * 86400)) ]; }; }; then
+      kept=$((kept + 1))
+      IFS=+ read -r -a parts <<<"${wt##*/}"
+      for slug in "${parts[@]}"; do
+        refs[$slug]=1
+      done
+      key=$(cat "$gd/omp-at-natives" 2>/dev/null || true)
+      if [ -n "$key" ]; then natives[$key]=1; fi
+      key=$(cat "$gd/omp-at-devshell" 2>/dev/null || true)
+      if [ -n "$key" ]; then shells[$key]=1; fi
+    else
+      git -C "$repo" worktree remove --force "$wt" >/dev/null 2>&1 || rm -rf "$wt"
+      removed=$((removed + 1))
+    fi
+  done < <(list_worktrees)
+  if [ "$removed" -gt 0 ]; then
+    git -C "$repo" worktree prune
+    log "pruned $removed unused worktree(s)"
+  fi
+  git -C "$repo" for-each-ref --format='%(refname:lstrip=2)' refs/omp-at/ |
+    while read -r slug; do
+      [ -n "${refs[$slug]-}" ] || printf 'delete refs/omp-at/%s\n' "$slug"
+    done | git -C "$repo" update-ref --stdin
+  for dir in "$cache"/natives/*; do
+    if [ -e "$dir" ] && [ -z "${natives[${dir##*/}]-}" ]; then rm -rf "$dir"; fi
+  done
+  for dir in "$cache"/devshell/*; do
+    if [ -e "$dir" ] && [ -z "${shells[${dir##*/}]-}" ]; then rm -rf "$dir"; fi
+  done
+}
+
 clean() {
   lock
   if have_repo; then
-    local wt
-    for wt in "$cache"/worktrees/*; do
-      if [ -d "$wt" ]; then
-        git -C "$repo" worktree remove --force "$wt" >&2 || rm -rf "$wt"
-      fi
-    done
-    git -C "$repo" worktree prune
-    git -C "$repo" for-each-ref --format='delete %(refname)' refs/omp-at/ |
-      git -C "$repo" update-ref --stdin
+    prune 0 0
+  else
+    rm -rf "$cache/worktrees" "$cache/natives" "$cache/devshell"
   fi
-  rm -rf "$cache/worktrees" "$cache/natives" "$cache/devshell" "$cache/cargo-target"
-  log "removed worktrees, refs/omp-at/* and caches"
+  rm -rf "$cache/cargo-target"
+  log "removed worktrees, refs/omp-at/* and caches not used by a running session"
 }
 
 if [ $# -eq 0 ]; then
@@ -91,6 +156,12 @@ spec=$1
 shift
 
 have_repo || die "no oh-my-pi clone at $repo (set OMP_AT_REPO, or: git clone $remote $repo)"
+keep=${OMP_AT_KEEP:-5}
+keep_days=${OMP_AT_KEEP_DAYS:-14}
+cargo_max_gib=${OMP_AT_CARGO_MAX_GIB:-10}
+for n in "$keep" "$keep_days" "$cargo_max_gib"; do
+  [[ $n =~ ^[0-9]+$ ]] || die "OMP_AT_KEEP, OMP_AT_KEEP_DAYS and OMP_AT_CARGO_MAX_GIB must be whole numbers"
+done
 case $spec in
   +* | *+ | *++*) die "empty selector in spec: $spec" ;;
 esac
@@ -151,6 +222,10 @@ if ! { [ -f "$wt/.git" ] && git -C "$wt" rev-parse -q --verify HEAD >/dev/null; 
 fi
 gitdir=$(git -C "$wt" rev-parse --absolute-git-dir)
 stamp() { cat "$gitdir/omp-at-$1" 2>/dev/null || true; }
+# Mark use (LRU order for prune) and hold the session's shared lock on it.
+touch "$gitdir/omp-at-used"
+exec 8<"$gitdir/omp-at-used"
+flock -s 8
 
 inputs="${commits[*]}"
 if [ "$(stamp inputs)" != "$inputs" ]; then
@@ -204,6 +279,7 @@ if [ ! -x "$bun_path" ]; then
   die "stale dev shell cache $shell_key removed; re-run"
 fi
 in_shell() { nix develop "$shell_dir/profile" --command "$@"; }
+printf '%s\n' "$shell_key" >"$gitdir/omp-at-devshell"
 
 tree=$(git -C "$wt" rev-parse 'HEAD^{tree}')
 if [ "$(stamp installed)" != "$tree" ]; then
@@ -226,19 +302,27 @@ if [ "$(stamp natives)" != "$natives_key" ]; then
     done
   else
     log "building natives $natives_key"
-    (cd "$wt" && in_shell env CARGO_TARGET_DIR="$cache/cargo-target" bun --cwd=packages/natives run build) >&2
+    cargo_target=$cache/cargo-target
+    if [ -d "$cargo_target" ] && [ "$(du -s --block-size=1G "$cargo_target" | cut -f1)" -gt "$cargo_max_gib" ]; then
+      log "cargo target over $cargo_max_gib GiB, starting it fresh"
+      rm -rf "$cargo_target"
+    fi
+    (cd "$wt" && in_shell env CARGO_TARGET_DIR="$cargo_target" bun --cwd=packages/natives run build) >&2
     rm -rf "$natives_dir.tmp"
     mkdir -p "$natives_dir.tmp"
-    cp "$native_dest"/*.node "$natives_dir.tmp/"
+    for f in "$native_dest"/*.node; do
+      ln -f "$f" "$natives_dir.tmp/" 2>/dev/null || cp "$f" "$natives_dir.tmp/"
+    done
     rm -rf "$natives_dir"
     mv "$natives_dir.tmp" "$natives_dir"
   fi
   printf '%s\n' "$natives_key" >"$gitdir/omp-at-natives"
 fi
 
-# Release the lock, then hand over: only bun's own bin dir goes on PATH (the
-# dev launcher execs `bun` from PATH); the rest of the dev shell stays out of
-# the agent's tool environment.
+# Prune, release the lock, then hand over: only bun's own bin dir goes on PATH
+# (the dev launcher execs `bun` from PATH); the rest of the dev shell stays out
+# of the agent's tool environment. fd 8 stays open: it marks the session live.
+prune "$keep" "$keep_days"
 exec 9>&-
 export PATH="${bun_path%/*}:$PATH"
 export OMP_NATIVE_LIBRARY_PATH="${OMP_NATIVE_LIBRARY_PATH:-$native_libs}"
