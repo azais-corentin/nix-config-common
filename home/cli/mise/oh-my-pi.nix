@@ -94,7 +94,11 @@ in
   # plus its bin/ on PATH), so a bare `uv pip install X` inside a cell targets
   # the managed env. The activation below uses the store path directly and does
   # not depend on this.
-  home.packages = [ pkgs.uv ];
+  # omp-at runs any oh-my-pi git version from source (see ./omp-at.nix).
+  home.packages = [
+    pkgs.uv
+    (import ./omp-at.nix pkgs)
+  ];
 
   home.activation.ompPythonEnv = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     # Writable per-profile venv (so %pip / uv pip keep working) built on the
