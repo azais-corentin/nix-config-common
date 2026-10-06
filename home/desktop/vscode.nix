@@ -54,6 +54,7 @@
         "telemetry.telemetryLevel" = "off";
         "update.mode" = "none";
         "lldb.suppressUpdateNotifications" = true;
+        "mise.checkForNewMiseVersion" = false;
         "scm.defaultViewMode" = "tree";
         "scm.repositories.selectionMode" = "multiple";
         "json.schemaDownload.trustedDomains" = {
