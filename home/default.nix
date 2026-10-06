@@ -4,6 +4,7 @@
   cli = {
     bat = ./cli/bat.nix;
     btop = ./cli/btop.nix;
+    claude-usage-estimator = ./cli/claude-usage-estimator.nix;
     codex = ./cli/mise/codex.nix;
     direnv = ./cli/direnv.nix;
     fish = ./cli/fish.nix;

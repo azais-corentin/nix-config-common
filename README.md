@@ -39,6 +39,7 @@ A consumer that imports the shared features **MUST**:
    ```
 
 2. **Declare the flake inputs the shared features reference**:
+   - `claude-usage-estimator` — `url = "git+https://github.com/azais-corentin/claude-usage-estimator"` (private: git+https uses git's credentials), `inputs.nixpkgs.follows = "nixpkgs"` (used by `homeFeatures.cli.claude-usage-estimator`).
    - `firefox-addons` — `url = "gitlab:rycee/nur-expressions?dir=pkgs/firefox-addons"`, `inputs.nixpkgs.follows = "nixpkgs"` (used by `homeFeatures.desktop.firefox`).
    - `nix-vscode-extensions` — `url = "github:nix-community/nix-vscode-extensions"`, `inputs.nixpkgs.follows = "nixpkgs"` (used by `homeFeatures.desktop.vscode`).
 
