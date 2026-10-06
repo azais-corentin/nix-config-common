@@ -8,10 +8,13 @@
       <default>108</default>
     </entry>
     <entry name="pollIntervalSeconds" type="Int">
-      <default>70</default>
+      <default>30</default>
     </entry>
-    <entry name="command" type="String">
-      <default>$HOME/.local/share/mise/shims/omp usage --json</default>
+    <entry name="estimator" type="String">
+      <default>claude-usage-estimator</default>
+    </entry>
+    <entry name="server" type="String">
+      <default></default>
     </entry>
   </group>
 </kcfg>

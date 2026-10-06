@@ -1,12 +1,12 @@
 {
   "KPlugin": {
     "Id": "org.nelieru.claudeusage",
-    "Name": "AI Usage",
-    "Description": "Per-account Anthropic Claude and OpenAI Codex subscription usage via oh-my-pi",
+    "Name": "Claude Usage",
+    "Description": "Per-account Claude usage forecasts from claude-usage-estimator",
     "Icon": "office-chart-bar",
     "Authors": [{ "Name": "nelieru" }],
     "Category": "System Information",
-    "Version": "1.4.0",
+    "Version": "2.0.0",
     "License": "MIT"
   },
   "KPackageStructure": "Plasma/Applet",

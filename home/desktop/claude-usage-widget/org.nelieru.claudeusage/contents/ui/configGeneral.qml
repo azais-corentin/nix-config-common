@@ -7,7 +7,8 @@ import org.kde.kirigami as Kirigami
 KCM.SimpleKCM {
     property alias cfg_pollIntervalSeconds: pollSpin.value
     property alias cfg_panelWidth: widthSpin.value
-    property alias cfg_command: commandField.text
+    property alias cfg_estimator: estimatorField.text
+    property alias cfg_server: serverField.text
 
     Kirigami.FormLayout {
         QQC2.SpinBox {
@@ -27,10 +28,17 @@ KCM.SimpleKCM {
         }
 
         QQC2.TextField {
-            id: commandField
-            Kirigami.FormData.label: "Usage command:"
+            id: estimatorField
+            Kirigami.FormData.label: "Estimator:"
             Layout.fillWidth: true
-            placeholderText: "$HOME/.local/share/mise/shims/omp usage --json"
+            placeholderText: "claude-usage-estimator"
+        }
+
+        QQC2.TextField {
+            id: serverField
+            Kirigami.FormData.label: "Server URL:"
+            Layout.fillWidth: true
+            placeholderText: "$CLAUDE_USAGE_SERVER, else http://vega:7781"
         }
     }
 }
