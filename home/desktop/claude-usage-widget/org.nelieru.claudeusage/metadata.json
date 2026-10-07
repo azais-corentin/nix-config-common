@@ -1,12 +1,12 @@
 {
   "KPlugin": {
     "Id": "org.nelieru.claudeusage",
-    "Name": "Claude Usage",
-    "Description": "Pooled Claude usage forecasts from claude-usage-estimator",
+    "Name": "AI Usage",
+    "Description": "Pooled Claude and OpenCode Go usage forecasts from claude-usage-estimator",
     "Icon": "office-chart-bar",
     "Authors": [{ "Name": "nelieru" }],
     "Category": "System Information",
-    "Version": "3.0.0",
+    "Version": "4.0.0",
     "License": "MIT"
   },
   "KPackageStructure": "Plasma/Applet",

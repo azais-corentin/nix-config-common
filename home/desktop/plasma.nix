@@ -180,7 +180,7 @@
         programs.plasma.shortcuts.kwin."Window to Desktop 3" = "Meta+Alt+\"";
         programs.plasma.shortcuts.kwin."Window to Desktop 4" = "Meta+Alt+'";
 
-        # Claude usage plasmoid (reads the claude-usage-estimator daemon); installed on every
+        # AI usage plasmoid (Claude and OpenCode Go, from the claude-usage-estimator daemon); installed on every
         # Plasma host and pinned into the shared panel below. Source vendored at ./claude-usage-widget.
         home.packages = [ (pkgs.callPackage ./claude-usage-widget { }) ];
 
