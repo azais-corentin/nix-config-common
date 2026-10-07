@@ -8,14 +8,16 @@ import org.kde.kirigami as Kirigami
 PlasmoidItem {
     id: root
 
-    // Last good snapshot from `claude-usage-estimator get --json`, one entry per account in
-    // the daemon's (account, limit) order:
-    //   [{ email, label, windows: { "5h": win, "7d": win }, block, verdict }]
+    // Last good snapshot from `claude-usage-estimator get --json`: the pooled Anthropic
+    // provider, or nothing before the first good poll:
+    //   [{ provider: "anthropic", label: "Claude", members: [account], windows: { "5h": win, "7d": win },
+    //      block, verdict }]
     // win: { kind, state, used, start, resetsAt, idle, forecast, verdict, runsOut,
-    //        outAt, outEarly, outLate }, times in unix ms, fractions in 0..1.
-    // block: the window that makes the account unusable soonest (exhausted now, else the
+    //        outAt, outEarly, outLate, out, of }, times in unix ms, fractions in 0..1; `used` is
+    //        the mean over the pool, `out` of the `of` accounts are out of this window now.
+    // block: the window that makes the pool unusable soonest (exhausted now, else the
     //        earliest median run-out): { from, until, kind, exhausted } or null.
-    property var accounts: []
+    property var pools: []
     // Daemon health carried by the snapshot.
     property double generatedAt: 0
     property string pollError: ""
@@ -165,7 +167,9 @@ PlasmoidItem {
             "runsOut": runsOut,
             "outAt": runsOut ? r(f.emptyAt.p50) : null,
             "outEarly": f ? r(f.emptyAt.p10) : null,
-            "outLate": f ? r(f.emptyAt.p90) : null
+            "outLate": f ? r(f.emptyAt.p90) : null,
+            "out": e.exhausted || 0,
+            "of": e.accounts || 1
         };
     }
 
@@ -192,40 +196,19 @@ PlasmoidItem {
         return [];
     }
 
-    function accountBlocks(account, now) {
-        return windowBlocks(account.windows["5h"], now).concat(windowBlocks(account.windows["7d"], now));
+    function poolBlocks(pool, now) {
+        return windowBlocks(pool.windows["5h"], now).concat(windowBlocks(pool.windows["7d"], now));
     }
 
-    /** Intervals where every account is predicted to be unusable. */
-    function allBlocked(accts, now) {
-        const per = accts.map(a => accountBlocks(a, now).filter(b => b.kind === "bad"));
-        if (per.length === 0)
-            return [];
-        const edges = [];
-        per.forEach(bs => bs.forEach(b => edges.push(Math.max(now, b.from), b.until)));
-        const pts = edges.filter((t, i) => edges.indexOf(t) === i).sort((p, q) => p - q);
-        const out = [];
-        for (let i = 0; i + 1 < pts.length; i++) {
-            const mid = (pts[i] + pts[i + 1]) / 2;
-            if (!per.every(bs => bs.some(b => b.from <= mid && mid < b.until)))
-                continue;
-            if (out.length > 0 && out[out.length - 1].until === pts[i])
-                out[out.length - 1].until = pts[i + 1];
-            else
-                out.push({ "from": pts[i], "until": pts[i + 1] });
-        }
-        return out;
-    }
-
-    /** The panel's countdown slot: null while the account is on track. */
-    function countdown(account, now) {
-        const b = account.block;
+    /** The panel's countdown slot: null while the pool is on track. */
+    function countdown(pool, now) {
+        const b = pool.block;
         if (b !== null && b.exhausted)
             return { "back": true, "value": duration(b.until - now), "window": b.kind, "verdict": "bad" };
         if (b !== null)
             return { "back": false, "value": duration(b.from - now), "window": b.kind, "verdict": "bad" };
-        if (account.verdict === "warn") {
-            const ws = [account.windows["5h"], account.windows["7d"]]
+        if (pool.verdict === "warn") {
+            const ws = [pool.windows["5h"], pool.windows["7d"]]
                 .filter(w => w && w.verdict === "warn")
                 .sort((x, y) => y.forecast.pEmpty - x.forecast.pEmpty);
             return { "back": false, "value": pct(ws[0].forecast.pEmpty) + " risk", "window": ws[0].kind, "verdict": "warn" };
@@ -233,25 +216,64 @@ PlasmoidItem {
         return null;
     }
 
-    /** The popup's per-account headline: [text, verdict]. */
-    function accountStatus(account, now) {
-        const b = account.block;
+    /** The popup's per-pool headline: [text, verdict]. */
+    function poolStatus(pool, now) {
+        const b = pool.block;
         if (b !== null && b.exhausted)
             return ["Out until " + longTime(b.until, now), "bad"];
         if (b !== null)
             return ["Runs out " + longTime(b.from, now), "bad"];
-        if (account.verdict === "warn")
+        if (pool.verdict === "warn")
             return ["Might run out", "warn"];
         return ["On track", "ok"];
     }
 
-    function availabilityHeadline(accts, now) {
-        const multi = accts.length > 1;
-        const all = allBlocked(accts, now);
-        if (all.length === 0)
-            return [multi ? "An account is available all week" : "Available all week", "ok"];
-        const spans = all.map(b => shortTime(b.from, now) + "–" + shortTime(b.until, now)).join(" and ");
-        return [(multi ? "No account available " : "Unavailable ") + spans, "bad"];
+    /** [text, verdict] over the union of the pools' predicted unavailable spans. */
+    function availabilityHeadline(pools, now) {
+        const bad = [];
+        for (const p of pools)
+            for (const b of poolBlocks(p, now))
+                if (b.kind === "bad" && b.until > Math.max(now, b.from))
+                    bad.push({ "from": Math.max(now, b.from), "until": b.until });
+        bad.sort((p, q) => p.from - q.from);
+        const spans = [];
+        for (const b of bad) {
+            if (spans.length > 0 && b.from <= spans[spans.length - 1].until)
+                spans[spans.length - 1].until = Math.max(spans[spans.length - 1].until, b.until);
+            else
+                spans.push(b);
+        }
+        if (spans.length === 0)
+            return ["Available all week", "ok"];
+        return ["Unavailable " + spans.map(b => shortTime(b.from, now) + "–" + shortTime(b.until, now)).join(" and "), "bad"];
+    }
+
+    /** Pooled usage history of one limit, [[t, used], …]: the members' sample series merged by
+     *  time, each member holding its latest `used` (0 before its first sample), averaged over
+     *  the window's `of` accounts. */
+    function poolPoints(pool, limit) {
+        const win = pool.windows[limit === "anthropic:5h" ? "5h" : "7d"];
+        if (!win)
+            return [];
+        const events = [];
+        pool.members.forEach((m, i) => {
+            for (const s of samples[m + "|" + limit] || [])
+                events.push([s[0], i, s[1]]);
+        });
+        events.sort((p, q) => p[0] - q[0]);
+        const latest = pool.members.map(() => 0);
+        let sum = 0;
+        const out = [];
+        for (const e of events) {
+            sum += e[2] - latest[e[1]];
+            latest[e[1]] = e[2];
+            const pt = [e[0], sum / win.of];
+            if (out.length > 0 && out[out.length - 1][0] === e[0])
+                out[out.length - 1] = pt;
+            else
+                out.push(pt);
+        }
+        return out;
     }
 
     /** Position on the popup timeline, 0..1: the next 24 h take the left half, the
@@ -279,14 +301,6 @@ PlasmoidItem {
                 ticks.push({ "t": t, "label": weekdays[new Date(t).getDay()] });
         }
         return ticks;
-    }
-
-    function accountLabel(email, all) {
-        const at = email.indexOf("@");
-        const local = at > 0 ? email.substring(0, at) : email;
-        // Fall back to the full address when two accounts share a local part.
-        const clash = all.some(o => o !== email && o.substring(0, o.indexOf("@")) === local);
-        return clash ? email : local;
     }
 
     function refresh() {
@@ -318,36 +332,35 @@ PlasmoidItem {
             lastError = "parse error: " + e.message;
             return;
         }
-        const ests = (snap && snap.estimates) || [];
-        const emails = [];
-        const byEmail = ({});
-        for (const e of ests) {
-            if (e.limit !== "anthropic:5h" && e.limit !== "anthropic:7d")
-                continue;
-            if (byEmail[e.account] === undefined) {
-                byEmail[e.account] = { "email": e.account, "windows": { "5h": null, "7d": null } };
-                emails.push(e.account);
-            }
-            const w = normalizeWindow(e);
-            byEmail[e.account].windows[w.kind] = w;
-        }
+        const p = (snap && snap.providers || []).find(x => x.provider === "anthropic");
         const now = snap.generatedAt || Date.now();
-        const out = emails.map(email => {
-            const a = byEmail[email];
-            a.label = accountLabel(email, emails);
-            const ws = [a.windows["5h"], a.windows["7d"]].filter(w => w !== null);
+        let out = [];
+        if (p) {
+            const pool = {
+                "provider": "anthropic",
+                "label": "Claude",
+                "members": (p.accounts || []).map(a => a.account),
+                "windows": { "5h": null, "7d": null }
+            };
+            for (const e of p.windows || []) {
+                if (e.limit !== "anthropic:5h" && e.limit !== "anthropic:7d")
+                    continue;
+                const w = normalizeWindow(e);
+                pool.windows[w.kind] = w;
+            }
+            const ws = [pool.windows["5h"], pool.windows["7d"]].filter(w => w !== null);
             const ex = ws.find(w => w.state === "exhausted" && w.resetsAt !== null);
             const outs = ws.filter(w => w.runsOut).sort((x, y) => x.outAt - y.outAt);
             if (ex)
-                a.block = { "from": now, "until": ex.resetsAt, "kind": ex.kind, "exhausted": true };
+                pool.block = { "from": now, "until": ex.resetsAt, "kind": ex.kind, "exhausted": true };
             else if (outs.length > 0)
-                a.block = { "from": outs[0].outAt, "until": outs[0].resetsAt, "kind": outs[0].kind, "exhausted": false };
+                pool.block = { "from": outs[0].outAt, "until": outs[0].resetsAt, "kind": outs[0].kind, "exhausted": false };
             else
-                a.block = null;
-            a.verdict = ws.some(w => w.verdict === "bad") ? "bad" : (ws.some(w => w.verdict === "warn") ? "warn" : "ok");
-            return a;
-        });
-        accounts = out;
+                pool.block = null;
+            pool.verdict = ws.some(w => w.verdict === "bad") ? "bad" : (ws.some(w => w.verdict === "warn") ? "warn" : "ok");
+            out = [pool];
+        }
+        pools = out;
         generatedAt = snap.generatedAt || 0;
         pollError = snap.pollError || "";
         historyError = snap.historyError || "";
@@ -425,7 +438,7 @@ PlasmoidItem {
     toolTipMainText: "Claude usage"
     toolTipTextFormat: Text.StyledText
     toolTipSubText: {
-        if (accounts.length === 0)
+        if (pools.length === 0)
             return lastError !== "" ? lastError : "No estimates from claude-usage-estimator";
         const now = nowMs;
         const span = (v, s) => "<font color=\"" + verdictColor(v) + "\">" + s + "</font>";
@@ -433,11 +446,9 @@ PlasmoidItem {
         const lines = [];
         if (unhealthy)
             lines.push(span("warn", stale ? "Estimates are " + duration(now - generatedAt) + " old" : "Daemon poll failed"));
-        for (const a of accounts) {
-            if (accounts.length > 1)
-                lines.push("<b>" + a.label + "</b>");
+        for (const p of pools) {
             for (const kind of ["5h", "7d"]) {
-                const w = a.windows[kind];
+                const w = p.windows[kind];
                 if (!w)
                     continue;
                 let tail;
@@ -454,7 +465,8 @@ PlasmoidItem {
                     tail = dim("not started");
                 else
                     tail = dim("no data");
-                lines.push((accounts.length > 1 ? "&nbsp;&nbsp;" : "") + kind + " " + pct(w.used) + ", " + tail);
+                const outs = w.of > 1 ? dim(", " + w.out + "/" + w.of + " out") : "";
+                lines.push(kind + " " + pct(w.used) + ", " + tail + outs);
             }
         }
         return lines.join("<br>");
@@ -784,9 +796,14 @@ PlasmoidItem {
                 Layout.minimumWidth: 0
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
-                text: cell.forecast
-                    ? root.pct(cell.forecast.pEmpty) + " risk, " + (cell.win.idle ? "idle" : cell.forecast.pace.toFixed(1) + "× pace")
-                    : ""
+                text: {
+                    const parts = [];
+                    if (cell.win && cell.win.of > 1)
+                        parts.push(cell.win.out + "/" + cell.win.of + " out");
+                    if (cell.forecast)
+                        parts.push(root.pct(cell.forecast.pEmpty) + " risk, " + (cell.win.idle ? "idle" : cell.forecast.pace.toFixed(1) + "× pace"));
+                    return parts.join(", ");
+                }
                 font: Kirigami.Theme.smallFont
                 color: root.dimTextColor
             }
@@ -800,12 +817,12 @@ PlasmoidItem {
 
     compactRepresentation: MouseArea {
         id: compactRoot
-        // One entry per account; a single null column keeps the placeholder bars
-        // visible before the first successful poll.
-        readonly property var columns: root.accounts.length > 0 ? root.accounts : [null]
+        // One entry per pool; a single null column keeps the placeholder bars visible
+        // before the first successful poll.
+        readonly property var columns: root.pools.length > 0 ? root.pools : [null]
 
-        // The configured width wins over any account-count heuristic: columns share
-        // whatever room it gives them, and the user widens the widget by dragging.
+        // The configured width wins: columns share whatever room it gives them, and the
+        // user widens the widget by dragging.
         Layout.minimumWidth: root.effectiveWidth
         Layout.preferredWidth: root.effectiveWidth
         onClicked: root.expanded = !root.expanded
@@ -819,28 +836,28 @@ PlasmoidItem {
             Repeater {
                 model: compactRoot.columns
                 delegate: RowLayout {
-                    id: accountColumn
+                    id: poolColumn
                     required property var modelData
-                    readonly property var account: modelData
-                    readonly property var cd: account ? root.countdown(account, root.nowMs) : null
+                    readonly property var pool: modelData
+                    readonly property var cd: pool ? root.countdown(pool, root.nowMs) : null
                     readonly property color cdColor: root.stale ? root.dimTextColor
                         : (cd ? root.verdictColor(cd.verdict) : Kirigami.Theme.textColor)
                     Layout.fillWidth: true
-                    // Every account gets the same slice of the panel; the name elides instead.
+                    // Every column gets the same slice of the panel; the name elides instead.
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
                     spacing: Kirigami.Units.smallSpacing * 2
 
                     // Name, with the countdown under it only when there is something to
-                    // count down to; a quiet account keeps just its name, centred.
+                    // count down to; a quiet pool keeps just its name, centred.
                     ColumnLayout {
                         Layout.fillHeight: true
-                        Layout.maximumWidth: accountColumn.width * 0.5
+                        Layout.maximumWidth: poolColumn.width * 0.5
                         // The countdown row cannot elide; cut it off rather than paint over
                         // the bars when the panel slot is narrow.
                         clip: true
                         spacing: 0
-                        visible: accountColumn.account !== null
+                        visible: poolColumn.pool !== null
                         // Layouts fill by default; the bars take the slack instead.
                         Layout.fillWidth: false
 
@@ -848,15 +865,15 @@ PlasmoidItem {
                         PlasmaComponents3.Label {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
-                            text: accountColumn.account ? accountColumn.account.label : ""
+                            text: poolColumn.pool ? poolColumn.pool.label : ""
                             font: Kirigami.Theme.smallFont
                             opacity: 0.8
                         }
                         Row {
-                            visible: accountColumn.cd !== null
+                            visible: poolColumn.cd !== null
                             spacing: Kirigami.Units.smallSpacing
                             PlasmaComponents3.Label {
-                                visible: accountColumn.cd !== null && accountColumn.cd.back
+                                visible: poolColumn.cd !== null && poolColumn.cd.back
                                 anchors.baseline: countdownValue.baseline
                                 text: "back"
                                 font: Kirigami.Theme.smallFont
@@ -864,13 +881,13 @@ PlasmoidItem {
                             }
                             PlasmaComponents3.Label {
                                 id: countdownValue
-                                text: accountColumn.cd ? accountColumn.cd.value : ""
+                                text: poolColumn.cd ? poolColumn.cd.value : ""
                                 font.bold: true
-                                color: accountColumn.cdColor
+                                color: poolColumn.cdColor
                             }
                             PlasmaComponents3.Label {
                                 anchors.baseline: countdownValue.baseline
-                                text: accountColumn.cd ? accountColumn.cd.window : ""
+                                text: poolColumn.cd ? poolColumn.cd.window : ""
                                 font: Kirigami.Theme.smallFont
                                 color: root.dimTextColor
                             }
@@ -888,13 +905,13 @@ PlasmoidItem {
                         ProjectionBar {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 5
-                            win: accountColumn.account ? accountColumn.account.windows["5h"] : null
+                            win: poolColumn.pool ? poolColumn.pool.windows["5h"] : null
                             dimmed: root.stale
                         }
                         ProjectionBar {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 5
-                            win: accountColumn.account ? accountColumn.account.windows["7d"] : null
+                            win: poolColumn.pool ? poolColumn.pool.windows["7d"] : null
                             dimmed: root.stale
                         }
                         Item { Layout.fillHeight: true }
@@ -987,8 +1004,7 @@ PlasmoidItem {
         readonly property real laneHeight: Math.round(Kirigami.Theme.smallFont.pointSize * 1.6)
         readonly property real rowHeight: laneHeight + Kirigami.Units.smallSpacing * 2
         readonly property real gutter: Kirigami.Units.gridUnit * 4.5
-        readonly property bool multi: root.accounts.length > 1
-        readonly property var headline: root.availabilityHeadline(root.accounts, root.nowMs)
+        readonly property var headline: root.availabilityHeadline(root.pools, root.nowMs)
 
         Kirigami.InlineMessage {
             Layout.fillWidth: true
@@ -1017,7 +1033,7 @@ PlasmoidItem {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
-            visible: root.accounts.length === 0 && root.lastError === ""
+            visible: root.pools.length === 0 && root.lastError === ""
             text: (root.loading && !root.everLoaded)
                 ? "Loading…"
                 : "No estimates yet. Check that the claude-usage-estimator daemon is running."
@@ -1025,23 +1041,22 @@ PlasmoidItem {
 
         PlasmaComponents3.Label {
             Layout.fillWidth: true
-            visible: root.accounts.length > 0
+            visible: root.pools.length > 0
             elide: Text.ElideRight
             text: popup.headline[0]
             font.weight: Font.DemiBold
             color: root.verdictColor(popup.headline[1])
         }
 
-        // Lockout timeline shared by every account, plus an "any" lane when there are
-        // several: red where no account is usable.
+        // Lockout timeline, one lane per pool.
         Item {
             id: timeline
             Layout.fillWidth: true
-            visible: root.accounts.length > 0
+            visible: root.pools.length > 0
             readonly property real laneX: popup.gutter
             readonly property real laneW: Math.max(0, width - laneX)
             readonly property real tickRow: Kirigami.Theme.smallFont.pointSize * 1.9
-            readonly property int rows: root.accounts.length + (popup.multi ? 1 : 0)
+            readonly property int rows: root.pools.length
             implicitHeight: tickRow + rows * popup.rowHeight
 
             Repeater {
@@ -1077,11 +1092,11 @@ PlasmoidItem {
             }
 
             Repeater {
-                model: root.accounts
+                model: root.pools
                 delegate: Item {
                     required property var modelData
                     required property int index
-                    readonly property var blocks: root.accountBlocks(modelData, root.nowMs)
+                    readonly property var blocks: root.poolBlocks(modelData, root.nowMs)
                     readonly property var main: blocks.filter(b => b.kind === "bad").sort((p, q) => p.from - q.from)[0]
                     y: timeline.tickRow + index * popup.rowHeight
                     width: timeline.width
@@ -1111,45 +1126,22 @@ PlasmoidItem {
                     }
                 }
             }
-
-            Item {
-                visible: popup.multi
-                y: timeline.tickRow + root.accounts.length * popup.rowHeight
-                width: timeline.width
-                height: popup.rowHeight
-
-                PlasmaComponents3.Label {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "any"
-                    font.weight: Font.DemiBold
-                    color: root.dimTextColor
-                }
-                Lane {
-                    x: timeline.laneX
-                    width: timeline.laneW
-                    height: popup.laneHeight
-                    anchors.verticalCenter: parent.verticalCenter
-                    blocks: root.allBlocked(root.accounts, root.nowMs).map(b => ({
-                        "early": b.from, "from": b.from, "until": b.until, "kind": "bad"
-                    }))
-                }
-            }
         }
 
         PlasmaComponents3.ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: root.accounts.length > 0
+            visible: root.pools.length > 0
 
             ListView {
-                model: root.accounts
+                model: root.pools
                 spacing: Kirigami.Units.smallSpacing
                 clip: true
 
                 delegate: ColumnLayout {
-                    id: accountSection
+                    id: poolSection
                     required property var modelData
-                    readonly property var status: root.accountStatus(modelData, root.nowMs)
+                    readonly property var status: root.poolStatus(modelData, root.nowMs)
                     width: ListView.view ? ListView.view.width : 0
                     spacing: Kirigami.Units.smallSpacing
 
@@ -1162,13 +1154,13 @@ PlasmoidItem {
                         PlasmaComponents3.Label {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
-                            text: accountSection.modelData.label
+                            text: poolSection.modelData.label
                             font.bold: true
                         }
                         PlasmaComponents3.Label {
-                            text: accountSection.status[0]
+                            text: poolSection.status[0]
                             font.weight: Font.DemiBold
-                            color: root.verdictColor(accountSection.status[1])
+                            color: root.verdictColor(poolSection.status[1])
                         }
                     }
 
@@ -1182,8 +1174,8 @@ PlasmoidItem {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1
                                 Layout.minimumWidth: 0
-                                win: accountSection.modelData.windows[modelData]
-                                points: root.samples[accountSection.modelData.email + "|anthropic:" + modelData] || []
+                                win: poolSection.modelData.windows[modelData]
+                                points: root.poolPoints(poolSection.modelData, "anthropic:" + modelData)
                             }
                         }
                     }

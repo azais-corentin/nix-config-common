@@ -2,11 +2,11 @@
   "KPlugin": {
     "Id": "org.nelieru.claudeusage",
     "Name": "Claude Usage",
-    "Description": "Per-account Claude usage forecasts from claude-usage-estimator",
+    "Description": "Pooled Claude usage forecasts from claude-usage-estimator",
     "Icon": "office-chart-bar",
     "Authors": [{ "Name": "nelieru" }],
     "Category": "System Information",
-    "Version": "2.0.0",
+    "Version": "3.0.0",
     "License": "MIT"
   },
   "KPackageStructure": "Plasma/Applet",
