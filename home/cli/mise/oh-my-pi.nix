@@ -54,6 +54,11 @@ let
     hash = "sha256-nHhjMXHEgxAqgex8UacVBNHm40NfFPZ+gScmE/hincQ=";
   };
 
+  # Burn push for claude-usage-estimator; consumers without the flake input skip it.
+  cueOmpExtension = lib.optional (
+    pkgs ? inputs.claude-usage-estimator
+  ) "${pkgs.inputs.claude-usage-estimator.omp-extension}";
+
   # `/modelpreset switch` replaces the whole modelRoles set (omitted roles are
   # cleared), so every preset restates the provider-independent roles.
   sharedRoles = {
@@ -230,7 +235,7 @@ in
       };
       autolearn.enabled = false;
       # Telegram bridge; tokens are per consumer (telegram.json / env).
-      extensions = [ "${ompTelegram}" ];
+      extensions = [ "${ompTelegram}" ] ++ cueOmpExtension;
     };
 
     rules.no-find-from-root = lib.removeSuffix "\n" ''
