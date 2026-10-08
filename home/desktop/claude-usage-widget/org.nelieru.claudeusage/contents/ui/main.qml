@@ -1018,8 +1018,9 @@ PlasmoidItem {
         readonly property real hPad: 13
         readonly property real topPad: 15
         readonly property real bottomPad: 13
-        // Sized to the content: nothing scrolls and nothing stretches.
-        implicitWidth: 366 + 2 * hPad
+        // Sized to the content: nothing scrolls and nothing stretches. One column until
+        // there is data, then the agenda and the pools side by side.
+        implicitWidth: (root.pools.length > 0 ? 2 * content.columnWidth + content.gutter : content.columnWidth) + 2 * hPad
         implicitHeight: content.implicitHeight + topPad + bottomPad
         Layout.minimumWidth: implicitWidth
         Layout.preferredWidth: implicitWidth
@@ -1057,12 +1058,16 @@ PlasmoidItem {
         }
     }
 
-    // The popup, top to bottom: daemon trouble, the answer, the agenda, then one section per
-    // pool with a tile per window and a row per account.
+    // The popup: daemon trouble and the answer across the top, then the agenda on the left
+    // and one section per pool on the right, each with a tile per window and a row per
+    // account.
     component PopupContent: ColumnLayout {
         id: popup
         spacing: 18
         readonly property real dimmed: root.stale ? 0.55 : 1
+        readonly property real columnWidth: 366
+        // Between the columns: a hairline with this much room around it.
+        readonly property real gutter: 33
 
         Notice {
             Layout.fillWidth: true
@@ -1107,113 +1112,132 @@ PlasmoidItem {
             }
         }
 
-        // Agenda: time | rail and dot | what happens.
-        Column {
+        RowLayout {
             Layout.fillWidth: true
             visible: root.pools.length > 0
-            opacity: popup.dimmed
-            readonly property real railX: 44 + 10 + 6
-            readonly property real textX: 44 + 10 + 14 + 10
+            spacing: 0
 
-            Repeater {
-                model: root.agendaRows
-                delegate: Item {
-                    id: agendaRow
-                    required property var modelData
-                    readonly property var ev: modelData.event || null
-                    width: parent.width
-                    height: ev ? evText.height + 12 : dayLabel.height + 14
+            // Agenda: time | rail and dot | what happens.
+            Column {
+                Layout.preferredWidth: popup.columnWidth
+                Layout.alignment: Qt.AlignTop
+                opacity: popup.dimmed
+                readonly property real railX: 44 + 10 + 6
+                readonly property real textX: 44 + 10 + 14 + 10
 
-                    // Day rows: the rail runs through, the date beside it.
-                    Rectangle {
-                        visible: !agendaRow.ev
-                        x: agendaRow.parent.railX
-                        width: 2
-                        height: parent.height
-                        color: agendaRow.modelData.rail || "transparent"
-                    }
-                    Txt {
-                        id: dayLabel
-                        visible: !agendaRow.ev
-                        x: agendaRow.parent.textX
-                        y: 8
-                        px: 11
-                        font.weight: Font.DemiBold
-                        font.letterSpacing: 0.22
-                        color: root.dimTextColor
-                        text: agendaRow.modelData.day || ""
-                    }
+                Repeater {
+                    model: root.agendaRows
+                    delegate: Item {
+                        id: agendaRow
+                        required property var modelData
+                        readonly property var ev: modelData.event || null
+                        width: parent.width
+                        height: ev ? evText.height + 12 : dayLabel.height + 14
 
-                    // Event rows.
-                    Txt {
-                        visible: !!agendaRow.ev
-                        width: 44
-                        px: 13
-                        lh: 18
-                        horizontalAlignment: Text.AlignRight
-                        font.weight: Font.DemiBold
-                        color: agendaRow.ev ? root.eventColor(agendaRow.ev.kind) : "transparent"
-                        text: agendaRow.ev ? root.hm(agendaRow.ev.t) : ""
-                    }
-                    Rectangle {
-                        visible: !!agendaRow.ev
-                        x: agendaRow.parent.railX
-                        width: 2
-                        height: 9
-                        color: agendaRow.modelData.railIn || "transparent"
-                    }
-                    Rectangle {
-                        visible: !!agendaRow.ev
-                        x: agendaRow.parent.railX
-                        y: 9
-                        width: 2
-                        height: parent.height - 9
-                        color: agendaRow.modelData.railOut || "transparent"
-                    }
-                    Rectangle {
-                        readonly property string kind: agendaRow.ev ? agendaRow.ev.kind : ""
-                        readonly property bool hollow: kind === "risk" || kind === "reset"
-                        visible: !!agendaRow.ev
-                        x: agendaRow.parent.railX - 4
-                        y: 4
-                        width: 10
-                        height: 10
-                        radius: 5
-                        color: hollow ? Kirigami.Theme.backgroundColor : root.eventColor(kind)
-                        border.width: 2
-                        border.color: kind === "reset" ? root.textAlpha(0.45) : root.eventColor(kind)
-                    }
-                    Column {
-                        id: evText
-                        visible: !!agendaRow.ev
-                        x: agendaRow.parent.textX
-                        width: parent.width - x
-                        Txt {
-                            width: parent.width
-                            px: 13.5
-                            lh: 18
-                            font.weight: Font.Medium
-                            wrapMode: Text.WordWrap
-                            text: agendaRow.ev ? agendaRow.ev.title : ""
+                        // Day rows: the rail runs through, the date beside it.
+                        Rectangle {
+                            visible: !agendaRow.ev
+                            x: agendaRow.parent.railX
+                            width: 2
+                            height: parent.height
+                            color: agendaRow.modelData.rail || "transparent"
                         }
                         Txt {
-                            width: parent.width
-                            px: 12
-                            lh: 17
-                            wrapMode: Text.WordWrap
+                            id: dayLabel
+                            visible: !agendaRow.ev
+                            x: agendaRow.parent.textX
+                            y: 8
+                            px: 11
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: 0.22
                             color: root.dimTextColor
-                            text: agendaRow.ev ? agendaRow.ev.detail : ""
+                            text: agendaRow.modelData.day || ""
+                        }
+
+                        // Event rows.
+                        Txt {
+                            visible: !!agendaRow.ev
+                            width: 44
+                            px: 13
+                            lh: 18
+                            horizontalAlignment: Text.AlignRight
+                            font.weight: Font.DemiBold
+                            color: agendaRow.ev ? root.eventColor(agendaRow.ev.kind) : "transparent"
+                            text: agendaRow.ev ? root.hm(agendaRow.ev.t) : ""
+                        }
+                        Rectangle {
+                            visible: !!agendaRow.ev
+                            x: agendaRow.parent.railX
+                            width: 2
+                            height: 9
+                            color: agendaRow.modelData.railIn || "transparent"
+                        }
+                        Rectangle {
+                            visible: !!agendaRow.ev
+                            x: agendaRow.parent.railX
+                            y: 9
+                            width: 2
+                            height: parent.height - 9
+                            color: agendaRow.modelData.railOut || "transparent"
+                        }
+                        Rectangle {
+                            readonly property string kind: agendaRow.ev ? agendaRow.ev.kind : ""
+                            readonly property bool hollow: kind === "risk" || kind === "reset"
+                            visible: !!agendaRow.ev
+                            x: agendaRow.parent.railX - 4
+                            y: 4
+                            width: 10
+                            height: 10
+                            radius: 5
+                            color: hollow ? Kirigami.Theme.backgroundColor : root.eventColor(kind)
+                            border.width: 2
+                            border.color: kind === "reset" ? root.textAlpha(0.45) : root.eventColor(kind)
+                        }
+                        Column {
+                            id: evText
+                            visible: !!agendaRow.ev
+                            x: agendaRow.parent.textX
+                            width: parent.width - x
+                            Txt {
+                                width: parent.width
+                                px: 13.5
+                                lh: 18
+                                font.weight: Font.Medium
+                                wrapMode: Text.WordWrap
+                                text: agendaRow.ev ? agendaRow.ev.title : ""
+                            }
+                            Txt {
+                                width: parent.width
+                                px: 12
+                                lh: 17
+                                wrapMode: Text.WordWrap
+                                color: root.dimTextColor
+                                text: agendaRow.ev ? agendaRow.ev.detail : ""
+                            }
                         }
                     }
                 }
             }
-        }
 
-        Repeater {
-            model: root.pools
-            delegate: PoolSection {
-                Layout.fillWidth: true
-                opacity: popup.dimmed
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                Layout.leftMargin: (popup.gutter - 1) / 2
+                Layout.rightMargin: (popup.gutter - 1) / 2
+                color: root.textAlpha(0.1)
+            }
+
+            ColumnLayout {
+                Layout.preferredWidth: popup.columnWidth
+                Layout.alignment: Qt.AlignTop
+                spacing: 18
+                Repeater {
+                    model: root.pools
+                    delegate: PoolSection {
+                        Layout.fillWidth: true
+                        opacity: popup.dimmed
+                    }
+                }
             }
         }
     }
@@ -1222,12 +1246,15 @@ PlasmoidItem {
     component PoolSection: ColumnLayout {
         id: section
         required property var modelData
+        required property int index
         readonly property var pool: modelData
         readonly property var status: root.poolStatus(pool, root.nowMs)
         readonly property bool shares: pool.accounts.some(a => a.share !== null)
         spacing: 8
 
+        // Between pools; the column's top needs none.
         Rectangle {
+            visible: section.index > 0
             Layout.fillWidth: true
             Layout.preferredHeight: 1
             Layout.bottomMargin: 14 - section.spacing
