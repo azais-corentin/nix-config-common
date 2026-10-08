@@ -151,6 +151,9 @@ in
           ])
           "Anthropic subscription slow mode: auto switches to the low-priority lane when a Claude subscription hits its 5-hour limit and Anthropic offers it (no settings-panel UI; /slow toggles it).";
     };
+    "muse-code" = mkSection "Muse Code provider behaviour." {
+      storeResponses = mkOpt t.bool "Store Muse Code results on Meta's servers so a turn whose connection drops is recovered instead of re-run (prompts and outputs stay on Meta's side; PI_MUSE_STORE_RESPONSES overrides).";
+    };
     "ollama-cloud" = mkSection "Ollama Cloud provider limits." {
       maxConcurrency = mkOpt num "Max concurrent Ollama Cloud subagent runs per process (0 disables the limit).";
     };

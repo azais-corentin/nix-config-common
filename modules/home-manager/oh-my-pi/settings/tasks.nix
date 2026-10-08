@@ -69,6 +69,8 @@ in
     agentServiceTierOverrides = mkOpt (t.attrsOf t.str) "Per-agent service-tier overrides keyed by agent id (hidden upstream setting, no settings-panel UI).";
     agentCompactionThresholdOverrides = mkOpt (t.attrsOf (t.either t.ints.positive (t.strMatching "[0-9]+(\\.[0-9]+)?%"))) "Per-agent compaction threshold keyed by exact agent name: a positive token count (90000) or a percentage in (0, 100] (\"80%\").";
     speculativeLaunch = mkOpt t.bool "Start each batch subagent as soon as its tasks[] item finishes streaming instead of waiting for the whole task call (requires auto-allowed task approval and no extension tool lifecycle handlers).";
+    completionProbe = mkOpt t.bool "Periodically ask working subagents of interactive main sessions for a completion estimate (after 2, 5, 10 and 30 more minutes, then hourly), shown in wait and task views.";
+    agentAccountPools = mkOpt (t.attrsOf (t.attrsOf (t.listOf (t.strMatching "[^[:space:]](.*[^[:space:]])?")))) "Exact-name task/eval agent -> provider id -> OAuth identity keys (e.g. \"email:you@example.com|org:<org-id>\"; `omp usage accounts` lists them). The agent authenticates for each listed provider only with those accounts, never another account or an API key; an empty list allows no account.";
   };
 
   isolation = mkSection "Subagent/worktree isolation backend." {
@@ -90,6 +92,21 @@ in
 
   title = mkSection "Session title behaviour." {
     refreshOnReplan = mkOpt t.bool "Refresh generated session titles after a todo-init replan unless the title was user-set.";
+    generator =
+      mkOpt
+        (t.enum [
+          "fork"
+          "tiny"
+        ])
+        "What names an untitled session: fork = side turn on the session's model (reuses its prompt cache, adds the icon card), tiny = the title model role only (plain titles).";
+    icons =
+      mkOpt
+        (t.enum [
+          "nf+emoji"
+          "emoji"
+          "boring"
+        ])
+        "Icon and short code heading new generated session titles: nf+emoji = Nerd Font glyph when the nerd symbol preset renders it, else emoji; emoji = always emoji; boring = plain title.";
   };
 
   worktree = mkSection "Agent-managed worktrees." {

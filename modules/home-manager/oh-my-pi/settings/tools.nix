@@ -15,6 +15,7 @@ in
     artifactHeadBytes = mkOpt num "Head content (KB) kept inline alongside the tail (0 = tail-only).";
     outputMaxColumns = mkOpt num "Per-line byte cap for streaming tool outputs and read (0 disables).";
     artifactTailLines = mkOpt num "Maximum lines of tail content kept inline when output spills.";
+    artifactMaxBytes = mkOpt num "Maximum size in MB of the artifact file saved for streaming tool output (bash, python, js eval); larger output keeps its first 3 MB and the latest remainder (0 = unlimited).";
     approval = mkOpt (t.attrsOf (
       t.enum [
         "allow"
@@ -169,9 +170,13 @@ in
 
   computer = mkSection "Computer-use tool (native desktop screenshots + input)." {
     enabled = mkOpt t.bool "Enable native host-desktop screenshots and input for OpenAI computer use.";
-    display = mkOpt t.str "Composite all displays (\"all\") or a native display id.";
+    display = mkOpt t.str "Capture the active window's display (\"active\"), all displays (\"all\"), or a native display id.";
     maxWidth = mkOpt num "Maximum composite screenshot width in pixels.";
     maxHeight = mkOpt num "Maximum composite screenshot height in pixels.";
+  };
+
+  archive = mkSection "Read-only archive eval prelude." {
+    enabled = mkOpt t.bool "Expose prompt history, recent projects, past sessions and recaps through the read-only archive eval prelude.";
   };
 
   async = mkSection "Async background jobs." {

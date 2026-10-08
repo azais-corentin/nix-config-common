@@ -163,6 +163,7 @@ in
         showTokenUsage = false;
         subagentLivePreview = true;
       };
+      title.icons = "boring";
       recap = {
         enabled = true;
         idleSeconds = 180;

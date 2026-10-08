@@ -135,6 +135,9 @@ in
     coldArchiveAfterDays = mkOpt num "Minimum session age in days before archiving.";
     retainNewestGlobal = mkOpt num "Always keep this many newest sessions active.";
     retainNewestPerCwd = mkOpt num "Always keep this many newest sessions per cwd active.";
+    stale = mkOpt t.bool "Also prune stale state during gc: orphaned session markers and breadcrumbs, plus debug report bundles and collab guest replicas past both stale retention limits (deletes user-visible files; upstream default off).";
+    staleRetainNewest = mkOpt num "Stale pruning always keeps this many newest debug reports and collab replicas.";
+    staleRetainDays = mkOpt num "Stale pruning only removes debug reports and collab replicas older than this many days.";
   };
 
   workspace = mkSection "Multi-root workspace." {

@@ -110,10 +110,27 @@ let
     tools = mkOpt (t.listOf t.str) "Tools granted to this advisor; an explicit empty list grants none.";
     instructions = mkOpt t.lines "Specialized instructions appended to the shared baseline.";
     enabled = mkOpt t.bool "Whether this advisor is active.";
+    reviewMode =
+      mkOpt
+        (t.enum [
+          "turn"
+          "agent-end"
+        ])
+        "Review cadence: turn reviews every primary update, agent-end only final yields (omitted = turn, regardless of advisor.reviewMode).";
+    reviewInterval = mkOpt t.ints.positive "Review every Nth eligible primary update (omitted = 1, regardless of advisor.reviewInterval).";
+    syncBacklog = mkOpt (t.enum [
+      "off"
+      "1"
+      "3"
+      "5"
+      "strict"
+    ]) "Catch-up policy for this advisor; omitted inherits advisor.syncBacklog.";
+    maxNotesPerUpdate = mkOpt num "Non-blocker notes accepted per update for this advisor (1-32); omitted inherits the top-level value, then advisor.maxNotesPerUpdate.";
   };
 
   watchdogType = subType {
     instructions = mkOpt t.lines "Shared instructions prepended to every advisor.";
+    maxNotesPerUpdate = mkOpt num "Shared non-blocker note budget per advisor update (>= 1), overriding advisor.maxNotesPerUpdate.";
     advisors = mkOpt (t.listOf advisorType) "Declared passive advisors.";
   };
 in

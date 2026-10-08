@@ -131,6 +131,15 @@ in
     ]) "Wrap file paths in OSC 8 hyperlinks (auto/off/always).";
     tight = mkOpt t.bool "Remove the 1-column horizontal padding from the left/right of terminal output.";
     renderMermaid = mkOpt t.bool "Render Mermaid fenced code blocks as ASCII diagrams.";
+    renderSvg = mkOpt t.bool "Invite the agent to draw diagrams and charts as SVG, rendered inline as images on terminals that show graphics.";
+    autoGraph =
+      mkOpt
+        (t.enum [
+          "smart"
+          "always"
+          "off"
+        ])
+        "Chart numeric tables in the agent's answers on graphics-capable terminals (smart = the judge model picks chart kind and columns, always = built-in best guess, off = tables stay tables).";
     codexResetFireworks = mkOpt t.bool "Celebrate unscheduled Codex weekly usage resets and newly banked saved resets with a fireworks overlay that remains until Escape.";
     resizeScrollback =
       mkOpt

@@ -15,8 +15,8 @@ let
     ;
   t = lib.types;
 
-  # Shared enums.
-  apiEnum = t.enum [
+  # Shared enums. ApiSchema: the APIs a provider (or remote compaction) can name.
+  apis = [
     "openai-completions"
     "openai-responses"
     "openai-codex-responses"
@@ -28,6 +28,35 @@ let
     "google-vertex"
     "openrouter-decisions"
     "typesafe"
+  ];
+  apiEnum = t.enum apis;
+  # ModelApiSchema — models and modelOverrides may also name a runner API,
+  # each serving one model kind (web-search is built in and not nameable).
+  modelApiEnum = t.enum (
+    apis
+    ++ [
+      "openai-images"
+      "openrouter-images"
+      "xai-tts"
+      "openai-speech"
+      "openai-embeddings"
+      "openrouter-rerank"
+      "openrouter-video"
+      "openai-transcriptions"
+    ]
+  );
+  # ModelKindSchema — MODEL_KINDS minus search. omp rejects a kind its api
+  # does not serve when it loads models.yml.
+  kindEnum = t.enum [
+    "chat"
+    "tiny"
+    "image"
+    "tts"
+    "stt"
+    "judge"
+    "embedding"
+    "rerank"
+    "video"
   ];
   effortEnum = t.enum [
     "minimal"
@@ -124,6 +153,7 @@ let
     supportsLongPromptCacheRetention = mkOpt t.bool "Provider supports long prompt cache retention.";
     supportsReasoningParams = mkOpt t.bool "Provider accepts reasoning params.";
     supportsReasoningSummary = mkOpt t.bool "Provider returns reasoning summaries.";
+    statefulResponses = mkOpt t.bool "Chain Responses requests via previous_response_id instead of resending the transcript (defaults on for official endpoints; PI_OPENAI_STATEFUL overrides).";
     alwaysSendMaxTokens = mkOpt t.bool "Always include max tokens in the request.";
     strictResponsesPairing = mkOpt t.bool "Enforce strict request/response message pairing (Responses API).";
     supportsImageDetailOriginal = mkOpt t.bool "Provider supports image detail: original.";
@@ -227,6 +257,8 @@ let
       "kimi-k2"
       "glm5"
     ]) "Tokenizer used for local token counting.";
+    api = mkOpt modelApiEnum "API variant for this model; a runner API (e.g. openai-images) implies its kind.";
+    kind = mkOpt kindEnum "Model kind; defaults to the api's kind (chat for chat transports) and must be one the api serves.";
     cost = mkOpt costType "Per-token cost.";
     promptCache = mkOpt promptCacheType "Prompt-cache lifetimes in seconds. Replaces the catalog lifetimes rather than merging with them (a short-only value does not inherit long), and an empty attrset disables cache warming for the model.";
     premiumMultiplier = mkOpt num "Premium request multiplier.";
@@ -250,7 +282,6 @@ let
         type = t.str;
         description = "Model identifier as sent to the provider (required).";
       };
-      api = mkOpt apiEnum "API variant for this model.";
       baseUrl = mkOpt t.str "Per-model base URL override.";
     }
   );

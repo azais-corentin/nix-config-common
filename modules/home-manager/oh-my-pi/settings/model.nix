@@ -41,6 +41,7 @@ in
   })) "Named model presets switched with /modelpreset switch <name> (no settings-panel UI).";
 
   hideThinkingBlock = mkOpt t.bool "Hide thinking blocks in assistant responses.";
+  expandThinkingBlocks = mkOpt t.bool "Keep finished thinking blocks expanded instead of collapsing them when the turn ends (native rendering only).";
   includeModelInPrompt = mkOpt t.bool "Surface the active model id in the system prompt so the agent knows which model it is.";
   skillful = mkOpt t.bool "List available skills in the system prompt; disable to save context (per-session /skillful).";
   inlineToolDescriptors =
@@ -107,12 +108,24 @@ in
   advisor = mkSection "Passive advisor model that reviews each turn." {
     enabled = mkOpt t.bool "Pair a second model (advisor role) that passively reviews each turn and injects notes.";
     immuneTurns = mkOpt num "After an advisor concern/blocker interrupts, route further ones non-interruptingly for this many primary turns.";
-    syncBacklog = mkOpt (t.enum [
-      "off"
-      "1"
-      "3"
-      "5"
-    ]) "Pause the main agent up to 30s if the advisor falls behind by this many turns.";
+    syncBacklog =
+      mkOpt
+        (t.enum [
+          "off"
+          "1"
+          "3"
+          "5"
+          "strict"
+        ])
+        "Pause the main agent until the advisor backlog falls below this many turns: numeric thresholds cap each wait at 30s, strict waits for every scheduled review without a wall-clock cap.";
+    reviewMode =
+      mkOpt
+        (t.enum [
+          "turn"
+          "agent-end"
+        ])
+        "Advisor cadence when no WATCHDOG.yml roster is present: turn reviews every primary update, agent-end only final yields.";
+    reviewInterval = mkOpt t.ints.positive "Advisor cadence when no WATCHDOG.yml roster is present: review every Nth eligible primary update (skipped updates ride along with the next review).";
     maxNotesPerUpdate = mkOpt num "Maximum non-blocker advice notes accepted per advisor prompt update (1-32); blockers are exempt.";
     evictStaleResults = mkOpt t.bool "Before each review, replace the advisor's read/grep/glob output from older reviews with a short placeholder (the latest review is kept).";
   };
