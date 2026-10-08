@@ -9,12 +9,15 @@ PlasmoidItem {
     id: root
 
     // Last good snapshot from `claude-usage-estimator get --json`, one pool per provider:
-    //   [{ provider, label, members: [account], windows: [win], block, verdict }]
+    //   [{ provider, label, short, members: [account], accounts: [acct], windows: [win],
+    //      block, verdict }]
     // windows are sorted shortest first.
     // win: { key, limit, windowMs, state, used, start, resetsAt, forecast, verdict, runsOut,
-    //        outAt, outEarly, out, of }, times in unix ms, fractions in 0..1; `used` is the
-    //        mean over the pool, `out` of the `of` accounts are out of this window now.
+    //        outAt, outEarly, outLate, out, of }, times in unix ms, fractions in 0..1; `used`
+    //        is the mean over the pool, `out` of the `of` accounts are out of this window now.
     //        key: "5h", "7d" or "30d".
+    // acct: { name, share, windows }: `share` of the provider's capacity (null unless the
+    //        estimator weighs the pool), `windows` the account's own, raw from the daemon.
     // block: the window that makes the pool unusable soonest (exhausted now, else the
     //        earliest median run-out): { from, until, key, exhausted } or null.
     property var pools: []
@@ -27,7 +30,6 @@ PlasmoidItem {
     property var samples: ({})
     property string lastError: ""
     property bool loading: false
-    property bool everLoaded: false
     // Bumped by the countdown timer so every time-relative binding re-evaluates.
     property double nowMs: Date.now()
 
@@ -46,41 +48,46 @@ PlasmoidItem {
     readonly property bool stale: generatedAt > 0 && nowMs - generatedAt > staleAfterMs
     readonly property bool unhealthy: stale || pollError !== "" || historyError !== ""
 
-    /** Bounds for the in-panel width, in px. Mirrored by the config spin box. */
-    readonly property int minPanelWidth: 48
-    readonly property int maxPanelWidth: 600
+    /** Bounds for the panel's text line, in px; the rings add 36 px per provider. Mirrored by
+     *  the config spin box. */
+    readonly property int minTextWidth: 0
+    readonly property int maxTextWidth: 400
     /** >= 0 only while a resize grip is being dragged; overrides the stored width live so the
      *  drag stays smooth without writing config on every mouse move. */
-    property int dragWidth: -1
-    readonly property int effectiveWidth: Math.max(minPanelWidth, Math.min(maxPanelWidth,
-        dragWidth >= 0 ? dragWidth : Plasmoid.configuration.panelWidth))
+    property int dragTextWidth: -1
+    readonly property int textWidth: Math.max(minTextWidth, Math.min(maxTextWidth,
+        dragTextWidth >= 0 ? dragTextWidth : Plasmoid.configuration.textWidth))
+    /** Rings shown in the panel: one per pool, or one per known provider before the first poll. */
+    readonly property int ringCount: pools.length > 0 ? pools.length : providerOrder.length
+    readonly property int panelWidth: 4 + ringCount * 32 + (ringCount - 1) * 4 + 8 + textWidth + 4
 
     /** Display names of the providers the daemon reports, in display order. */
     readonly property var providerLabels: ({ "anthropic": "Claude", "opencode-go": "OpenCode Go" })
+    /** The names under the panel rings. */
+    readonly property var providerShortLabels: ({ "anthropic": "Claude", "opencode-go": "Go" })
     readonly property var providerOrder: ["anthropic", "opencode-go"]
 
     // Verdict colours from the desktop's Monokai Pro Spectrum palette. Fixed rather than
     // theme roles: the stylix scheme maps neutralTextColor to cyan.
     readonly property var verdictColors: ({ "ok": "#7bd88f", "warn": "#fce566", "bad": "#fc618d" })
-    // Time still usable on the popup timeline: neutral, so pink alone means "out".
-    readonly property color availableColor: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g,
-                                                    Kirigami.Theme.textColor.b, 0.12)
-    readonly property color ruleColor: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g,
-                                               Kirigami.Theme.textColor.b, 0.1)
+    readonly property color textColor: Kirigami.Theme.textColor
     // Secondary text. Opaque so it also works in Canvas and StyledText, and derived from the
     // text colour because the stylix scheme sets inactive/disabled text equal to normal text.
-    readonly property color dimTextColor: Qt.tint(Kirigami.Theme.backgroundColor,
-                                                  Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g,
-                                                          Kirigami.Theme.textColor.b, 0.75))
+    readonly property color dimTextColor: Qt.tint(Kirigami.Theme.backgroundColor, textAlpha(0.75))
     readonly property var weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    readonly property var months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    function textAlpha(a) {
+        return Qt.rgba(textColor.r, textColor.g, textColor.b, a);
+    }
 
     function verdictColor(v) {
         return verdictColors[v] || verdictColors.ok;
     }
 
-    /** How full a window is, independent of the forecast: pink once exhausted, else text. */
-    function usageColor(win) {
-        return win.state === "exhausted" ? verdictColors.bad : Kirigami.Theme.textColor;
+    /** Point size of a font sized `px` logical pixels. */
+    function pt(px) {
+        return px * 0.75;
     }
 
     function clamp01(x) {
@@ -89,6 +96,10 @@ PlasmoidItem {
 
     function pct(f) {
         return Math.round(f * 100) + "%";
+    }
+
+    function pace(f) {
+        return f.pace.toFixed(1) + "×";
     }
 
     function pad2(n) {
@@ -114,7 +125,13 @@ PlasmoidItem {
             return hm(t);
         if (dd > -7 && dd < 7)
             return weekdays[new Date(t).getDay()] + " " + hm(t);
-        return Qt.formatDate(new Date(t), "d MMM");
+        return dayMonth(t);
+    }
+
+    /** "12 Nov". */
+    function dayMonth(t) {
+        const d = new Date(t);
+        return d.getDate() + " " + months[d.getMonth()];
     }
 
     /** "17:15", "tomorrow 16:00", "Wed 16:00" or "12 Nov". */
@@ -122,8 +139,8 @@ PlasmoidItem {
         return dayDelta(t, now) === 1 ? "tomorrow " + hm(t) : shortTime(t, now);
     }
 
-    /** "2h 18m", "3d 2h", "45m", "now". */
-    function duration(ms) {
+    /** "2h 18m", "3d 2h", "45m", "now"; `compact` drops the spaces: "2h18", "3d2h". */
+    function duration(ms, compact) {
         let m = Math.round(ms / minuteMs);
         if (m < 1)
             return "now";
@@ -132,9 +149,9 @@ PlasmoidItem {
         const h = Math.floor(m / 60);
         m -= h * 60;
         if (d > 0)
-            return d + "d " + h + "h";
+            return compact ? d + "d" + h + "h" : d + "d " + h + "h";
         if (h > 0)
-            return h + "h " + pad2(m) + "m";
+            return compact ? h + "h" + pad2(m) : h + "h " + pad2(m) + "m";
         return m + "m";
     }
 
@@ -153,6 +170,45 @@ PlasmoidItem {
 
     function present(v) {
         return v !== undefined && v !== null;
+    }
+
+    /** `s` safe inside StyledText. */
+    function escaped(s) {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    /** StyledText of [{ t, c }] segments. */
+    function styled(segs) {
+        return segs.map(s => "<font color=\"" + s.c + "\">" + escaped(s.t) + "</font>").join("");
+    }
+
+    /** styled(segs), wrapped at `width` like CSS `text-wrap: pretty`: when the last line
+     *  would be shorter than a quarter of the width, the line above hands it its last word.
+     *  `metrics` measures the text's font. */
+    function prettyStyled(segs, metrics, width) {
+        const words = segs.map(s => s.t).join("").split(" ");
+        const lines = [[]];
+        for (const w of words) {
+            const line = lines[lines.length - 1];
+            if (line.length > 0 && metrics.advanceWidth(line.concat(w).join(" ")) > width)
+                lines.push([w]);
+            else
+                line.push(w);
+        }
+        const n = lines.length;
+        if (n < 2 || lines[n - 2].length < 2 || metrics.advanceWidth(lines[n - 1].join(" ")) >= width / 4)
+            return styled(segs);
+        // The space before the last word of the line above the last.
+        const k = lines.slice(0, n - 1).reduce((a, l) => a + l.length, 0) - 1;
+        let cut = words.slice(0, k).reduce((a, w) => a + w.length + 1, 0) - 1;
+        return segs.map(s => {
+            const at = cut;
+            cut -= s.t.length;
+            const color = "<font color=\"" + s.c + "\">";
+            if (at < 0 || at >= s.t.length)
+                return color + escaped(s.t) + "</font>";
+            return color + escaped(s.t.slice(0, at)) + "<br>" + escaped(s.t.slice(at + 1)) + "</font>";
+        }).join("");
     }
 
     function normalizeWindow(e) {
@@ -179,6 +235,7 @@ PlasmoidItem {
             "runsOut": runsOut,
             "outAt": runsOut ? r(f.emptyAt.p50) : null,
             "outEarly": f ? r(f.emptyAt.p10) : null,
+            "outLate": f ? r(f.emptyAt.p90) : null,
             "out": e.exhausted || 0,
             "of": e.accounts || 1
         };
@@ -194,60 +251,225 @@ PlasmoidItem {
             block = { "from": now, "until": ex.resetsAt, "key": ex.key, "exhausted": true };
         else if (outs.length > 0)
             block = { "from": outs[0].outAt, "until": outs[0].resetsAt, "key": outs[0].key, "exhausted": false };
+        // An account's share of the pool, from the longest window's capacity.
+        const longest = ws.length > 0 ? ws[ws.length - 1].limit : null;
+        const accounts = (p.accounts || []).map(a => {
+            const cap = (a.capacity || []).find(c => c.limit === longest);
+            return {
+                "name": a.account,
+                "share": cap && present(cap.share) ? cap.share : null,
+                "windows": a.windows || []
+            };
+        });
         return {
             "provider": p.provider,
             "label": providerLabels[p.provider] || p.provider,
-            "members": (p.accounts || []).map(a => a.account),
+            "short": providerShortLabels[p.provider] || p.provider,
+            "members": accounts.map(a => a.name),
+            "accounts": accounts,
             "windows": ws,
             "block": block,
             "verdict": ws.some(w => w.verdict === "bad") ? "bad" : (ws.some(w => w.verdict === "warn") ? "warn" : "ok")
         };
     }
 
-    /** Predicted unavailability of one window: [{ from, until, kind }]: "bad" from the
-     *  median run-out, "warn" (half strength) from the earliest plausible one when a run-out
-     *  is likely (>= 25 %). */
-    function windowBlocks(win, now) {
-        if (!win || win.resetsAt === null)
-            return [];
-        if (win.state === "exhausted")
-            return [{ "from": now, "until": win.resetsAt, "kind": "bad" }];
-        if (win.runsOut)
-            return [{ "from": win.outAt, "until": win.resetsAt, "kind": "bad" }];
-        if (win.verdict === "warn" && win.outEarly !== null)
-            return [{ "from": win.outEarly, "until": win.resetsAt, "kind": "warn" }];
-        return [];
+    /** Usage the median forecast lands on at reset, else usage now. */
+    function projected(w) {
+        return w.forecast ? w.forecast.atReset.p50 : w.used;
     }
 
-    function poolBlocks(pool, now) {
-        return pool.windows.reduce((acc, w) => acc.concat(windowBlocks(w, now)), []);
+    /** The window that speaks for a pool: the blocking one, else the riskiest, else the one
+     *  projected fullest. */
+    function bindingWindow(p) {
+        if (p.block !== null)
+            return p.windows.find(w => w.key === p.block.key);
+        const risky = p.windows.filter(w => w.verdict === "warn")
+            .sort((a, b) => b.forecast.pEmpty - a.forecast.pEmpty);
+        if (risky.length > 0)
+            return risky[0];
+        return p.windows.slice().sort((a, b) => projected(b) - projected(a))[0];
     }
 
-    /** The panel's countdown slot: null while the pool is on track. */
-    function countdown(pool, now) {
-        const b = pool.block;
+    /** A pool at a glance: kind "back" (out now), "out" (runs out), "warn" or "ok". */
+    function glance(p, now) {
+        const b = p.block, bw = bindingWindow(p);
         if (b !== null && b.exhausted)
-            return { "back": true, "value": duration(b.until - now), "verdict": "bad" };
+            return { "kind": "back", "big": duration(b.until - now), "bw": bw };
         if (b !== null)
-            return { "back": false, "value": duration(b.from - now), "verdict": "bad" };
-        if (pool.verdict === "warn") {
-            const ws = pool.windows.filter(w => w.verdict === "warn")
-                .sort((x, y) => y.forecast.pEmpty - x.forecast.pEmpty);
-            return { "back": false, "value": pct(ws[0].forecast.pEmpty) + " risk", "verdict": "warn" };
+            return { "kind": "out", "big": duration(b.from - now), "bw": bw };
+        return { "kind": p.verdict === "warn" ? "warn" : "ok", "big": "", "bw": bw };
+    }
+
+    function glanceColor(kind) {
+        return kind === "ok" ? textColor : verdictColor(kind === "warn" ? "warn" : "bad");
+    }
+
+    /** The pool the panel and the popup headline speak about: the first to run out, else
+     *  one at risk, else the one resetting soonest. */
+    function urgentPool(ps) {
+        const blocked = ps.filter(p => p.block !== null).sort((a, b) => a.block.from - b.block.from);
+        if (blocked.length > 0)
+            return blocked[0];
+        const risky = ps.find(p => p.verdict === "warn");
+        if (risky)
+            return risky;
+        const reset = p => {
+            const t = bindingWindow(p).resetsAt;
+            return t === null ? Infinity : t;
+        };
+        return ps.slice().sort((a, b) => reset(a) - reset(b))[0];
+    }
+
+    /** A pool's one-line status in its popup section: [text, colour]. */
+    function poolStatus(p, now) {
+        const b = p.block, bw = bindingWindow(p);
+        if (b !== null && b.exhausted)
+            return ["out · back " + longTime(b.until, now), verdictColors.bad];
+        if (b !== null)
+            return ["out " + longTime(b.from, now) + " · back " + longTime(b.until, now), verdictColors.bad];
+        if (p.verdict === "warn")
+            return [pct(bw.forecast.pEmpty) + " risk before " + shortTime(bw.resetsAt, now), verdictColors.warn];
+        if (bw.resetsAt === null)
+            return [bw.key + " " + pct(bw.used), dimTextColor];
+        return [bw.key + " " + pct(bw.used) + " · resets in " + duration(bw.resetsAt - now), dimTextColor];
+    }
+
+    /** The panel: rings, two lines about the urgent pool, the trouble icon. */
+    readonly property var panelView: {
+        const now = nowMs;
+        const warn = unhealthy || lastError !== "";
+        if (pools.length === 0)
+            return {
+                "rings": providerOrder.map(p => ({ "label": providerShortLabels[p], "used": 0, "color": dimTextColor, "text": "" })),
+                "line1": "Connecting…", "line2": "—", "color": dimTextColor, "warn": warn, "opacity": 1
+            };
+        const rings = pools.map(p => {
+            const g = glance(p, now), u = clamp01(g.bw.used);
+            return { "label": p.short, "used": u, "color": glanceColor(g.kind), "text": String(Math.round(u * 100)) };
+        });
+        // The short name, as under the rings: the line is narrow.
+        const u = urgentPool(pools), g = glance(u, now), bw = g.bw;
+        let line1, line2;
+        if (g.kind === "back") {
+            line1 = u.short + " back in";
+            line2 = g.big;
+        } else if (g.kind === "out") {
+            line1 = u.short + " out in";
+            line2 = g.big;
+        } else if (g.kind === "warn") {
+            line1 = u.short + " may run out";
+            line2 = "by " + shortTime(bw.resetsAt, now);
+        } else {
+            line1 = u.short + " resets";
+            line2 = bw.resetsAt !== null ? bw.key + " in " + duration(bw.resetsAt - now, true) : "—";
         }
-        return null;
+        return { "rings": rings, "line1": line1, "line2": line2, "color": glanceColor(g.kind), "warn": warn, "opacity": stale ? 0.5 : 1 };
     }
 
-    /** The popup's per-pool headline: [text, verdict]. */
-    function poolStatus(pool, now) {
-        const b = pool.block;
-        if (b !== null && b.exhausted)
-            return ["Out until " + longTime(b.until, now), "bad"];
-        if (b !== null)
-            return ["Out " + longTime(b.from, now) + " – back " + longTime(b.until, now), "bad"];
-        if (pool.verdict === "warn")
-            return ["Might run out", "warn"];
-        return ["Available", "ok"];
+    /** The popup's and tooltip's answer: { title: [{ t, c }], sub }. */
+    readonly property var heroView: {
+        const now = nowMs, T = textColor;
+        if (pools.length === 0)
+            return {
+                "title": [{ "t": "Waiting for data…", "c": dimTextColor }],
+                "sub": "No estimates from the daemon yet. They'll appear after its first poll."
+            };
+        const u = urgentPool(pools), g = glance(u, now), bw = g.bw, f = bw.forecast;
+        const others = pools.filter(p => p !== u && p.block === null && p.verdict === "ok").map(p => p.label);
+        const verb = others.length > 1 ? " are" : " is";
+        const fine = others.length > 0 ? " " + others.join(" and ") + verb + " fine." : "";
+        if (g.kind === "back")
+            return {
+                "title": [{ "t": u.label + " is out for ", "c": T }, { "t": g.big, "c": verdictColors.bad }, { "t": ".", "c": T }],
+                "sub": "Back at " + longTime(u.block.until, now) + "."
+                    + (others.length > 0 ? " " + others.join(" and ") + verb + " available meanwhile." : "")
+            };
+        if (g.kind === "out")
+            return {
+                "title": [{ "t": u.label + " runs out in ", "c": T }, { "t": g.big, "c": verdictColors.bad }, { "t": ".", "c": T }],
+                "sub": "Around " + longTime(u.block.from, now) + ", back at " + longTime(u.block.until, now) + "." + fine
+            };
+        if (g.kind === "warn")
+            return {
+                "title": [{ "t": u.label + " might run out by ", "c": T }, { "t": longTime(bw.resetsAt, now), "c": verdictColors.warn }, { "t": ".", "c": T }],
+                "sub": pct(f.pEmpty) + " chance on the " + bw.key + " window at " + pace(f) + " pace." + fine
+            };
+        const outs = [];
+        for (const p of pools)
+            for (const w of p.windows)
+                if (w.out > 0 && w.resetsAt !== null)
+                    outs.push(w.out + " of " + w.of + " " + p.label + " accounts out until " + shortTime(w.resetsAt, now) + ".");
+        const summary = pools.map(p => {
+            const b = bindingWindow(p);
+            return p.label + " " + b.key + " at " + pct(b.used)
+                + (b.resetsAt !== null ? ", resets in " + duration(b.resetsAt - now) : "") + ".";
+        });
+        return { "title": [{ "t": "All clear.", "c": T }], "sub": outs.concat(summary).join(" ") };
+    }
+
+    /** Run-outs, returns and resets from now on, sorted: [{ t, kind, title, detail }],
+     *  kind "now", "out", "back", "risk" or "reset". */
+    readonly property var events: {
+        const now = nowMs;
+        if (pools.length === 0)
+            return [];
+        const ev = [{
+            "t": now, "kind": "now", "title": "Now",
+            "detail": pools.map(p => p.label + " " + p.windows[0].key + " " + pct(p.windows[0].used)).join(" · ")
+        }];
+        for (const p of pools)
+            for (const w of p.windows) {
+                if (w.resetsAt === null)
+                    continue;
+                const f = w.forecast;
+                if (w.state === "exhausted") {
+                    ev.push({ "t": w.resetsAt, "kind": "back", "title": p.label + " back", "detail": w.key + " limit resets" });
+                } else if (w.runsOut) {
+                    const likely = w.outEarly !== null && w.outLate !== null ? " · likely " + hm(w.outEarly) + "–" + hm(w.outLate) : "";
+                    ev.push({ "t": w.outAt, "kind": "out", "title": p.label + " runs out", "detail": w.key + likely + " · " + pace(f) + " pace" });
+                    ev.push({ "t": w.resetsAt, "kind": "back", "title": p.label + " back", "detail": w.key + " resets" });
+                } else if (w.verdict === "warn") {
+                    if (w.outEarly !== null)
+                        ev.push({ "t": w.outEarly, "kind": "risk", "title": p.label + " may run out", "detail": w.key + " · " + pct(f.pEmpty) + " chance, earliest now" });
+                    ev.push({ "t": w.resetsAt, "kind": "reset", "title": p.label + " " + w.key + " resets", "detail": "lands around " + pct(Math.min(1, f.atReset.p50)) });
+                } else {
+                    ev.push({
+                        "t": w.resetsAt, "kind": "reset", "title": p.label + " " + w.key + " resets",
+                        "detail": (w.out > 0 ? w.out + "/" + w.of + " accounts back · " : "")
+                            + "lands around " + pct(Math.min(1, f ? f.atReset.p50 : w.used)) + " · now " + pct(w.used)
+                    });
+                }
+            }
+        return ev.sort((a, b) => a.t - b.t);
+    }
+
+    function eventColor(kind) {
+        return { "now": textColor, "out": verdictColors.bad, "back": verdictColors.ok, "risk": verdictColors.warn }[kind] || dimTextColor;
+    }
+
+    /** The popup agenda: event rows and a day row wherever the day changes. Each row carries
+     *  its rail: pink while a pool is out, else a neutral line, ending at the last event.
+     *  rows: { day, rail } | { event, railIn, railOut }. */
+    readonly property var agendaRows: {
+        const now = nowMs, ev = events, rows = [];
+        const blocks = pools.filter(p => p.block !== null).map(p => p.block);
+        const out = (a, b) => blocks.some(k => k.from <= a + 1 && k.until >= b - 1);
+        let prevDay = null, rail = "transparent";
+        ev.forEach((e, i) => {
+            const dd = dayDelta(e.t, now);
+            if (dd !== prevDay) {
+                if (i > 0) {
+                    const date = dayMonth(e.t);
+                    rows.push({ "day": dd === 1 ? "Tomorrow" : (dd < 7 ? weekdays[new Date(e.t).getDay()] + " " + date : date), "rail": rail });
+                }
+                prevDay = dd;
+            }
+            const next = ev[i + 1];
+            const railOut = next ? (out(e.t, next.t) ? verdictColors.bad : textAlpha(0.14)) : "transparent";
+            rows.push({ "event": e, "railIn": i === 0 ? "transparent" : rail, "railOut": railOut });
+            rail = railOut;
+        });
+        return rows;
     }
 
     /** Pooled usage history of one window, [[t, used], …]: the members' sample series merged
@@ -275,44 +497,6 @@ PlasmoidItem {
         return out;
     }
 
-    /** Where the popup timeline's log axis starts: anything sooner sits on its left edge. */
-    readonly property double axisStartMs: 5 * minuteMs
-    /** How far the popup timeline looks ahead: the farthest reset of any window (at least a
-     *  week, at most a month), so every predicted outage fits. */
-    readonly property double axisHorizonMs: {
-        let h = 7 * dayMs;
-        for (const p of pools)
-            for (const w of p.windows)
-                if (w.resetsAt !== null)
-                    h = Math.max(h, w.resetsAt - nowMs);
-        return Math.min(h, 31 * dayMs);
-    }
-
-    /** Position on the popup timeline, 0..1, logarithmic in the time from now. */
-    function axisFraction(t, now) {
-        const dt = Math.max(axisStartMs, t - now);
-        return Math.min(1, Math.log(dt / axisStartMs) / Math.log(axisHorizonMs / axisStartMs));
-    }
-
-    /** Timeline ticks: [{ t, label, span }] at round spans from now within the horizon; a
-     *  label that would overlap one already placed is dropped, `labelWidth(text)` measuring
-     *  it in px. */
-    function timelineTicks(now, laneWidth, labelWidth, gap) {
-        const marks = [[5 * minuteMs, "5m"], [hourMs, "1h"], [dayMs, "1d"], [7 * dayMs, "1w"]];
-        const placed = [];
-        for (const m of marks) {
-            if (m[0] > axisHorizonMs)
-                break;
-            // Centred on its tick, but kept inside the lane at either end.
-            const x = laneWidth * axisFraction(now + m[0], now), w = labelWidth(m[1]);
-            const left = Math.max(0, Math.min(x - w / 2, laneWidth - w));
-            const s = [left, left + w];
-            if (placed.every(p => s[1] + gap <= p.span[0] || s[0] >= p.span[1] + gap))
-                placed.push({ "t": now + m[0], "label": m[1], "span": s });
-        }
-        return placed;
-    }
-
     function refresh() {
         loading = true;
         if (exec.connectedSources.indexOf(root.estimatesCommand) === -1)
@@ -330,7 +514,6 @@ PlasmoidItem {
 
     function handleEstimates(exitCode, stdout, stderr) {
         loading = false;
-        everLoaded = true;
         if (exitCode !== 0) {
             lastError = commandError(exitCode, stderr);
             return;
@@ -425,116 +608,133 @@ PlasmoidItem {
     }
 
     toolTipMainText: "AI usage"
-    toolTipTextFormat: Text.StyledText
-    toolTipSubText: {
-        if (pools.length === 0)
-            return lastError !== "" ? lastError : "No estimates from claude-usage-estimator";
-        const now = nowMs;
-        const span = (v, s) => "<font color=\"" + verdictColor(v) + "\">" + s + "</font>";
-        const dim = s => "<font color=\"" + dimTextColor + "\">" + s + "</font>";
-        const lines = [];
-        if (unhealthy)
-            lines.push(span("warn", stale ? "Estimates are " + duration(now - generatedAt) + " old" : "Daemon poll failed"));
-        for (const p of pools) {
-            lines.push("<b>" + p.label + "</b>");
-            for (const w of p.windows) {
-                let tail;
-                if (w.state === "exhausted")
-                    tail = span("bad", "exhausted, back " + shortTime(w.resetsAt, now));
-                else if (w.runsOut)
-                    tail = span("bad", "out " + shortTime(w.outAt, now)) + dim(", back " + shortTime(w.resetsAt, now));
-                else if (w.forecast)
-                    tail = (w.verdict === "warn"
-                            ? span("warn", "≈" + pct(Math.min(1, w.forecast.atReset.p50)) + " at reset, " + pct(w.forecast.pEmpty) + " risk")
-                            : "≈" + pct(Math.min(1, w.forecast.atReset.p50)) + " at reset")
-                        + dim(", resets " + shortTime(w.resetsAt, now));
-                else if (w.state === "not_started")
-                    tail = dim("not started");
-                else
-                    tail = dim("no data");
-                const outs = w.of > 1 ? dim(", " + w.out + "/" + w.of + " out") : "";
-                lines.push(w.key + " " + pct(w.used) + ", " + tail + outs);
-            }
+    toolTipItem: Item {
+        // The design's insets (border + padding) less the tooltip frame's own margins.
+        readonly property real hPad: 11
+        readonly property real vPad: 9
+        implicitWidth: tip.width + 2 * hPad
+        implicitHeight: tip.implicitHeight + 2 * vPad
+        // The tooltip sizes itself from these, also when the content grows after it opened.
+        Layout.minimumWidth: implicitWidth
+        Layout.maximumWidth: implicitWidth
+        Layout.minimumHeight: implicitHeight
+        Layout.maximumHeight: implicitHeight
+
+        TooltipContent {
+            id: tip
+            x: parent.hPad
+            y: parent.vPad
+            width: 280
         }
-        return lines.join("<br>");
     }
 
-    // Availability lane on the popup timeline: neutral while usable, pink and striped from
-    // the median run-out to the reset.
-    component Lane: Item {
-        id: lane
-        property var blocks: []
+    // Text sized in logical px, with the design's fixed line boxes and tabular figures.
+    component Txt: PlasmaComponents3.Label {
+        id: txt
+        property real px: 14.67
+        property real lh: 0
+        // Lines as the browser lays them out: the baseline at the rounded ascent, plus half
+        // the leading of a fixed line box (`lh`). Qt puts the baseline at the exact ascent
+        // and all of a fixed line's leading below it, so shift the glyphs down, and pin the
+        // height Qt would round up.
+        readonly property real shift: Math.round(metrics.ascent) - metrics.ascent
+            + (lh > 0 ? (lh - Math.round(metrics.ascent) - Math.round(metrics.descent)) / 2 : 0)
+        height: lh > 0 ? lineCount * lh : implicitHeight
+        Layout.preferredHeight: lh > 0 ? lineCount * lh : -1
+        font.pointSize: root.pt(px)
+        font.features: ({ "tnum": 1 })
+        lineHeightMode: lh > 0 ? Text.FixedHeight : Text.ProportionalHeight
+        lineHeight: lh > 0 ? lh : 1
+        topPadding: shift
+        bottomPadding: -shift
+        readonly property alias fontMetrics: metrics
+        FontMetrics {
+            id: metrics
+            font: txt.font
+        }
+    }
 
-        /** The outages: overlapping "bad" blocks merged, clipped to now. */
-        readonly property var spans: {
-            const bad = blocks.filter(b => b.kind === "bad" && b.until > root.nowMs)
-                .map(b => ({ "from": Math.max(root.nowMs, b.from), "until": b.until }))
-                .sort((p, q) => p.from - q.from);
-            const out = [];
-            for (const b of bad) {
-                if (out.length > 0 && b.from <= out[out.length - 1].until)
-                    out[out.length - 1].until = Math.max(out[out.length - 1].until, b.until);
-                else
-                    out.push(b);
-            }
-            return out;
+    // The tooltip: the popup's answer, then the next three events.
+    component TooltipContent: ColumnLayout {
+        id: tipContent
+        readonly property var next: root.events.filter(e => e.kind !== "now").slice(0, 3)
+        // One time column for every row, at least the design's 38 px.
+        readonly property real timeWidth: Math.max(38, ...next.map(e => timeMetrics.advanceWidth(root.shortTime(e.t, root.nowMs))))
+        spacing: 8
+
+        FontMetrics {
+            id: timeMetrics
+            font.pointSize: root.pt(12)
+            font.weight: Font.DemiBold
+            font.features: ({ "tnum": 1 })
         }
 
-        Rectangle {
-            anchors.fill: parent
-            radius: 3
-            color: root.availableColor
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
+            Txt {
+                Layout.fillWidth: true
+                px: 14
+                lh: 19
+                font.weight: Font.DemiBold
+                wrapMode: Text.WordWrap
+                textFormat: Text.StyledText
+                text: root.styled(root.heroView.title)
+            }
+            Txt {
+                Layout.fillWidth: true
+                px: 12
+                lh: 17
+                wrapMode: Text.WordWrap
+                color: root.dimTextColor
+                text: root.heroView.sub
+            }
         }
         Repeater {
-            model: lane.blocks
-            delegate: Item {
-                id: blk
+            model: tipContent.next
+            delegate: RowLayout {
                 required property var modelData
-                readonly property real x1: lane.width * root.axisFraction(Math.max(root.nowMs, modelData.from), root.nowMs)
-                readonly property real x2: lane.width * root.axisFraction(modelData.until, root.nowMs)
-                readonly property color tone: root.verdictColor(modelData.kind)
-                anchors.fill: parent
-                visible: x2 > 0 && x1 < lane.width
-
-                Rectangle {
-                    x: blk.x1
-                    width: Math.max(0, blk.x2 - blk.x1)
-                    height: parent.height
-                    radius: blk.x2 >= lane.width - 0.5 ? 3 : 0
-                    color: blk.tone
-                    opacity: blk.modelData.kind === "warn" ? 0.55 : 1
+                Layout.fillWidth: true
+                spacing: 10
+                Txt {
+                    Layout.preferredWidth: tipContent.timeWidth
+                    px: 12
+                    font.weight: Font.DemiBold
+                    color: root.eventColor(parent.modelData.kind)
+                    text: root.shortTime(parent.modelData.t, root.nowMs)
+                }
+                Txt {
+                    Layout.fillWidth: true
+                    px: 12
+                    elide: Text.ElideRight
+                    text: parent.modelData.title
                 }
             }
         }
-        // Stripes over each outage, so "out" does not rest on colour alone.
-        Canvas {
-            id: stripes
-            anchors.fill: parent
-            readonly property var spans: lane.spans
-            onSpansChanged: requestPaint()
-            onWidthChanged: requestPaint()
-            onPaint: {
-                const ctx = getContext("2d");
-                ctx.reset();
-                ctx.strokeStyle = Kirigami.Theme.backgroundColor.toString();
-                ctx.globalAlpha = 0.18;
-                ctx.lineWidth = 2;
-                for (const s of spans) {
-                    const x1 = width * root.axisFraction(s.from, root.nowMs);
-                    const x2 = width * root.axisFraction(s.until, root.nowMs);
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.rect(x1, 0, x2 - x1, height);
-                    ctx.clip();
-                    ctx.beginPath();
-                    for (let x = x1 - height; x < x2; x += 6) {
-                        ctx.moveTo(x, height);
-                        ctx.lineTo(x + height, 0);
-                    }
-                    ctx.stroke();
-                    ctx.restore();
-                }
-            }
+    }
+
+    // A panel ring: how full the pool's binding window is.
+    component Ring: Canvas {
+        property real used: 0
+        property color tone: root.textColor
+        implicitWidth: 24
+        implicitHeight: 24
+        onUsedChanged: requestPaint()
+        onToneChanged: requestPaint()
+        onPaint: {
+            const ctx = getContext("2d");
+            ctx.reset();
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = root.textAlpha(0.14);
+            ctx.beginPath();
+            ctx.arc(12, 12, 10, 0, 2 * Math.PI);
+            ctx.stroke();
+            if (used <= 0)
+                return;
+            ctx.strokeStyle = tone;
+            ctx.beginPath();
+            ctx.arc(12, 12, 10, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * used);
+            ctx.stroke();
         }
     }
 
@@ -559,57 +759,10 @@ PlasmoidItem {
             const ctx = getContext("2d");
             ctx.reset();
             const w = width, h = height;
-            const fg = Kirigami.Theme.textColor.toString();
-            ctx.globalAlpha = 0.06;
-            ctx.fillStyle = fg;
-            ctx.beginPath();
-            ctx.roundedRect(0, 0, w, h, 3, 3);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-            const win = chart.win;
-            if (!win || win.start === null || win.resetsAt === null || w <= 0 || h <= 0) {
-                ctx.strokeStyle = fg;
-                ctx.globalAlpha = 0.25;
-                ctx.setLineDash([2, 3]);
-                ctx.beginPath();
-                ctx.moveTo(3, h - 0.5);
-                ctx.lineTo(w - 3, h - 0.5);
-                ctx.stroke();
-                return;
-            }
-            const now = Math.min(chart.now, win.resetsAt);
-            // A pooled window can report a start after now; the axis then begins at now.
-            const start = Math.min(win.start, now);
-            const tx = t => w * (t - start) / (win.resetsAt - start);
-            const uy = u => h - (h - 1.5) * Math.min(1, u);
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(0, 0, w, h);
-            ctx.clip();
-
-            // Time grid by the axis span: full hours (up to 8 h), midnights (up to 8 d), else
-            // Monday midnights.
-            ctx.fillStyle = fg;
-            ctx.globalAlpha = 0.09;
-            const span = win.resetsAt - start;
-            const hourly = span <= 8 * root.hourMs, weekly = span > 8 * root.dayMs;
-            const s0 = new Date(start);
-            let g = hourly
-                ? new Date(s0.getFullYear(), s0.getMonth(), s0.getDate(), s0.getHours() + 1)
-                : new Date(s0.getFullYear(), s0.getMonth(), s0.getDate() + 1);
-            if (weekly)
-                g = new Date(g.getFullYear(), g.getMonth(), g.getDate() + (8 - g.getDay()) % 7);
-            for (; g.getTime() < win.resetsAt; ) {
-                ctx.fillRect(Math.round(tx(g.getTime())) - 0.5, 0, 1, h);
-                g = hourly ? new Date(g.getFullYear(), g.getMonth(), g.getDate(), g.getHours() + 1)
-                           : new Date(g.getFullYear(), g.getMonth(), g.getDate() + (weekly ? 7 : 1));
-            }
-            ctx.globalAlpha = 1;
-
+            const fg = root.textColor.toString();
             // 100 % ceiling.
             ctx.strokeStyle = fg;
-            ctx.globalAlpha = 0.25;
+            ctx.globalAlpha = 0.2;
             ctx.lineWidth = 1;
             ctx.setLineDash([2, 3]);
             ctx.beginPath();
@@ -617,6 +770,15 @@ PlasmoidItem {
             ctx.lineTo(w, 1);
             ctx.stroke();
             ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+            const win = chart.win;
+            if (!win || win.start === null || win.resetsAt === null || w <= 0 || h <= 0)
+                return;
+            const now = Math.min(chart.now, win.resetsAt);
+            // A pooled window can report a start after now; the axis then begins at now.
+            const start = Math.min(win.start, now);
+            const tx = t => w * (t - start) / (win.resetsAt - start);
+            const uy = u => h - (h - 1.5) * Math.min(1, u);
 
             // History.
             if (now > start) {
@@ -652,8 +814,8 @@ PlasmoidItem {
                 ctx.closePath();
                 ctx.fill();
                 ctx.strokeStyle = hc;
-                ctx.globalAlpha = 0.8;
-                ctx.lineWidth = 1.4;
+                ctx.globalAlpha = 0.85;
+                ctx.lineWidth = 1.3;
                 ctx.beginPath();
                 path();
                 ctx.stroke();
@@ -677,8 +839,8 @@ PlasmoidItem {
                 ctx.closePath();
                 ctx.fill();
                 ctx.globalAlpha = 0.6;
-                ctx.lineWidth = 1.3;
-                ctx.setLineDash([3, 2]);
+                ctx.lineWidth = 1.2;
+                ctx.setLineDash([2.5, 5 / 3]);
                 ctx.beginPath();
                 ctx.moveTo(tx(now), uy(win.used));
                 const mid = edge(f.emptyAt.p50, f.atReset.p50);
@@ -687,185 +849,108 @@ PlasmoidItem {
                 ctx.setLineDash([]);
                 ctx.globalAlpha = 1;
             }
-            ctx.restore();
-
-            // Now marker.
-            ctx.globalAlpha = 0.55;
-            ctx.fillStyle = fg;
-            ctx.fillRect(tx(now) - 0.5, 0, 1, h);
-            ctx.globalAlpha = 1;
 
             // The predicted outage, the only colour on the chart: from the median run-out
             // along the ceiling to the reset.
             if (win.runsOut && !chart.dimmed) {
-                const dx = tx(win.forecast.emptyAt.p50);
                 ctx.strokeStyle = root.verdictColors.bad;
-                ctx.lineWidth = 3;
+                ctx.lineWidth = 2.5;
                 ctx.beginPath();
-                ctx.moveTo(dx, uy(1) + 1.5);
+                ctx.moveTo(tx(win.forecast.emptyAt.p50), uy(1) + 1.5);
                 ctx.lineTo(w, uy(1) + 1.5);
                 ctx.stroke();
-                ctx.fillStyle = root.verdictColors.bad;
-                ctx.beginPath();
-                ctx.arc(dx, uy(1) + 1.5, 3.5, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-        }
-    }
-
-    // One window of a pool in the popup: share used and the burn chart over the window, with
-    // the reset time in its corner. While a window locks the pool (its `block`), that
-    // window's name turns pink and the others step back.
-    component WindowRow: ColumnLayout {
-        id: row
-        property var win: null
-        property var points: []
-        property var block: null
-        readonly property bool binding: win !== null && block !== null && block.key === win.key
-        opacity: block !== null && !binding ? 0.5 : 1
-        spacing: 1
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Kirigami.Units.largeSpacing
-            ColumnLayout {
-                Layout.preferredWidth: Kirigami.Units.gridUnit * 3
-                Layout.fillWidth: false
-                Layout.alignment: Qt.AlignVCenter
-                spacing: 0
-                PlasmaComponents3.Label {
-                    text: row.win ? root.pct(row.win.used) : "–"
-                    font.bold: true
-                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.15
-                    color: row.win ? root.usageColor(row.win) : root.dimTextColor
-                }
-                PlasmaComponents3.Label {
-                    text: row.win ? row.win.key : ""
-                    font.pointSize: Kirigami.Theme.smallFont.pointSize
-                    font.weight: row.binding ? Font.DemiBold : Font.Normal
-                    color: row.binding ? root.verdictColors.bad : root.dimTextColor
-                }
-            }
-            BurnChart {
-                id: chart
-                Layout.fillWidth: true
-                Layout.preferredHeight: Kirigami.Units.gridUnit * 2.4
-                win: row.win
-                points: row.points
-                dimmed: root.stale
-
-                // When the window resets, in the chart's bottom-right corner.
-                PlasmaComponents3.Label {
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.rightMargin: Kirigami.Units.smallSpacing
-                    text: row.win && row.win.resetsAt !== null ? root.shortTime(row.win.resetsAt, root.nowMs) : ""
-                    font: Kirigami.Theme.smallFont
-                    color: root.dimTextColor
-                }
             }
         }
     }
 
     compactRepresentation: MouseArea {
         id: compactRoot
-        // One entry per pool; a single null column keeps the slot laid out before the first
-        // successful poll.
-        readonly property var columns: root.pools.length > 0 ? root.pools : [null]
+        readonly property var view: root.panelView
 
-        // The configured width wins: columns share whatever room it gives them, and the
-        // user widens the widget by dragging.
-        Layout.minimumWidth: root.effectiveWidth
-        Layout.preferredWidth: root.effectiveWidth
+        // The rings set the width; the text line takes the configured rest, and the user
+        // widens it by dragging.
+        Layout.minimumWidth: root.panelWidth
+        Layout.preferredWidth: root.panelWidth
         onClicked: root.expanded = !root.expanded
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: Kirigami.Units.smallSpacing
-            anchors.rightMargin: Kirigami.Units.smallSpacing
-            spacing: Kirigami.Units.largeSpacing
+            anchors.leftMargin: 4
+            anchors.rightMargin: 4
+            spacing: 8
+            opacity: compactRoot.view.opacity
 
-            Repeater {
-                model: compactRoot.columns
-                delegate: RowLayout {
-                    id: poolColumn
-                    required property var modelData
-                    required property int index
-                    readonly property var pool: modelData
-                    readonly property var cd: pool ? root.countdown(pool, root.nowMs) : null
-                    readonly property color cdColor: root.stale ? root.dimTextColor
-                        : (cd ? root.verdictColor(cd.verdict) : Kirigami.Theme.textColor)
-                    Layout.fillWidth: true
-                    // Every column gets the same slice of the panel; the name elides instead.
-                    Layout.preferredWidth: 1
-                    Layout.fillHeight: true
-                    spacing: Kirigami.Units.smallSpacing * 2
-
-                    // Hairline between providers.
-                    Rectangle {
-                        visible: poolColumn.index > 0
-                        Layout.preferredWidth: 1
-                        Layout.fillHeight: true
-                        Layout.topMargin: Kirigami.Units.mediumSpacing
-                        Layout.bottomMargin: Kirigami.Units.mediumSpacing
-                        color: root.ruleColor
-                    }
-                    // Name, with the countdown under it only when there is something to
-                    // count down to; a quiet pool keeps just its name, centred.
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        // The countdown row cannot elide; cut it off when the slot is narrow.
-                        clip: true
-                        spacing: 0
-                        visible: poolColumn.pool !== null
-
-                        Item { Layout.fillHeight: true }
-                        PlasmaComponents3.Label {
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                            text: poolColumn.pool ? poolColumn.pool.label : ""
-                            font: Kirigami.Theme.smallFont
-                            opacity: 0.8
-                            // Fractional text widths otherwise elide a label that fits.
-                            Layout.preferredWidth: Math.ceil(implicitWidth) + 1
-                        }
-                        Row {
-                            visible: poolColumn.cd !== null
-                            spacing: Kirigami.Units.smallSpacing
-                            PlasmaComponents3.Label {
-                                visible: poolColumn.cd !== null && poolColumn.cd.verdict === "bad"
-                                anchors.baseline: countdownValue.baseline
-                                text: poolColumn.cd && poolColumn.cd.back ? "back in" : "out in"
-                                font: Kirigami.Theme.smallFont
-                                color: root.dimTextColor
+            Row {
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 4
+                Repeater {
+                    model: compactRoot.view.rings
+                    delegate: Column {
+                        required property var modelData
+                        width: 32
+                        spacing: 1
+                        Item {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 24
+                            height: 24
+                            Ring {
+                                anchors.fill: parent
+                                used: modelData.used
+                                tone: modelData.color
                             }
-                            PlasmaComponents3.Label {
-                                id: countdownValue
-                                text: poolColumn.cd ? poolColumn.cd.value : ""
-                                font.bold: true
-                                color: poolColumn.cdColor
+                            Txt {
+                                anchors.centerIn: parent
+                                px: 8.5
+                                font.weight: Font.DemiBold
+                                text: modelData.text
                             }
                         }
-                        Item { Layout.fillHeight: true }
+                        Txt {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            px: 9
+                            lh: 10
+                            color: root.dimTextColor
+                            text: modelData.label
+                        }
                     }
                 }
             }
-
-            // Daemon trouble: takes its own slot rather than covering the text.
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 0
+                Txt {
+                    Layout.fillWidth: true
+                    px: 11
+                    lh: 14
+                    elide: Text.ElideRight
+                    color: root.dimTextColor
+                    text: compactRoot.view.line1
+                }
+                Txt {
+                    Layout.fillWidth: true
+                    px: 16
+                    lh: 20
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                    color: compactRoot.view.color
+                    text: compactRoot.view.line2
+                }
+            }
+            // Daemon trouble.
             Kirigami.Icon {
                 Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                visible: root.unhealthy || root.lastError !== ""
+                Layout.preferredWidth: 16
+                Layout.preferredHeight: 16
+                visible: compactRoot.view.warn
                 source: "data-warning"
             }
         }
 
         // Plasma gives panel applets no resize handles of their own (the stock Panel Spacer
         // only exposes a width in its config dialog), so provide one grip per edge. Dragging
-        // away from the centre grows the widget, toward it shrinks — correct on either side no
-        // matter which edge the panel layout happens to pin.
+        // away from the centre grows the text line, toward it shrinks — correct on either side
+        // no matter which edge the panel layout happens to pin.
         Repeater {
             model: [-1, 1] // -1 = leading edge, 1 = trailing edge
             delegate: MouseArea {
@@ -889,7 +974,7 @@ PlasmoidItem {
 
                 onPressed: mouse => {
                     grip.pressSceneX = grip.mapToItem(null, mouse.x, 0).x;
-                    grip.pressWidth = root.effectiveWidth;
+                    grip.pressWidth = root.textWidth;
                     grip.moved = false;
                 }
                 onPositionChanged: mouse => {
@@ -901,16 +986,16 @@ PlasmoidItem {
                     if (!grip.moved && Math.abs(delta) < 2)
                         return;
                     grip.moved = true;
-                    root.dragWidth = Math.round(grip.pressWidth + grip.sign * delta);
+                    root.dragTextWidth = Math.max(0, Math.round(grip.pressWidth + grip.sign * delta));
                 }
                 onReleased: {
                     if (grip.moved)
-                        Plasmoid.configuration.panelWidth = root.effectiveWidth;
+                        Plasmoid.configuration.textWidth = root.textWidth;
                     else
                         root.expanded = !root.expanded; // a plain click on the grip still toggles
-                    root.dragWidth = -1;
+                    root.dragTextWidth = -1;
                 }
-                onCanceled: root.dragWidth = -1
+                onCanceled: root.dragTextWidth = -1
 
                 // Discoverability: a hairline that fades in under the cursor.
                 Rectangle {
@@ -929,9 +1014,13 @@ PlasmoidItem {
     }
 
     fullRepresentation: Item {
+        // The design's insets (border + padding) less the Plasma dialog's own margins.
+        readonly property real hPad: 13
+        readonly property real topPad: 15
+        readonly property real bottomPad: 13
         // Sized to the content: nothing scrolls and nothing stretches.
-        implicitWidth: Kirigami.Units.gridUnit * 31
-        implicitHeight: content.implicitHeight + Kirigami.Units.smallSpacing
+        implicitWidth: 366 + 2 * hPad
+        implicitHeight: content.implicitHeight + topPad + bottomPad
         Layout.minimumWidth: implicitWidth
         Layout.preferredWidth: implicitWidth
         Layout.maximumWidth: implicitWidth
@@ -941,117 +1030,180 @@ PlasmoidItem {
 
         PopupContent {
             id: content
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
+            x: parent.hPad
+            y: parent.topPad
+            width: parent.width - 2 * parent.hPad
         }
     }
 
-    // The popup, top to bottom: daemon trouble, the availability timeline with one lane per
-    // pool, then one section per pool with a burn chart per window.
+    // A trouble line atop the popup: icon and text in one colour.
+    component Notice: RowLayout {
+        property alias icon: noticeIcon.source
+        property alias text: noticeText.text
+        property alias color: noticeText.color
+        spacing: 8
+        Kirigami.Icon {
+            id: noticeIcon
+            Layout.alignment: Qt.AlignTop
+            Layout.preferredWidth: 16
+            Layout.preferredHeight: 16
+        }
+        Txt {
+            id: noticeText
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            px: 12
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    // The popup, top to bottom: daemon trouble, the answer, the agenda, then one section per
+    // pool with a tile per window and a row per account.
     component PopupContent: ColumnLayout {
         id: popup
-        spacing: Kirigami.Units.smallSpacing
+        spacing: 18
+        readonly property real dimmed: root.stale ? 0.55 : 1
 
-        readonly property real laneHeight: Math.round(Kirigami.Theme.smallFont.pointSize * 1.6)
-        readonly property real rowHeight: laneHeight + Kirigami.Units.smallSpacing * 2
-        readonly property real gutter: Kirigami.Units.gridUnit * 6
-
-        FontMetrics {
-            id: tickMetrics
-            font: Kirigami.Theme.smallFont
-        }
-
-        Kirigami.InlineMessage {
+        Notice {
             Layout.fillWidth: true
-            type: Kirigami.MessageType.Error
             visible: root.lastError !== ""
+            icon: "dialog-error"
+            color: root.verdictColors.bad
             text: root.lastError
         }
-
-        Kirigami.InlineMessage {
+        Notice {
             Layout.fillWidth: true
-            type: Kirigami.MessageType.Warning
             visible: root.unhealthy
-            text: {
-                const msgs = [];
-                if (root.stale)
-                    msgs.push("Estimates are " + root.duration(root.nowMs - root.generatedAt) + " old: the daemon isn't updating.");
-                if (root.pollError !== "")
-                    msgs.push("omp: " + root.pollError);
-                if (root.historyError !== "")
-                    msgs.push("omp history: " + root.historyError);
-                return msgs.join("\n");
+            icon: "data-warning"
+            color: root.verdictColors.warn
+            text: (root.stale ? "Estimates are " + root.duration(root.nowMs - root.generatedAt) + " old"
+                    : root.pollError !== "" ? "Last poll failed" : "Last history read failed")
+                + " · the daemon isn't updating"
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            opacity: popup.dimmed
+            Txt {
+                id: heroTitle
+                Layout.fillWidth: true
+                px: 21
+                lh: 27
+                font.weight: Font.DemiBold
+                font.letterSpacing: -0.21
+                wrapMode: Text.WordWrap
+                textFormat: Text.StyledText
+                text: root.prettyStyled(root.heroView.title, heroTitle.fontMetrics, heroTitle.width)
+            }
+            Txt {
+                id: heroSub
+                Layout.fillWidth: true
+                px: 13
+                lh: 19
+                wrapMode: Text.WordWrap
+                textFormat: Text.StyledText
+                text: root.prettyStyled([{ "t": root.heroView.sub, "c": root.dimTextColor }], heroSub.fontMetrics, heroSub.width)
             }
         }
 
-        PlasmaComponents3.Label {
-            Layout.fillWidth: true
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap
-            visible: root.pools.length === 0 && root.lastError === ""
-            text: (root.loading && !root.everLoaded)
-                ? "Loading…"
-                : "No estimates yet. Check that the claude-usage-estimator daemon is running."
-        }
-
-        // Lockout timeline, one lane per pool.
-        Item {
-            id: timeline
+        // Agenda: time | rail and dot | what happens.
+        Column {
             Layout.fillWidth: true
             visible: root.pools.length > 0
-            readonly property real laneX: popup.gutter
-            readonly property real laneW: Math.max(0, width - laneX)
-            readonly property real tickRow: Kirigami.Theme.smallFont.pointSize * 1.9
-            readonly property int rows: root.pools.length
-            implicitHeight: tickRow + rows * popup.rowHeight
+            opacity: popup.dimmed
+            readonly property real railX: 44 + 10 + 6
+            readonly property real textX: 44 + 10 + 14 + 10
 
             Repeater {
-                model: root.timelineTicks(root.nowMs, timeline.laneW, s => tickMetrics.advanceWidth(s),
-                                          Kirigami.Units.largeSpacing * 1.5)
+                model: root.agendaRows
                 delegate: Item {
+                    id: agendaRow
                     required property var modelData
-                    readonly property real px: timeline.laneX + timeline.laneW * root.axisFraction(modelData.t, root.nowMs)
+                    readonly property var ev: modelData.event || null
+                    width: parent.width
+                    height: ev ? evText.height + 12 : dayLabel.height + 14
 
+                    // Day rows: the rail runs through, the date beside it.
                     Rectangle {
-                        x: parent.px - 0.5
-                        y: timeline.tickRow
-                        width: 1
-                        height: timeline.height - timeline.tickRow
-                        color: root.ruleColor
+                        visible: !agendaRow.ev
+                        x: agendaRow.parent.railX
+                        width: 2
+                        height: parent.height
+                        color: agendaRow.modelData.rail || "transparent"
                     }
-                    PlasmaComponents3.Label {
-                        x: timeline.laneX + parent.modelData.span[0]
-                        text: parent.modelData.label
-                        font: Kirigami.Theme.smallFont
-                        color: root.dimTextColor
-                    }
-                }
-            }
-
-            Repeater {
-                model: root.pools
-                delegate: Item {
-                    required property var modelData
-                    required property int index
-                    readonly property var blocks: root.poolBlocks(modelData, root.nowMs)
-                    y: timeline.tickRow + index * popup.rowHeight
-                    width: timeline.width
-                    height: popup.rowHeight
-
-                    PlasmaComponents3.Label {
-                        width: popup.gutter - Kirigami.Units.smallSpacing
-                        anchors.verticalCenter: parent.verticalCenter
-                        elide: Text.ElideRight
-                        text: parent.modelData.label
+                    Txt {
+                        id: dayLabel
+                        visible: !agendaRow.ev
+                        x: agendaRow.parent.textX
+                        y: 8
+                        px: 11
                         font.weight: Font.DemiBold
+                        font.letterSpacing: 0.22
+                        color: root.dimTextColor
+                        text: agendaRow.modelData.day || ""
                     }
-                    Lane {
-                        x: timeline.laneX
-                        width: timeline.laneW
-                        height: popup.laneHeight
-                        anchors.verticalCenter: parent.verticalCenter
-                        blocks: parent.blocks
+
+                    // Event rows.
+                    Txt {
+                        visible: !!agendaRow.ev
+                        width: 44
+                        px: 13
+                        lh: 18
+                        horizontalAlignment: Text.AlignRight
+                        font.weight: Font.DemiBold
+                        color: agendaRow.ev ? root.eventColor(agendaRow.ev.kind) : "transparent"
+                        text: agendaRow.ev ? root.hm(agendaRow.ev.t) : ""
+                    }
+                    Rectangle {
+                        visible: !!agendaRow.ev
+                        x: agendaRow.parent.railX
+                        width: 2
+                        height: 9
+                        color: agendaRow.modelData.railIn || "transparent"
+                    }
+                    Rectangle {
+                        visible: !!agendaRow.ev
+                        x: agendaRow.parent.railX
+                        y: 9
+                        width: 2
+                        height: parent.height - 9
+                        color: agendaRow.modelData.railOut || "transparent"
+                    }
+                    Rectangle {
+                        readonly property string kind: agendaRow.ev ? agendaRow.ev.kind : ""
+                        readonly property bool hollow: kind === "risk" || kind === "reset"
+                        visible: !!agendaRow.ev
+                        x: agendaRow.parent.railX - 4
+                        y: 4
+                        width: 10
+                        height: 10
+                        radius: 5
+                        color: hollow ? Kirigami.Theme.backgroundColor : root.eventColor(kind)
+                        border.width: 2
+                        border.color: kind === "reset" ? root.textAlpha(0.45) : root.eventColor(kind)
+                    }
+                    Column {
+                        id: evText
+                        visible: !!agendaRow.ev
+                        x: agendaRow.parent.textX
+                        width: parent.width - x
+                        Txt {
+                            width: parent.width
+                            px: 13.5
+                            lh: 18
+                            font.weight: Font.Medium
+                            wrapMode: Text.WordWrap
+                            text: agendaRow.ev ? agendaRow.ev.title : ""
+                        }
+                        Txt {
+                            width: parent.width
+                            px: 12
+                            lh: 17
+                            wrapMode: Text.WordWrap
+                            color: root.dimTextColor
+                            text: agendaRow.ev ? agendaRow.ev.detail : ""
+                        }
                     }
                 }
             }
@@ -1059,54 +1211,183 @@ PlasmoidItem {
 
         Repeater {
             model: root.pools
-            delegate: ColumnLayout {
-                id: poolSection
-                required property var modelData
-                readonly property var status: root.poolStatus(modelData, root.nowMs)
+            delegate: PoolSection {
                 Layout.fillWidth: true
-                spacing: Kirigami.Units.largeSpacing
+                opacity: popup.dimmed
+            }
+        }
+    }
 
-                Kirigami.Separator {
+    // One pool in the popup: name and status, a tile per window, a row per account.
+    component PoolSection: ColumnLayout {
+        id: section
+        required property var modelData
+        readonly property var pool: modelData
+        readonly property var status: root.poolStatus(pool, root.nowMs)
+        readonly property bool shares: pool.accounts.some(a => a.share !== null)
+        spacing: 8
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            Layout.bottomMargin: 14 - section.spacing
+            color: root.textAlpha(0.1)
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Txt {
+                Layout.alignment: Qt.AlignBaseline
+                px: 13
+                font.weight: Font.DemiBold
+                text: section.pool.label
+            }
+            Txt {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignBaseline
+                px: 12
+                horizontalAlignment: Text.AlignRight
+                elide: Text.ElideRight
+                color: section.status[1]
+                text: section.status[0]
+            }
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Repeater {
+                model: section.pool.windows
+                delegate: WindowTile {
                     Layout.fillWidth: true
-                    Layout.topMargin: Kirigami.Units.smallSpacing
+                    Layout.preferredWidth: 1
+                    Layout.alignment: Qt.AlignTop
+                    points: root.poolPoints(section.pool, modelData)
                 }
-
-                RowLayout {
+            }
+        }
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: 2
+            spacing: 4
+            Repeater {
+                model: section.pool.accounts
+                delegate: RowLayout {
+                    id: acct
+                    required property var modelData
                     Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing * 2
-                    PlasmaComponents3.Label {
-                        text: poolSection.modelData.label
-                        font.bold: true
-                    }
-                    PlasmaComponents3.Label {
+                    spacing: 10
+                    Txt {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignBaseline
+                        px: 12
                         elide: Text.ElideRight
-                        // Only when it explains an outage: some accounts are already out.
-                        text: {
-                            const p = poolSection.modelData;
-                            const out = Math.max(0, ...p.windows.map(w => w.out));
-                            return out > 0 ? out + " of " + p.members.length + " accounts out" : "";
-                        }
-                        font: Kirigami.Theme.smallFont
                         color: root.dimTextColor
+                        text: acct.modelData.name
                     }
-                    PlasmaComponents3.Label {
-                        text: poolSection.status[0]
-                        font.weight: Font.DemiBold
-                        color: poolSection.status[1] === "ok" ? root.dimTextColor : root.verdictColor(poolSection.status[1])
+                    Txt {
+                        visible: section.shares
+                        Layout.preferredWidth: 52
+                        Layout.alignment: Qt.AlignBaseline
+                        px: 12
+                        horizontalAlignment: Text.AlignRight
+                        color: root.dimTextColor
+                        text: acct.modelData.share !== null ? root.pct(acct.modelData.share) + " cap" : "–"
+                    }
+                    Repeater {
+                        model: section.pool.windows
+                        delegate: Item {
+                            id: cell
+                            required property var modelData
+                            readonly property var own: acct.modelData.windows.find(w => w.limit === modelData.limit) || null
+                            readonly property bool out: own !== null && (own.state === "exhausted" || own.used >= 1)
+                            Layout.preferredWidth: 56
+                            Layout.preferredHeight: cellValue.height
+                            Layout.alignment: Qt.AlignBaseline
+                            baselineOffset: cellValue.baselineOffset
+                            Row {
+                                anchors.right: parent.right
+                                Txt {
+                                    anchors.baseline: cellValue.baseline
+                                    px: 11
+                                    color: root.dimTextColor
+                                    text: cell.modelData.key + " "
+                                }
+                                Txt {
+                                    id: cellValue
+                                    px: 12
+                                    font.weight: Font.Medium
+                                    color: cell.out ? root.verdictColors.bad : root.textColor
+                                    text: cell.own !== null ? root.pct(cell.own.used) : "–"
+                                }
+                            }
+                        }
                     }
                 }
+            }
+        }
+    }
 
-                Repeater {
-                    model: poolSection.modelData.windows
-                    delegate: WindowRow {
-                        required property var modelData
-                        Layout.fillWidth: true
-                        win: modelData
-                        points: root.poolPoints(poolSection.modelData, modelData)
-                        block: poolSection.modelData.block
-                    }
+    // One window of a pool: share used, pace, burn chart and what comes next.
+    component WindowTile: Rectangle {
+        id: tile
+        required property var modelData
+        readonly property var win: modelData
+        property var points: []
+        readonly property var f: win.forecast
+        implicitHeight: tileContent.implicitHeight + 9 + 10
+        radius: 8
+        color: root.textAlpha(0.05)
+
+        ColumnLayout {
+            id: tileContent
+            x: 10
+            y: 9
+            width: parent.width - 20
+            spacing: 4
+            RowLayout {
+                Layout.fillWidth: true
+                Txt {
+                    Layout.fillWidth: true
+                    px: 11.5
+                    font.weight: Font.DemiBold
+                    color: root.dimTextColor
+                    text: tile.win.key
+                }
+                Txt {
+                    px: 11.5
+                    color: root.dimTextColor
+                    text: tile.f ? root.pace(tile.f) : ""
+                }
+            }
+            Txt {
+                px: 20
+                lh: 24
+                font.weight: Font.DemiBold
+                color: tile.win.state === "exhausted" ? root.verdictColors.bad : root.textColor
+                text: root.pct(tile.win.used)
+            }
+            BurnChart {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 28
+                win: tile.win
+                points: tile.points
+                dimmed: root.stale
+            }
+            Txt {
+                Layout.fillWidth: true
+                px: 11.5
+                elide: Text.ElideRight
+                readonly property var w: tile.win
+                color: w.state === "exhausted" || w.runsOut ? root.verdictColors.bad
+                    : w.verdict === "warn" ? root.verdictColors.warn : root.dimTextColor
+                text: {
+                    if (w.resetsAt === null)
+                        return w.state === "not_started" ? "not started" : "no data";
+                    if (w.state === "exhausted")
+                        return "back " + root.shortTime(w.resetsAt, root.nowMs);
+                    if (w.runsOut)
+                        return "out " + root.shortTime(w.outAt, root.nowMs) + " · back " + root.shortTime(w.resetsAt, root.nowMs);
+                    return "resets " + root.shortTime(w.resetsAt, root.nowMs);
                 }
             }
         }

@@ -6,17 +6,17 @@ import org.kde.kirigami as Kirigami
 
 KCM.SimpleKCM {
     property alias cfg_pollIntervalSeconds: pollSpin.value
-    property alias cfg_panelWidth: widthSpin.value
+    property alias cfg_textWidth: widthSpin.value
     property alias cfg_estimator: estimatorField.text
     property alias cfg_server: serverField.text
 
     Kirigami.FormLayout {
         QQC2.SpinBox {
             id: widthSpin
-            Kirigami.FormData.label: "Panel width (px):"
-            from: 48
-            to: 600
-            stepSize: 8
+            Kirigami.FormData.label: "Panel text width (px):"
+            from: 0
+            to: 400
+            stepSize: 2
         }
 
         QQC2.SpinBox {
