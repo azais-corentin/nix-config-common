@@ -153,6 +153,7 @@ in
       images = {
         autoResize = true;
         blockImages = false;
+        urls.enabled = true;
       };
       generate_image.enabled = true;
       tui.hyperlinks = "auto";
