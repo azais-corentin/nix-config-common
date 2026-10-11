@@ -161,10 +161,12 @@ in
       tui.hyperlinks = "auto";
       tui.tight = true;
       tui.renderMermaid = true;
+      tui.reactions = false;
       display = {
         shimmer = "kitt";
         showTokenUsage = false;
         subagentLivePreview = true;
+        cacheMissMarker = true;
       };
       title.icons = "boring";
       recap = {
@@ -175,6 +177,8 @@ in
         setupWizard = false;
         showSplash = false;
       };
+      error.notify = "on";
+      plan.autosave = true;
       task.showResolvedModelBadge = false;
       task.enableEffort = true;
       # Caller `effort: "hi"` maps to the model's top tier (max on Claude);
@@ -186,6 +190,7 @@ in
       edit.mode = "hashline";
       loop.mode = "reset";
       github.enabled = true;
+      astGrep.enabled = true;
       modelRoles = claudeRoles;
       # Switch with `/modelpreset switch <name>`; the next rebuild restores
       # the claude roles above.
