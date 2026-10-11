@@ -58,7 +58,10 @@
           name = "Launch Ghostty";
           comment = "Open the Ghostty terminal";
           key = "Meta+Return";
-          command = "ghostty";
+          # Ask the D-Bus-activated systemd service for a window instead of
+          # becoming the long-lived instance under this hotkey's unit, so
+          # rebuilds reload its config and restarts go through systemctl.
+          command = "ghostty +new-window";
         };
 
         programs.plasma.hotkeys.commands."launch-firefox" = {
