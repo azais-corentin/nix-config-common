@@ -17,6 +17,9 @@
       adjust-cursor-thickness = "15%";
       scrollback-limit = 10000000;
       bold-is-bright = false;
+      # io_uring keeps poll SQEs in flight, so idle event loops are counted as
+      # iowait and IO pressure (PSI); epoll avoids the bogus accounting.
+      async-backend = "epoll";
     };
   };
 }
