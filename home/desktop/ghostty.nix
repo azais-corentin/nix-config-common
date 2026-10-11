@@ -20,6 +20,9 @@
       # io_uring keeps poll SQEs in flight, so idle event loops are counted as
       # iowait and IO pressure (PSI); epoll avoids the bogus accounting.
       async-backend = "epoll";
+      # Install terminfo on SSH hosts that lack xterm-ghostty, falling back to
+      # TERM=xterm-256color when that fails.
+      shell-integration-features = "ssh-env,ssh-terminfo";
     };
   };
 }
