@@ -106,13 +106,23 @@ in
           "emoji"
           "boring"
         ])
-        "Icon and short code heading new generated session titles: nf+emoji = Nerd Font glyph when the nerd symbol preset renders it, else emoji; emoji = always emoji; boring = plain title.";
+        "Icon and short code heading new generated or /rename session titles: nf+emoji = Nerd Font glyph when the nerd symbol preset renders it, else emoji; emoji = always emoji; boring = plain title.";
   };
 
   worktree = mkSection "Agent-managed worktrees." {
     base = mkOpt t.str "Base directory for agent-managed worktrees (task isolation, PR checkouts, omp worktree). Unset uses ~/.omp/wt; must be absolute or ~-relative; OMP_WORKTREE_DIR overrides.";
     clone = mkOpt t.bool "New worktrees from github pr_checkout and bash git worktree add start as a copy-on-write clone of the current checkout so ignored build artifacts carry over; falls back to a plain checkout when the filesystem cannot clone.";
     cleanSource = mkOpt t.bool "When creating a worktree with /wt, reset tracked changes and remove untracked files from the original checkout after carrying them over.";
+    onStart = mkOpt (t.enum [
+      "off"
+      "ask"
+      "create"
+    ]) "Whether fresh interactive sessions start in a new linked worktree.";
+    onExit = mkOpt (t.enum [
+      "keep"
+      "ask"
+      "remove"
+    ]) "What to do on exit with worktrees created since omp started (on start or with /wt).";
   };
 
   tasks = mkSection "Todo list lifecycle." {

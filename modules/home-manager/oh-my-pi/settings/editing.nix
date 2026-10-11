@@ -90,6 +90,7 @@ in
       "off"
     ]) "Auto-load a repo's direnv/devenv .envrc into the bash session (honors direnv's allow list).";
     direnvLoadTimeoutMs = mkOpt num "Max wait for the first direnv export in ms; on timeout the session runs without the direnv env.";
+    gitGuard = mkOpt t.bool "Refuse git commands that discard or move shared work in the bash tool: stash, reset --hard or to another commit, and checkout/switch/restore outside a merge or rebase conflict.";
     patterns = mkOpt (t.listOf (subType {
       match = lib.mkOption {
         type = t.str;

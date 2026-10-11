@@ -173,6 +173,7 @@ let
     ]) "Bedrock prompt-cache mode.";
     promptCacheMinimumTokens = mkOpt num "Bedrock minimum tokens before prompt caching engages.";
     promptCacheMaximumCheckpoints = mkOpt num "Bedrock maximum prompt-cache checkpoints.";
+    supportsThinkingBindingControls = mkOpt t.bool "Send thinking-binding controls (thinking.block_binding and its beta) on prefix-bound Claude models; false omits them for a Bedrock gateway or region that rejects them while keeping the local safeguards (default true).";
   };
 
   # OpenAICompatSchema — fields plus thinking-only overrides.

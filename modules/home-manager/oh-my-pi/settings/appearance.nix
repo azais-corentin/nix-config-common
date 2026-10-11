@@ -56,6 +56,7 @@ in
     shape = mkOpt t.str "Visual layout of the input editor and status line. Upstream types this as a free string because extensions register shapes at runtime; the built-ins are band (default), box, claude, pi, borderless, rule, field and rail.";
     recallClearedDrafts = mkOpt t.bool "Keep drafts cleared with Ctrl+C in local Up/Down history until exit.";
     tokenRate = mkOpt t.bool "Show a live generation tok/s readout on the working row next to the session title.";
+    predictions = mkOpt t.bool "After a completed turn, ask the active model to predict your next message and show it as ghost text in the empty composer (Tab or Right inserts it). Every completed turn sends one more billed request over the whole conversation.";
   };
 
   statusLine = mkSection "Status line configuration." {
@@ -98,6 +99,7 @@ in
   terminal = mkSection "Terminal rendering." {
     showImages = mkOpt t.bool "Render images inline in terminal.";
     showProgress = mkOpt t.bool "Emit OSC 9;4 indeterminate terminal progress while the agent or context maintenance runs.";
+    programStatus = mkOpt t.bool "Report whether the agent is working, waiting on you, done, or failed over OSC 7501, for terminal tab indicators and agent inboxes.";
   };
 
   images = mkSection "Image handling." {

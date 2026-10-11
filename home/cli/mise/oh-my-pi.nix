@@ -76,8 +76,8 @@ let
     task = "anthropic/claude-opus-5-5:medium";
     vision = "anthropic/claude-opus-5-5:medium";
     smol = "anthropic/claude-sonnet-5-5:medium";
-    tiny = "anthropic/claude-sonnet-5-5:low";
-    commit = "anthropic/claude-sonnet-5-5:low";
+    tiny = "anthropic/claude-haiku-5-5:low";
+    commit = "anthropic/claude-haiku-5-5:low";
   };
 in
 {
@@ -148,6 +148,8 @@ in
       composer.recallClearedDrafts = false;
       compaction.dropUseless = true;
       compaction.thresholdPercent = 50;
+      # GPT's 272K window would compact at ~136K under the global 50%.
+      compaction.modelThresholds."openai-codex/*" = "80%";
       terminal.showImages = true;
       terminal.showProgress = true;
       images = {

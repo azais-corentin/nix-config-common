@@ -30,7 +30,7 @@ in
     ]) "Default approval behaviour for tool calls.";
     intentTracing = mkOpt t.bool "Ask the agent to describe the intent of each tool call before executing it.";
     maxTimeout = mkOpt num "Maximum timeout in seconds the agent can set for any tool (0 = no limit).";
-    xdev = mkOpt t.bool "Mount rarely-used (discoverable) tools under xd:// device URLs driven via read/write instead of shipping their schemas on every request (disable to expose every enabled tool top-level).";
+    xdev = mkOpt t.bool "Mount rarely-used (discoverable) tools under xd:// device URLs driven via read/write instead of shipping their schemas on every request; sessions granted read but not write get a device-only write transport (only local:// scratch stays writable). Disable to expose every enabled tool top-level.";
     abortOnFabricatedResult = mkOpt t.bool "Abort the turn when a fabricated tool result is detected.";
     format = mkOpt (t.enum [
       "auto"

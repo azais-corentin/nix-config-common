@@ -101,7 +101,7 @@ in
 
   ask = mkSection "Ask tool behaviour." {
     enabled = mkOpt t.bool "Enable the ask tool for interactive user questions.";
-    timeout = mkOpt num "Auto-select recommended option after timeout in seconds (0 to disable).";
+    timeout = mkOpt num "Auto-select the recommended ask option after this many seconds (0 disables). Also bounds cfg:// approval prompts, where an unanswered approval denies the write.";
     notify = mkOpt onOff "Notify when the ask tool is waiting for input.";
   };
 

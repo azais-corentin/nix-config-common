@@ -204,11 +204,14 @@ in
   };
 
   codexResets = mkSection "Codex saved rate-limit reset auto-redeem." {
-    autoRedeem = mkOpt (t.enum [
-      "unset"
-      "yes"
-      "no"
-    ]) "Whether to auto-redeem saved Codex rate-limit resets.";
+    autoRedeem =
+      mkOpt
+        (t.enum [
+          "unset"
+          "yes"
+          "no"
+        ])
+        "Spend saved Codex rate-limit resets automatically: unset asks before the first spend (without a prompt UI it spends only a reset expiring within 5 minutes), yes spends without prompting, no disables blocked recovery and expiry salvage.";
     minBlockedMinutes = mkOpt num "Minimum blocked minutes before redeeming a reset.";
     keepCredits = mkOpt num "Credits to keep in reserve when redeeming.";
     salvageHorizonHours = mkOpt num "Spend a saved Codex reset automatically when it would otherwise expire within this many hours and either chat window has meaningful usage to restore (0 disables expiry salvage).";
@@ -222,7 +225,7 @@ in
           "yes"
           "no"
         ])
-        "Spend eligible Claude Cedar or Juniper resets automatically: unset asks before the first spend, yes spends without prompting, no disables blocked recovery and expiry salvage.";
+        "Spend eligible Claude Cedar or Juniper resets automatically: unset asks before the first spend (without a prompt UI it spends only a reset expiring within 5 minutes), yes spends without prompting, no disables blocked recovery and expiry salvage.";
     minBlockedMinutes = mkOpt num "Only auto-redeem when the natural unblock is at least this many minutes away.";
     keepCredits = mkOpt num "Keep at least this many Claude resets banked (0 allows the last eligible reset to be spent); also applies to expiry salvage.";
     salvageHorizonHours = mkOpt num "Use a server-selected Cedar reset within this many hours of expiry when its covered windows have meaningful usage to restore (0 disables salvage).";
@@ -230,6 +233,7 @@ in
 
   tts = mkSection "Local TTS model/voice selection." {
     localVoice = mkOpt (t.enum kokoroVoices) "Kokoro voice used by the local TTS backend.";
+    localSpeed = mkOpt num "Speaking rate of the local TTS backend (tts tool, omp say); 1 = normal, clamped to 0.5-2.5.";
   };
 
   live = mkSection "Codex-backed realtime voice sessions." {
@@ -248,5 +252,6 @@ in
         "What to speak: all (messages + thinking), assistant (messages only), or yield (final message only).";
     voice = mkOpt (t.enum kokoroVoices) "Kokoro voice used when speaking output aloud.";
     enhanced = mkOpt t.bool "Rewrite assistant output into natural spoken prose with the tiny/smol model before synthesis (falls back to mechanical cleanup).";
+    speed = mkOpt num "Speaking rate when reading the assistant's output aloud; 1 = normal, clamped to 0.5-2.5.";
   };
 }

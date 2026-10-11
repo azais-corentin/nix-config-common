@@ -420,6 +420,29 @@ assert lib.all (value: !(settingsSucceed { task.agentCompactionThresholdOverride
     "80 %"
     true
   ];
+assert lib.all (value: !(settingsSucceed { compaction.modelThresholds."openai-codex/*" = value; }))
+  [
+    0
+    "80"
+    "f"
+    "f400k"
+    "400000f"
+  ];
+assert lib.all (value: settingsSucceed { compaction.modelThresholds."openai-codex/*" = value; }) [
+  400000
+  "f400000"
+  "80%"
+  "12.5%"
+];
+assert lib.all (name: !(settingsSucceed { contextFiles.extra = [ name ]; })) [
+  ""
+  " "
+  "."
+  ".."
+  "notes/AGENTS.md"
+  "notes\\AGENTS.md"
+];
+assert settingsSucceed { contextFiles.extra = [ "AGENTS.local.md" ]; };
 assert
   !(settingsSucceed {
     auth.accountPolicies = [

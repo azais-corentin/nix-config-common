@@ -16,6 +16,10 @@ in
 {
   extendedContext = mkOpt t.bool "Use premium long-context windows on models that bill extra past a threshold (e.g. GPT-5.6 1M charges 2x input above 272K); off caps them at the standard-pricing window.";
 
+  contextFiles = mkSection "Extra context files." {
+    extra = mkOpt (t.listOf (t.strMatching "[^/\\\\]*[^./\\\\[:space:]][^/\\\\]*")) "Extra instruction file names (not paths) loaded beside AGENTS.md, e.g. AGENTS.local.md; built-in names (AGENTS.md, CLAUDE.md, GEMINI.md, copilot-instructions.md) are rejected upstream. User-level lists also read each name from the agent directory.";
+  };
+
   contextPromotion = mkSection "Context promotion on overflow." {
     enabled = mkOpt t.bool "Promote to a larger-context model on overflow instead of compacting.";
   };
@@ -26,6 +30,8 @@ in
     asyncEnabled = mkOpt t.bool "Speculatively summarize in the background as context nears the compaction threshold, then splice the ready result in when the threshold is crossed.";
     thresholdPercent = mkOpt num "Percent threshold for context maintenance (-1 = legacy reserve-based).";
     thresholdTokens = mkOpt num "Fixed token limit for context maintenance (-1 = use percentage).";
+    modelThresholds = mkOpt (t.attrsOf (t.either t.ints.positive (t.strMatching "[fF][0-9]+|[0-9]+(\\.[0-9]+)?%"))) "Per-model compaction limits keyed by exact provider/model-id or a provider/…* prefix (longest match wins): a token count (90000) is the base the threshold policy scales in place of the window, \"f<tokens>\" (\"f90000\") an exact trigger, and a percentage (\"80%\") replaces both compaction.threshold* fields. A task.agentCompactionThresholdOverrides entry still wins.";
+    modelThresholdsEnabled = mkOpt t.bool "Whether compaction.modelThresholds applies (hidden upstream setting; subagent spawn turns it off when an agent override applies).";
     handoffSaveToDisk = mkOpt t.bool "Save generated handoff documents to markdown files.";
     reserveTokens = mkOpt num "Tokens reserved below the limit before compaction.";
     keepRecentTokens = mkOpt num "Recent tokens always kept during compaction.";

@@ -86,6 +86,14 @@ in
       "cooldown-expiry"
       "never"
     ]) "When to return to the primary model after a fallback.";
+    fallbackOn =
+      mkOpt
+        (t.enum [
+          "any"
+          "usage-limit"
+          "except-usage-limit"
+        ])
+        "Which failed requests may switch to a configured fallback model: any, only quota errors (usage-limit), or only non-quota errors (except-usage-limit).";
     usageAwareFallback = mkOpt t.bool "Prefer same-provider accounts, then configured fallback models, before a hard usage limit (coding-plan quota reports only).";
     usageReservePct = mkOpt num "Treat a coding-plan model as near its limit below this remaining percentage.";
     usageReservePolicy = mkOpt (t.enum [
