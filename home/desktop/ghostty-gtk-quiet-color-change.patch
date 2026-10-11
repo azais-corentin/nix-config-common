@@ -1,0 +1,24 @@
+diff --git a/src/apprt/gtk/class/application.zig b/src/apprt/gtk/class/application.zig
+index 039e853aa..62bdd9b48 100644
+--- a/src/apprt/gtk/class/application.zig
++++ b/src/apprt/gtk/class/application.zig
+@@ -764,6 +764,11 @@ pub const Application = extern struct {
+             .search_total => Action.searchTotal(target, value),
+             .search_selected => Action.searchSelected(target, value),
+ 
++            // macOS only uses this to recolour window chrome after OSC 11;
++            // GTK has no equivalent, so ignore it without logging. Theme
++            // scripts (base16-shell) emit one per palette entry.
++            .color_change => return false,
++
+             // Unimplemented
+             .secure_input,
+             .close_all_windows,
+@@ -773,7 +778,6 @@ pub const Application = extern struct {
+             .cell_size,
+             .render_inspector,
+             .renderer_health,
+-            .color_change,
+             .reset_window_size,
+             .check_for_updates,
+             .undo,
