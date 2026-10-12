@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /*
 #MISE description="Update pinned applications and the Firefox theme"
+#MISE quiet=true
 #USAGE arg "[targets]" var=#true help="Targets to update (default: all)" {
 #USAGE   choices "spotifast" "mise" "ff-ultima" "omp-telegram"
 #USAGE }
@@ -17,6 +18,7 @@ import {
   noDowngrade,
   object,
   one,
+  pinBody,
   prefetch,
   publish,
   readSource,
@@ -24,11 +26,12 @@ import {
   runTargets,
   sha256,
   text,
+  type Outcome,
 } from "../../../tooling/lib/update.ts";
 
 const systems = ["x86_64-linux", "aarch64-linux"] as const;
 
-async function spotifast(root: string): Promise<void> {
+async function spotifast(root: string): Promise<Outcome> {
   const source = readSource(root, "home/desktop/spotifast/package.nix");
   const arches = {
     "x86_64-linux": "x86_64-unknown-linux-gnu",
@@ -46,7 +49,7 @@ async function spotifast(root: string): Promise<void> {
       throw new Error(`Unexpected spotifast architecture: ${system}`);
   }
   const versionPin = nixString(source.body, "version");
-  text(versionPin.value, "spotifast pinned version", /^\d+\.\d+\.\d+$/);
+  const from = text(versionPin.value, "spotifast pinned version", /^\d+\.\d+\.\d+$/);
   const release = (await latestRelease("crmne/spotifast"))!;
   const version = text(release.tag, "spotifast release tag", /^v\d+\.\d+\.\d+$/).slice(1);
   const hashes = await Promise.all(
@@ -69,13 +72,13 @@ async function spotifast(root: string): Promise<void> {
     },
     "spotifast hash map",
   );
-  publish([source], `spotifast ${version}`);
+  return { from, to: version, written: publish([source]) };
 }
 
-async function mise(root: string): Promise<void> {
+async function mise(root: string): Promise<Outcome> {
   const source = readSource(root, "home/cli/mise/source.json");
   const pin = object(JSON.parse(source.body), "mise source pin");
-  text(pin.version, "mise pinned version", /^\d{4}\.\d+\.\d+$/);
+  const from = text(pin.version, "mise pinned version", /^\d{4}\.\d+\.\d+$/);
   const hashes = object(pin.hashes, "mise hashes");
   if (Object.keys(hashes).length !== systems.length)
     throw new Error("Unexpected mise architecture map");
@@ -94,12 +97,12 @@ async function mise(root: string): Promise<void> {
   ) {
     pin.version = version;
     for (const [index, system] of systems.entries()) hashes[system] = downloaded[index]!;
-    source.body = JSON.stringify(pin, null, 2) + "\n";
+    source.body = pinBody(pin);
   }
-  publish([source], `mise ${version}`);
+  return { from, to: version, written: publish([source]) };
 }
 
-async function ffUltima(root: string): Promise<void> {
+async function ffUltima(root: string): Promise<Outcome> {
   const source = readSource(root, "home/desktop/firefox.nix");
   const pattern = /(\bultimaTheme\s*=\s*pkgs\.fetchFromGitHub\s*\{)([^{}]*)(\}\s*;)/;
   const block = one(source.body, pattern, "FF Ultima source")[2]!;
@@ -149,10 +152,10 @@ async function ffUltima(root: string): Promise<void> {
     },
     "FF Ultima source",
   );
-  publish([source], `ff-ultima ${revision}`);
+  return { from: current, to: revision, written: publish([source]) };
 }
 
-async function ompTelegram(root: string): Promise<void> {
+async function ompTelegram(root: string): Promise<Outcome> {
   const source = readSource(root, "home/cli/mise/oh-my-pi.nix");
   const pattern = /^  ompTelegram = pkgs\.fetchzip \{[\s\S]*?^  \};/m;
   const block = one(source.body, pattern, "omp-telegram source")[0];
@@ -187,7 +190,7 @@ async function ompTelegram(root: string): Promise<void> {
       "omp-telegram source",
     );
   }
-  publish([source], `omp-telegram ${version}`);
+  return { from: current, to: version, written: publish([source]) };
 }
 
 await runTargets("update:apps", {

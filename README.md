@@ -85,6 +85,8 @@ through `lib.mkDevShell` (which links the locked bundle as `.tooling`):
 - `tooling/tasks/`: `check`, `format`, `format:check`, `pre-commit`,
   `commitlint`, `pkl-format`, `update:inputs`; `tooling/consumer/tasks/`: `update:workflows`;
 - `tooling/lib/update.ts`: the updater library used by every `update:*` task;
+- `tooling/lib/report.ts`: their shared output — one `task  N updated, N current`
+  line per task, then only what changed as `old → new`, coloured like `nh`;
 - `tooling/package.json` / `package-lock.json`: commitlint, built offline by Nix
   (`importNpmLock`) into the bundle's `node_modules`.
 

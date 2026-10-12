@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 //MISE description="Update all managed pins in this repository"
+//MISE quiet=true
 
 if (Bun.argv.length > 2) {
   console.error("update accepts no arguments. Use update:inputs or a target-specific update task.");

@@ -8,12 +8,18 @@ import {
   writeFileSync,
 } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
+import { report, status, type Change, type Counts, type Row } from "./report.ts";
 
 export type Source = { path: string; name: string; original: string; body: string; mode: number };
 export type Release = { tag: string; assets: unknown[] };
 export type VersionedRelease = Release & { version: string; prerelease: boolean };
 export type Commit = { rev: string; date: string };
-type Target = (root: string) => Promise<void>;
+/**
+ * What a target did: its pinned version before and after, whether any file was
+ * written (an unchanged version with a write is a rehash), and nested changes.
+ */
+export type Outcome = { from: string; to: string; written: boolean; details?: Change[] };
+type Target = (root: string) => Promise<Outcome>;
 
 export function object(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -64,6 +70,8 @@ function shellWords(input: string): string[] {
 }
 
 export async function runTargets(task: string, targets: Record<string, Target>): Promise<void> {
+  let root: string;
+  let selected: string[];
   try {
     const names = Object.keys(targets);
     const args =
@@ -84,15 +92,36 @@ export async function runTargets(task: string, targets: Record<string, Target>):
       );
     const configuredRoot = text(process.env.MISE_PROJECT_ROOT, "MISE_PROJECT_ROOT");
     if (!isAbsolute(configuredRoot)) throw new Error("MISE_PROJECT_ROOT must be an absolute path");
-    const root = realpathSync(configuredRoot);
-    for (const name of new Set(args.length ? args : names)) {
-      console.error(`${task}: ${name}`);
-      await targets[name]!(root);
-    }
+    root = realpathSync(configuredRoot);
+    selected = [...new Set(args.length ? args : names)];
   } catch (error) {
     console.error(`error: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;
+    return;
   }
+  const counts: Counts = { updated: 0, current: 0 };
+  const rows: Row[] = [];
+  // Stop at the first failure: later targets may share state with the failed one.
+  for (const [index, name] of selected.entries()) {
+    status(`${task}  ${name}…`);
+    try {
+      const { from, to, written, details = [] } = await targets[name]!(root);
+      if (!written) {
+        counts.current++;
+        continue;
+      }
+      counts.updated++;
+      rows.push({ name, from, to, note: from === to ? "rehashed" : undefined });
+      rows.push(...details.map((detail) => ({ ...detail, depth: 1 })));
+    } catch (error) {
+      counts.failed = 1;
+      counts.skipped = selected.length - index - 1;
+      rows.push({ name, error: error instanceof Error ? error.message : String(error) });
+      process.exitCode = 1;
+      break;
+    }
+  }
+  report(task, counts, rows);
 }
 
 export function readSource(root: string, name: string): Source {
@@ -150,13 +179,11 @@ export function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Stage every file before publishing. Synchronous renames allow rollback on a failed publication.
-export function publish(sources: Source[], label: string): void {
+// Stage every file before publishing. Synchronous renames allow rollback on a
+// failed publication. Returns whether any file was written.
+export function publish(sources: Source[]): boolean {
   const changed = sources.filter((source) => source.body !== source.original);
-  if (!changed.length) {
-    console.error(`${label}: already current`);
-    return;
-  }
+  if (!changed.length) return false;
   const staged: {
     source: Source;
     next: string;
@@ -217,7 +244,7 @@ export function publish(sources: Source[], label: string): void {
       if (!entry.keepBackup) rmSync(entry.backup, { force: true });
     }
   }
-  console.error(`${label}: updated ${changed.map((source) => source.name).join(", ")}`);
+  return true;
 }
 
 async function request(url: string, missingIsNull = false): Promise<Response | null> {
@@ -342,7 +369,9 @@ export function prefetchSource(
 
 export function version(tag: string): string {
   const value = tag.replace(/^v/, "");
-  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/.test(value)) {
+  // Pins range from two-component tags (intel-igpu-passthru v0.1) to full
+  // three-component releases, so accept one to three numeric components.
+  if (!/^\d+(?:\.\d+){0,2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/.test(value)) {
     throw new Error(`Unsupported release version: ${tag}`);
   }
   return value;
@@ -353,7 +382,11 @@ export function compareVersions(left: string, right: string): number {
   const [rightCore, ...rightPre] = version(right).split("-");
   const a = leftCore!.split(".").map(Number);
   const b = rightCore!.split(".").map(Number);
-  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i]! - b[i]!;
+  // A missing component reads as 0 so 0.1 and 0.1.2 stay comparable.
+  for (let i = 0; i < 3; i++) {
+    const difference = (a[i] ?? 0) - (b[i] ?? 0);
+    if (difference) return difference;
+  }
   if (!leftPre.length || !rightPre.length)
     return Number(!leftPre.length) - Number(!rightPre.length);
   // Accept beta9/beta10 as well as SemVer's beta.9/beta.10 spelling.
@@ -443,10 +476,60 @@ export async function assetHash(
   let expected: string | undefined;
   if (asset.digest !== undefined && asset.digest !== null) {
     const digest = text(asset.digest, `${name} digest`, /^sha256:[a-fA-F0-9]{64}$/);
-    expected = `sha256-${Buffer.from(digest.slice(7), "hex").toString("base64")}`;
+    expected = sriFromHex(digest.slice(7));
   }
   const { hash } = await prefetch(root, url);
   if (expected && expected !== hash)
     throw new Error(`SHA-256 mismatch for ${name}: expected ${expected}, downloaded ${hash}`);
   return hash;
+}
+
+export function sriFromHex(hex: unknown): string {
+  return `sha256-${Buffer.from(text(hex, "hex SHA-256 digest", /^[0-9a-fA-F]{64}$/), "hex").toString("base64")}`;
+}
+
+/**
+ * Hashes a download into the flat-SHA256 SRI that `pkgs.fetchurl` reproduces.
+ *
+ * curl rather than `nix store prefetch-file`: fetchurl is curl-based and sends
+ * no Accept-Encoding, while Nix's own downloader always does and some CDNs
+ * (ikaLogic's WAF) answer 403 to those requests. Streaming also keeps large
+ * downloads out of memory. `data` turns the request into a form POST.
+ */
+export async function hashUrl(url: string, data?: string): Promise<string> {
+  const args = ["curl", "--fail", "--silent", "--show-error", "--location"];
+  if (data !== undefined) args.push("--data", data);
+  args.push(url);
+  const child = Bun.spawn(args, { stdin: "ignore", stdout: "pipe", stderr: "pipe" });
+  const errors = new Response(child.stderr).text();
+  const hasher = new Bun.CryptoHasher("sha256");
+  for await (const chunk of child.stdout) hasher.update(chunk);
+  const [code, stderr] = await Promise.all([child.exited, errors]);
+  if (code !== 0) throw new Error(`curl failed (${code}) for ${url}: ${stderr.trim()}`);
+  return `sha256-${hasher.digest("base64")}`;
+}
+
+export async function prefetchGitSubmodules(
+  root: string,
+  url: string,
+  rev: string,
+): Promise<string> {
+  const { stdout } = await command(root, [
+    "nix-prefetch-git",
+    "--quiet",
+    "--fetch-submodules",
+    "--url",
+    url,
+    "--rev",
+    rev,
+  ]);
+  const result = object(JSON.parse(stdout), "nix-prefetch-git result");
+  const fetched = text(result.rev, "prefetched revision");
+  if (fetched !== rev) throw new Error(`nix-prefetch-git fetched ${fetched}, not ${rev}`);
+  return sha256(result.hash, `${url} hash`);
+}
+
+/** Serializes a JSON pin exactly as dprint formats it, so writes stay format-clean. */
+export function pinBody(value: unknown): string {
+  return `${JSON.stringify(value, null, 2)}\n`;
 }

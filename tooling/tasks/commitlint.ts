@@ -29,7 +29,7 @@ const config = await load(
   {
     extends: ["@commitlint/config-conventional"],
     rules: {
-      // Scopes use colons (e.g. host:common, host:desktop) which lodash
+      // Scopes carry separators (e.g. host:common, pkgs/rpiboot) which lodash
       // lowerCase strips — disable scope-case to avoid false positives.
       "scope-case": [0],
     },
@@ -54,15 +54,18 @@ if (!result.valid) {
 }
 
 // scope-case is disabled above because lodash lowerCase strips colons.
-// Manually enforce: scope must be lowercase letters and ':' only.
+// Manually enforce a scope shape wide enough for package scopes
+// (at1000-interface, pkgs/rpiboot) while still rejecting uppercase and spaces.
 const scopeMatch = message.match(/^\w+\(([^)]+)\)[!:]/);
 if (scopeMatch) {
   const scope = scopeMatch[1]!;
-  if (!/^[a-z:]+$/.test(scope)) {
+  if (!/^[a-z0-9][a-z0-9:/-]*$/.test(scope)) {
     const subject = message.split("\n")[0];
     console.error(`❌ Commit message failed conventional commit lint:`);
     console.error(`  ${subject}`);
-    console.error(`    scope-format: scope must contain only lowercase letters and ':'`);
+    console.error(
+      `    scope-format: scope must start with a lowercase letter or digit and contain only lowercase letters, digits, ':', '/', and '-'`,
+    );
     process.exit(1);
   }
 }

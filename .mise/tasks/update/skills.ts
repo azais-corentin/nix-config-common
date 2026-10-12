@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /*
 #MISE description="Update pinned OMP skill sources"
+#MISE quiet=true
 #USAGE arg "[targets]" var=#true help="Skill sources to update (default: all)" {
 #USAGE   choices "anthropics" "wshobson" "apollographql" "antfu"
 #USAGE }
@@ -17,6 +18,7 @@ import {
   runTargets,
   sha256,
   text,
+  type Outcome,
 } from "../../../tooling/lib/update.ts";
 
 const repositories: Record<string, string> = {
@@ -37,7 +39,7 @@ function skillPath(path: string): string {
   return path;
 }
 
-async function updateSource(root: string, name: string, repo: string): Promise<void> {
+async function updateSource(root: string, name: string, repo: string): Promise<Outcome> {
   const source = readSource(root, "home/cli/mise/oh-my-pi.nix");
   const pattern = new RegExp(
     String.raw`(\b${name}\s*=\s*pkgs\.fetchFromGitHub\s*\{)([^{}]*)(\}\s*;)`,
@@ -45,7 +47,7 @@ async function updateSource(root: string, name: string, repo: string): Promise<v
   const block = one(source.body, pattern, `${name} skill source`)[2]!;
   if (`${nixString(block, "owner").value}/${nixString(block, "repo").value}` !== repo)
     throw new Error(`Unexpected ${name} skill repository`);
-  text(nixString(block, "rev").value, `${name} pinned commit`, /^[a-f0-9]{40}$/);
+  const current = text(nixString(block, "rev").value, `${name} pinned commit`, /^[a-f0-9]{40}$/);
   sha256(nixString(block, "hash").value, `${name} pinned hash`);
 
   const uses = new RegExp(String.raw`\bskill\s+"${name}"\s+"([^"\r\n]*)"`, "g");
@@ -73,7 +75,7 @@ async function updateSource(root: string, name: string, repo: string): Promise<v
     },
     `${name} skill source`,
   );
-  publish([source], `${name} ${revision}`);
+  return { from: current, to: revision, written: publish([source]) };
 }
 
 await runTargets(
