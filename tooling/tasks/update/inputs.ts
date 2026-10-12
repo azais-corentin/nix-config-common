@@ -4,7 +4,7 @@
 //USAGE arg "[inputs]" var=#true help="Flake input names; omit to update all"
 
 import { join } from "node:path";
-import { object } from "../../lib/update.ts";
+import { nixEnv, object } from "../../lib/update.ts";
 import { report, status, type Row } from "../../lib/report.ts";
 
 const task = "update:inputs";
@@ -61,6 +61,7 @@ const child = Bun.spawn(["nix", "flake", "update", ...inputs], {
   stdin: "inherit",
   stdout: "pipe",
   stderr: "pipe",
+  env: nixEnv(),
 });
 const [stdout, stderr, code] = await Promise.all([
   new Response(child.stdout).text(),

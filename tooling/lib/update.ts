@@ -247,11 +247,44 @@ export function publish(sources: Source[]): boolean {
   return true;
 }
 
+let cachedToken: string | undefined | null = null;
+
+/**
+ * GH_TOKEN or GITHUB_TOKEN, else the token of the account logged in to `gh`.
+ * Unauthenticated API calls share a 60-requests/hour limit per IP, which a
+ * full update run exhausts. Undefined when neither source has a token.
+ */
+export function githubToken(): string | undefined {
+  if (cachedToken !== null) return cachedToken;
+  let token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || undefined;
+  if (!token) {
+    try {
+      const gh = Bun.spawnSync(["gh", "auth", "token"], { stdin: "ignore", stderr: "ignore" });
+      token = (gh.success && gh.stdout.toString().trim()) || undefined;
+    } catch {
+      // gh is not installed; stay unauthenticated.
+    }
+  }
+  // The token is spliced into NIX_CONFIG, where whitespace or '#' would break it.
+  if (token && /[\s#]/.test(token)) throw new Error("GitHub token contains invalid characters");
+  cachedToken = token;
+  return token;
+}
+
+/** Environment for a nix child: github: fetches use the GitHub token too. */
+export function nixEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: "1" };
+  const token = githubToken();
+  if (token)
+    env.NIX_CONFIG = `${env.NIX_CONFIG ?? ""}\nextra-access-tokens = github.com=${token}\n`;
+  return env;
+}
+
 async function request(url: string, missingIsNull = false): Promise<Response | null> {
   const headers: Record<string, string> = { "user-agent": "nix-config-update" };
   if (new URL(url).hostname === "api.github.com") {
     headers.accept = "application/vnd.github+json";
-    const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+    const token = githubToken();
     if (token) headers.authorization = `Bearer ${token}`;
   }
   const response = await fetch(url, { headers, signal: AbortSignal.timeout(120_000) });
@@ -307,12 +340,7 @@ export async function command(
   args: string[],
   allowFailure = false,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  const env: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: "1" };
-  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
-  if (args[0] === "nix" && token) {
-    if (/[\s#]/.test(token)) throw new Error("GitHub token contains invalid characters");
-    env.NIX_CONFIG = `${env.NIX_CONFIG ?? ""}\nextra-access-tokens = github.com=${token}\n`;
-  }
+  const env = args[0] === "nix" ? nixEnv() : { ...process.env, NO_COLOR: "1" };
   const child = Bun.spawn(args, {
     cwd: root,
     stdin: "ignore",

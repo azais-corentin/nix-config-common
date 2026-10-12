@@ -148,7 +148,8 @@ Updates affect this repository only. They do not install tools, activate
 configurations, restart services, commit, or push. They leave tooling dependency
 versions, such as commitlint (`tooling/package-lock.json`) and dprint plugins, alone.
 
-Use `GH_TOKEN` or `GITHUB_TOKEN` for authenticated GitHub API requests if needed.
+GitHub API requests and nix's `github:` fetches authenticate with `GH_TOKEN` or
+`GITHUB_TOKEN`, else with the account logged in to `gh` (`gh auth token`).
 Source and hash updates do not prove runtime compatibility.
 
 Commit and push validated shared changes before updating a consumer's normal
