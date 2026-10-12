@@ -1,6 +1,6 @@
-# mise tool/runtime manager: the pinned mise, its settings, a few global tools
-# and the direnv integration. Agent tools are separate features
-# (`cli.codex`, `cli.worktrunk`, `cli.mise-oh-my-pi`) that import this one.
+# mise tool/runtime manager: the pinned mise, its settings and a few global
+# tools. Agent tools are separate features (`cli.codex`, `cli.worktrunk`,
+# `cli.mise-oh-my-pi`) that import this one.
 { config, pkgs, ... }:
 let
   # Newer of pkgs.mise and the pinned release binary (see package.nix).
@@ -23,9 +23,5 @@ in
         bun = "latest";
       };
     };
-  };
-  programs.direnv.mise = {
-    enable = config.programs.direnv.enable;
-    package = misePackage;
   };
 }
