@@ -74,6 +74,14 @@ palette/fonts via `lib.mkDefault`; neither sets `stylix.enable` or
 (`homeManagerIntegration`) must import **only** the NixOS one — the HM values
 propagate automatically, and importing both would double-define.
 
+### oh-my-pi model presets
+
+`homeFeatures.cli.mise-oh-my-pi` provides `claude`, `gpt`, `gemini`, `deepseek`,
+and `muse` presets. Select one with `/modelpreset switch <name>`.
+The `muse` preset assigns every role, including `image` and `web`, to
+`opencode-go/muse-spark-1.3-contributor`, without a thinking-level override.
+Rebuilding restores the startup `claude` roles; adding a preset does not select it.
+
 ## Development
 
 Formatting, hooks and generic tasks live in `tooling/`, shared with consumers

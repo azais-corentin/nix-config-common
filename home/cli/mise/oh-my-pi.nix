@@ -229,6 +229,7 @@ in
           tiny = "openrouter/~deepseek/deepseek-flash-latest:low";
           commit = "openrouter/~deepseek/deepseek-flash-latest:low";
         };
+        muse.modelRoles = lib.mapAttrs (_: _: "opencode-go/muse-spark-1.3-contributor") claudeRoles;
       };
       personality = "pragmatic";
       memory.backend = "mnemopi";
