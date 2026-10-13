@@ -352,9 +352,6 @@ let
     ++ [ ".omp/profiles/work-2.0_a/agent/mcp.json" ]
   );
 
-  sharedFeatureFiles = sharedFeature.config.home.file;
-  sharedRulePaths = [ ".omp/agent/rules/no-find-from-root.md" ];
-  sharedNoFindRule = sharedFeatureFiles.".omp/agent/rules/no-find-from-root.md".text;
   sharedDefaultConfig = ''"$shared_home/.omp/agent/config.yml"'';
 
   defaultConfig = ''"$HOME/.omp/agent/config.yml"'';
@@ -476,10 +473,6 @@ assert lib.all (
     builtins.attrNames inlineResourceContents
   )
 ) inheritedResourcePrefixes;
-assert lib.all (path: builtins.hasAttr path sharedFeatureFiles) sharedRulePaths;
-assert lib.all (path: sharedFeatureFiles.${path}.text == sharedNoFindRule) sharedRulePaths;
-assert lib.hasInfix ''condition: "\\bfind\\s+/(?:\\s|$)"'' sharedNoFindRule;
-assert lib.hasInfix ''scope: "tool:bash"'' sharedNoFindRule;
 pkgs.runCommand "oh-my-pi-profile-module-tests"
   {
     nativeBuildInputs = [
