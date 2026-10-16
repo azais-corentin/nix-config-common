@@ -18,7 +18,7 @@
   libxrandr,
 }:
 let
-  version = "0.12.0";
+  version = "0.13.3";
   arch =
     {
       x86_64-linux = "x86_64-unknown-linux-gnu";
@@ -27,8 +27,8 @@ let
     .${stdenv.hostPlatform.system};
   hash =
     {
-      x86_64-linux = "sha256-gjARsdAnAUGnVWLPTwUof6mFGHuoXimP2BnG0vOutPs=";
-      aarch64-linux = "sha256-uML/Zhu9LF0+v3KDJnHT24r1KuDl56Fjb5/etRY24LY=";
+      x86_64-linux = "sha256-NBIwbkGyyuL3VUv5c+RCz13O8faeTCQEXyMXzoDSSXA=";
+      aarch64-linux = "sha256-MrVXRFhHFntW8gPoQojHnsiF5Y7VFnqYdbA9pg19XAQ=";
     }
     .${stdenv.hostPlatform.system};
 in

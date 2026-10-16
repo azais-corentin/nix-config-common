@@ -26,14 +26,14 @@ let
     wshobson = pkgs.fetchFromGitHub {
       owner = "wshobson";
       repo = "agents";
-      rev = "46891e7e60da0e52baf1050b7b6391b64e84c6d9";
-      hash = "sha256-vKawxqxGv0QygVztpMai7h4SXtK2JmmLEqCZ8hFr+qE=";
+      rev = "044b4b21f083948e69ec878a7b07c8d0951a6ffa";
+      hash = "sha256-psbY9IcfBhFqGv0RqnR8yZtok+QV70kKmliTCi7g1Qw=";
     };
     apollographql = pkgs.fetchFromGitHub {
       owner = "apollographql";
       repo = "skills";
-      rev = "5f02fcfcebec678e2e55777b639e32346622a963";
-      hash = "sha256-A1t8iX5DcBhFcMLD/a0V1mfSMNs+GOEwrJOvA/GAWxs=";
+      rev = "aafc8944365a766d48cc519ce8b8575f93f953a4";
+      hash = "sha256-UzLzbqQXU50aD3Bx6rARrn5EuvKne+I0f+/teDMYVOs=";
     };
     antfu = pkgs.fetchFromGitHub {
       owner = "antfu";
