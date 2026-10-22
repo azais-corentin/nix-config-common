@@ -8,7 +8,7 @@
   fetchurl,
   autoPatchelfHook,
   alsa-lib,
-  libpulseaudio,
+  pipewire,
   libxkbcommon,
   wayland,
   libGL,
@@ -45,11 +45,11 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [ autoPatchelfHook ];
 
-  # NEEDED: libasound, libpulse, libpulse-simple, libstdc++, libgcc_s.
+  # NEEDED: libpipewire-0.3, libasound, libstdc++, libgcc_s.
   buildInputs = [
     (lib.getLib stdenv.cc.cc)
     alsa-lib
-    libpulseaudio
+    pipewire
   ];
 
   # The egui/glutin GUI dlopens its windowing and GL libraries at run time, so
