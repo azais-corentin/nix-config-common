@@ -9,9 +9,24 @@
 # attached; Chromium, Firefox and OBS all skip devices that also claim OUTPUT.
 # video_nr is pinned high so the path is stable across boots and does not race
 # real capture hardware for /dev/video0.
-{ config, ... }:
+{ config, lib, ... }:
 {
-  boot.extraModulePackages = [ config.boot.kernelPackages.v4l2loopback ];
+  # TODO: drop once nixos-unstable carries NixOS/nixpkgs@40df9d166b. Since
+  # kernel.dev ships System.map, the kernel's modules_install runs depmod into
+  # $out, and its modules.* indexes collide with the kernel's in
+  # aggregateModules (NixOS/nixpkgs#576406). Backports the upstream fix.
+  boot.extraModulePackages = [
+    (config.boot.kernelPackages.v4l2loopback.overrideAttrs (
+      old:
+      lib.optionalAttrs (old ? preBuild) {
+        preBuild = "";
+        installFlags = [
+          "DEPMOD=true"
+          "INSTALL_MOD_PATH=${placeholder "out"}"
+        ];
+      }
+    ))
+  ];
   boot.kernelModules = [ "v4l2loopback" ];
   boot.extraModprobeConfig = ''
     options v4l2loopback video_nr=42 card_label="Virtual Camera" exclusive_caps=1
