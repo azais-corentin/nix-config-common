@@ -191,6 +191,9 @@ in
       loop.mode = "reset";
       github.enabled = true;
       astGrep.enabled = true;
+      # Inside a Tern pane, browser tabs open as picture-in-pictures over omp's
+      # pane; elsewhere omp keeps using headless Chromium.
+      browser.tern = true;
       modelRoles = claudeRoles;
       # Switch with `/modelpreset switch <name>`; the next rebuild restores
       # the claude roles above.
