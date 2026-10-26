@@ -7,10 +7,6 @@
         uosc
         sponsorblock
       ];
-
-      mpv-unwrapped = pkgs.mpv-unwrapped.override {
-        waylandSupport = true;
-      };
     };
     config = {
       hwdec = "auto-safe";

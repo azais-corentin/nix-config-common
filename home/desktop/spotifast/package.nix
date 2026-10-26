@@ -1,4 +1,4 @@
-# nixpkgs' spotifast trails the release this pins (NixOS/nixpkgs#566927), and
+# nixpkgs' spotifast trails the upstream releases this pins, and
 # upstream's flake source-builds libprojectM with an uncached rust-overlay
 # toolchain. The official release tarball carries the binary, desktop entry
 # and icon.
