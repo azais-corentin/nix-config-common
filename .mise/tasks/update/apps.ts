@@ -3,7 +3,7 @@
 #MISE description="Update pinned applications and the Firefox theme"
 #MISE quiet=true
 #USAGE arg "[targets]" var=#true help="Targets to update (default: all)" {
-#USAGE   choices "spotifast" "mise" "ff-ultima" "omp-telegram"
+#USAGE   choices "spotifast" "mise" "ff-ultima" "omp-telegram" "tern"
 #USAGE }
 */
 
@@ -28,6 +28,7 @@ import {
   text,
   type Outcome,
 } from "../../../tooling/lib/update.ts";
+import { addStencilFile, latestStencilBuild, stencilPin } from "../../../tooling/lib/stencil.ts";
 
 const systems = ["x86_64-linux", "aarch64-linux"] as const;
 
@@ -193,9 +194,23 @@ async function ompTelegram(root: string): Promise<Outcome> {
   return { from: current, to: version, written: publish([source]) };
 }
 
+// Invite-only: the package uses requireFile, so the new archive is added to
+// this machine's store before the pin moves (`mise run tern:fetch` elsewhere).
+async function tern(root: string): Promise<Outcome> {
+  const source = readSource(root, "home/desktop/tern/source.json");
+  const pin = stencilPin(JSON.parse(source.body), "tern source pin");
+  const build = await latestStencilBuild("tern", "linux", "x86_64");
+  noDowngrade(pin.version, build.version);
+  const next = { version: build.version, url: build.file.url, hash: build.file.hash };
+  await addStencilFile(root, next);
+  source.body = pinBody(next);
+  return { from: pin.version, to: build.version, written: publish([source]) };
+}
+
 await runTargets("update:apps", {
   spotifast,
   mise,
   "ff-ultima": ffUltima,
   "omp-telegram": ompTelegram,
+  tern,
 });

@@ -82,6 +82,16 @@ The `muse` preset assigns every role, including `image` and `web`, to
 `opencode-go/muse-spark-1.3-contributor`, without a thinking-level override.
 Rebuilding restores the startup `claude` roles; adding a preset does not select it.
 
+### Tern
+
+`homeFeatures.desktop.tern` installs Tern beside Ghostty, with a `tern-daemon`
+user service and a read-only `~/.config/tern/settings.json` (auto-update off,
+stylix's monospace font). The Linux archive is invite-only, so the package uses
+`requireFile`. Sign in at <https://build.stencil.so/tern> in Firefox's default
+profile, then run `mise run tern:fetch` in the consumer before its first build
+and after each Tern version bump. The task adds the archive pinned by the locked
+`nix-config-common` to the store, using the Firefox session cookie.
+
 ## Development
 
 Formatting, hooks and generic tasks live in `tooling/`, shared with consumers
@@ -128,6 +138,7 @@ Run `mise tasks` to list public tasks and `mise run <task> --help` for arguments
 | `mise run update:inputs nixpkgs`            | Update named flake inputs, or all inputs when omitted                   |
 | `mise run update:apps spotifast mise`       | Update named applications, or all managed applications when omitted     |
 | `mise run update:skills anthropics`         | Update named skill sources, or all sources when omitted                 |
+| `mise run tern:fetch`                       | Add the pinned Tern archive to the Nix store (needs a Firefox sign-in)  |
 
 `check` does not evaluate Nix, build, fix files, or stash changes. `check:nix`
 checks this flake's outputs only. It does not validate modules inside a
@@ -137,9 +148,11 @@ Commit messages must follow Conventional Commits.
 
 ## Update workflow
 
-Application targets are `spotifast`, `mise`, and `ff-ultima`.
+Application targets are `spotifast`, `mise`, `ff-ultima`, and `tern`.
 Spotifast and mise update their version and both Linux architecture hashes
-together.
+together. `tern` reads Stencil's build list with the Firefox session cookie,
+pins the latest stable x86_64 archive by its published SHA-256, and adds it to
+this machine's store.
 
 FF-ULTIMA selects a stable release containing the current commit, or advances
 its Git pin when the release is older. Other applications use stable releases.

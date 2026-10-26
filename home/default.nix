@@ -30,6 +30,7 @@
     plasma = ./desktop/plasma.nix;
     scrcpy = ./desktop/scrcpy.nix;
     spotifast = ./desktop/spotifast;
+    tern = ./desktop/tern;
     vscode = ./desktop/vscode.nix;
   };
   stylix-theme = ./stylix-theme.nix;
