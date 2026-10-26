@@ -55,6 +55,7 @@
         "update.mode" = "none";
         "lldb.suppressUpdateNotifications" = true;
         "mise.checkForNewMiseVersion" = false;
+        "network.meteredConnection" = "off";
         "scm.defaultViewMode" = "tree";
         "scm.repositories.selectionMode" = "multiple";
         "json.schemaDownload.trustedDomains" = {
