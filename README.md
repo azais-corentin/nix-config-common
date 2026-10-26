@@ -86,8 +86,10 @@ Rebuilding restores the startup `claude` roles; adding a preset does not select 
 
 `homeFeatures.desktop.tern` installs Tern beside Ghostty, with a `tern-daemon`
 user service and a read-only `~/.config/tern/settings.json` (auto-update off,
-stylix's monospace font). The Linux archive is invite-only, so the package uses
-`requireFile`. Sign in at <https://build.stencil.so/tern> in Firefox's default
+stylix's monospace font). omp stays mise's: a missing omp state file is seeded
+as declined, so Tern never offers to install or manage omp. The Linux archive
+is invite-only, so the package uses `requireFile`. Sign in at
+<https://build.stencil.so/tern> in Firefox's default
 profile, then run `mise run tern:fetch` in the consumer before its first build
 and after each Tern version bump. The task adds the archive pinned by the locked
 `nix-config-common` to the store, using the Firefox session cookie.

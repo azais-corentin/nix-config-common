@@ -45,8 +45,29 @@ in
     }
     // lib.optionalAttrs config.stylix.enable {
       font_family = fonts.monospace.name;
-      # Tern sizes in px, stylix in pt.
-      font_size = fonts.sizes.terminal * 4.0 / 3;
+      # Tern sizes in whole px (a float fails the whole file), stylix in pt.
+      font_size = builtins.floor (fonts.sizes.terminal * 4.0 / 3 + 0.5);
     }
   );
+
+  # omp comes from mise, so Tern shouldn't offer to install or manage its own.
+  # No setting controls the offer: Tern asks once and records the answer in
+  # this state file, which it keeps writing, so it's only seeded when missing.
+  home.activation.ternDeclineOmp = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    state=${lib.escapeShellArg "${config.xdg.dataHome}/tern/omp/state.json"}
+    if [ ! -e "$state" ]; then
+      run mkdir -p "$(dirname "$state")"
+      run cp ${
+        pkgs.writeText "tern-omp-state.json" (
+          builtins.toJSON {
+            managed = false;
+            checked = 0;
+            no_build = false;
+            offered = true;
+          }
+        )
+      } "$state"
+      run chmod 644 "$state"
+    fi
+  '';
 }
