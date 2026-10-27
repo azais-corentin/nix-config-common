@@ -10,6 +10,44 @@
 let
   tern = pkgs.callPackage ./package.nix { };
   fonts = config.stylix.fonts;
+
+  # The daemon hands its own WAYLAND_DISPLAY and DISPLAY to every pane, so one
+  # started before login leaves them without a display. At login, restart it
+  # into the session's display unless a pane's shell is running something:
+  # restoring a session's layout respawns idle shells, and nothing else is lost.
+  adopt = pkgs.writeShellApplication {
+    name = "tern-daemon-adopt";
+    runtimeInputs = [
+      pkgs.gnugrep
+      pkgs.procps
+      pkgs.systemd
+    ];
+    text = ''
+      displays() { grep -E '^(WAYLAND_DISPLAY|DISPLAY)=' | sort || true; }
+
+      want=$(systemctl --user show-environment | displays)
+      if [ -z "$want" ]; then
+        echo "no display in the user manager's environment; keeping the daemon"
+        exit 0
+      fi
+
+      pid=$(systemctl --user show --property=MainPID --value tern-daemon.service)
+      if [ "$pid" -eq 0 ]; then
+        exec systemctl --user start tern-daemon.service
+      fi
+      if [ "$(tr '\0' '\n' <"/proc/$pid/environ" | displays)" = "$want" ]; then
+        exit 0
+      fi
+
+      for shell in $(pgrep -P "$pid" || true); do
+        if pgrep -P "$shell" >/dev/null; then
+          echo "a pane is running a program; keeping the daemon without this session's display"
+          exit 0
+        fi
+      done
+      exec systemctl --user restart tern-daemon.service
+    '';
+  };
 in
 {
   # Tern reports TERM=xterm-kitty.
@@ -18,21 +56,31 @@ in
     pkgs.kitty.terminfo
   ];
 
-  # Keeps panes' programs alive between windows. Tern's own "Start at login"
-  # would write an autostart entry naming the binary's store path, stale after
-  # the next update.
+  # Keeps panes' programs alive between windows, from boot (with lingering)
+  # rather than login. Tern's own "Start at login" would write an autostart
+  # entry naming the binary's store path, stale after the next update.
   systemd.user.services.tern-daemon = {
     Unit = {
       Description = "Tern session daemon";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
-      # Restarting kills every pane's program; the next login picks up a new
+      # Restarting kills every pane's program; the next boot picks up a new
       # build.
       X-RestartIfChanged = false;
     };
     Service = {
       ExecStart = "${lib.getExe tern} daemon";
       Restart = "on-failure";
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
+
+  systemd.user.services.tern-daemon-adopt = {
+    Unit = {
+      Description = "Hand the Tern daemon this session's display";
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = lib.getExe adopt;
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };

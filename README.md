@@ -95,7 +95,12 @@ consumer.
 
 `homeFeatures.desktop.tern` installs Tern beside Ghostty, with a `tern-daemon`
 user service and a read-only `~/.config/tern/settings.json` (auto-update off,
-stylix's monospace font). omp stays mise's: a missing omp state file is seeded
+stylix's monospace font). The daemon is wanted by `default.target`, so it
+starts at boot only when the consumer enables lingering
+(`users.users.<name>.linger = true`), and otherwise at the user's first login.
+Panes inherit the daemon's display variables. At graphical login,
+`tern-daemon-adopt` restarts the daemon into the session's display, unless a
+pane is running a program. omp stays mise's: a missing omp state file is seeded
 as declined, so Tern never offers to install or manage omp. The Linux archive
 is invite-only, so the package uses `requireFile`. Sign in at
 <https://build.stencil.so/tern> in Firefox's default
