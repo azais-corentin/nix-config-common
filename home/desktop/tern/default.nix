@@ -126,7 +126,9 @@ in
       paste.confirm_if_large = true;
       overscroll = false;
       three_finger_swipes = false;
-      pane_headers = "Always";
+      layout = "Rail";
+      tabs = "Vertical";
+      pane_headers = "Split";
       surface_diffs = "Split";
       expand_thoughts = true;
       prompt_style = "lean";
