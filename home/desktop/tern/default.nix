@@ -85,6 +85,35 @@ in
     Install.WantedBy = [ "graphical-session.target" ];
   };
 
+  # Serves this user's session daemon to other machines over QUIC (UDP 8376,
+  # and iroh through iroh.stencil.so for clients that reach it by endpoint
+  # id). Keys in ~/.ssh/authorized_keys log in as this user, and Tern's
+  # pairing appends to that file, so it stays mutable state. Pairing would
+  # otherwise write this unit itself, naming the binary's store path.
+  systemd.user.services.tern-remote = {
+    Unit = {
+      Description = "Tern remote sessions (this user)";
+      Documentation = "https://stencil.so";
+      StartLimitIntervalSec = 60;
+      StartLimitBurst = 10;
+    };
+    Service = {
+      # Tern must be the main process: a stop signals it, and it closes its
+      # sockets and exits.
+      Type = "exec";
+      ExecStart = "${lib.getExe tern} remote serve --user --state-dir ${config.xdg.configHome}/tern";
+      Restart = "on-failure";
+      RestartSec = 2;
+      # Bad arguments (exit status 2) don't fix themselves by restarting.
+      RestartPreventExitStatus = 2;
+      # A session daemon it starts, and so every pane's program, outlives a
+      # stop or restart of this service.
+      KillMode = "process";
+      TimeoutStopSec = 10;
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
+
   # Read-only: Settings pages can't persist changes. Tern can't update itself
   # from the store, so its update checks only nag.
   xdg.configFile."tern/settings.json".text = builtins.toJSON (
