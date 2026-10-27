@@ -11,16 +11,16 @@ nixpkgs (passed through the module system), so consumers declare
 
 ## Outputs
 
-| Output                 | Contents                                                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `homeModules`          | `{ oh-my-pi }` — leaf HM modules, safe to `attrValues`-import.                                                            |
-| `nixosModules`         | `{ desktop, plasma6, stylix-theme, pipewire, docker, bluetooth, dconf, codex, v4l2loopback }`.                            |
-| `homeFeatures`         | Nested attrset of opt-in HM feature **paths** (`cli.*`, `desktop.*`, `stylix-theme`).                                     |
-| `lib.kwinOutputConfig` | `{ pkgs, outputs, setups }` → generated `kwinoutputconfig.json` derivation.                                               |
-| `lib.mkDevShell`       | `{ pkgs, packages ? [ ], inPlace ? false, ... }` → dev shell with mise, dprint, nixfmt, gitleaks and the `.tooling` link. |
-| `formatter`            | `nixfmt` for `x86_64-linux` / `aarch64-linux`.                                                                            |
-| `devShells`            | This repo's `lib.mkDevShell` shell (links `tooling/node_modules`, adds nodejs).                                           |
-| `checks`               | `oh-my-pi` module tests for `x86_64-linux` / `aarch64-linux`.                                                             |
+| Output                 | Contents                                                                                                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `homeModules`          | `{ oh-my-pi }` — leaf HM modules, safe to `attrValues`-import.                                                                                                 |
+| `nixosModules`         | `{ desktop, plasma6, stylix-theme, pipewire, docker, bluetooth, dconf, codex, v4l2loopback }`.                                                                 |
+| `homeFeatures`         | Nested attrset of opt-in HM feature **paths** (`cli.*`, `desktop.*`, `stylix-theme`); `desktop.ghostty` is a module closing over this flake's `ghostty` input. |
+| `lib.kwinOutputConfig` | `{ pkgs, outputs, setups }` → generated `kwinoutputconfig.json` derivation.                                                                                    |
+| `lib.mkDevShell`       | `{ pkgs, packages ? [ ], inPlace ? false, ... }` → dev shell with mise, dprint, nixfmt, gitleaks and the `.tooling` link.                                      |
+| `formatter`            | `nixfmt` for `x86_64-linux` / `aarch64-linux`.                                                                                                                 |
+| `devShells`            | This repo's `lib.mkDevShell` shell (links `tooling/node_modules`, adds nodejs).                                                                                |
+| `checks`               | `oh-my-pi` module tests for `x86_64-linux` / `aarch64-linux`.                                                                                                  |
 
 `homeFeatures` and `lib` are non-standard flake outputs; `nix flake check`
 emits a warning about them. This is expected.
@@ -81,6 +81,15 @@ and `muse` presets. Select one with `/modelpreset switch <name>`.
 The `muse` preset assigns every role, including `image` and `web`, to
 `opencode-go/muse-spark-1.3-contributor`, without a thinking-level override.
 Rebuilding restores the startup `claude` roles; adding a preset does not select it.
+
+### Ghostty
+
+`homeFeatures.desktop.ghostty` builds Ghostty's main branch from this flake's
+`ghostty` input, against the consumer's nixpkgs (it follows this flake's
+`nixpkgs`, which consumers point at theirs), plus a local patch silencing GTK's
+`color_change` logs. Consumers declare nothing extra. To move Ghostty, run
+`nix flake update ghostty` here, push, then `mise run update:common` in each
+consumer.
 
 ### Tern
 

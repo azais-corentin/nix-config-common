@@ -1,15 +1,15 @@
 # Ghostty terminal, theme-neutral. Fonts come from stylix or the consumer
 # layer; the terminal-default mimeApps association is a consumer concern.
 #
-# Tracks Ghostty's main branch: consumers must declare a `ghostty` flake input
-# (github:ghostty-org/ghostty, nixpkgs following theirs), surfaced here as
-# pkgs.inputs.ghostty. Tip carries the systemd 262 notify-reload startup fix
-# (ghostty-org/ghostty#14399) that 1.3.1 lacks.
+# Tracks Ghostty's main branch through this flake's `ghostty` input (see
+# flake.nix), passed in by home/default.nix. Tip carries the systemd 262
+# notify-reload startup fix (ghostty-org/ghostty#14399) that 1.3.1 lacks.
+{ ghostty }:
 { config, pkgs, ... }:
 {
   programs.ghostty = {
     enable = true;
-    package = pkgs.inputs.ghostty.default.overrideAttrs (old: {
+    package = ghostty.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
       patches = (old.patches or [ ]) ++ [
         # Local: GTK logs every OSC 4/10/11 colour set as an unimplemented
         # action; there is nothing for GTK to do with it.

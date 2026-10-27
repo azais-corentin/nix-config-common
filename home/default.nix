@@ -1,5 +1,7 @@
 # Opt-in home-manager feature paths. Each value is a path so the consumer's
 # module system handles the import (and `inputs`/`pkgs` arrive via its args).
+# desktop.ghostty is the exception: it needs this flake's own ghostty input.
+{ ghostty }:
 {
   cli = {
     bat = ./cli/bat.nix;
@@ -24,7 +26,12 @@
   };
   desktop = {
     firefox = ./desktop/firefox.nix;
-    ghostty = ./desktop/ghostty.nix;
+    ghostty = {
+      _file = ./desktop/ghostty.nix;
+      # Dedupes repeated imports the way a path import would.
+      key = toString ./desktop/ghostty.nix;
+      imports = [ (import ./desktop/ghostty.nix { inherit ghostty; }) ];
+    };
     losslesscut = ./desktop/losslesscut.nix;
     mpv = ./desktop/mpv.nix;
     plasma = ./desktop/plasma.nix;

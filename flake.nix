@@ -8,8 +8,16 @@
   # `inputs.nixpkgs.follows = "nixpkgs"`).
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
+  # Ghostty's main branch for homeFeatures.desktop.ghostty, built locally
+  # against the consumer's nixpkgs through the follows chain. Bump it here
+  # (`nix flake update ghostty`), then bump nix-config-common in consumers.
+  inputs.ghostty = {
+    url = "github:ghostty-org/ghostty";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
   outputs =
-    { nixpkgs, ... }:
+    { nixpkgs, ghostty, ... }:
     let
       forEachSystem =
         f:
@@ -25,8 +33,9 @@
       # Custom NixOS modules (see modules/nixos/default.nix).
       nixosModules = import ./modules/nixos;
 
-      # Nested attrset of opt-in home-manager feature paths.
-      homeFeatures = import ./home;
+      # Nested attrset of opt-in home-manager features: paths, except
+      # desktop.ghostty, which closes over the ghostty input.
+      homeFeatures = import ./home { inherit ghostty; };
 
       # Generalized KWin monitor-layout JSON builder.
       lib.kwinOutputConfig = import ./lib/kwin-output-config.nix;
