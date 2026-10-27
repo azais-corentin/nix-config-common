@@ -114,16 +114,33 @@ in
     Install.WantedBy = [ "default.target" ];
   };
 
-  # Read-only: Settings pages can't persist changes. Tern can't update itself
-  # from the store, so its update checks only nag.
+  # Nix owns this file: a change in Settings replaces the symlink (Tern saves
+  # by rename), and the next switch backs it up as settings.json.hm-bak. Tern
+  # can't update itself from the store, so its update checks only nag. Only
+  # values off Tern's defaults are listed, as Tern itself writes the file.
   xdg.configFile."tern/settings.json".text = builtins.toJSON (
     {
       auto_update = false;
+      theme = "System";
+      link_target = "Browser";
+      paste.confirm_if_large = true;
+      overscroll = false;
+      three_finger_swipes = false;
+      pane_headers = "Always";
+      surface_diffs = "Split";
+      expand_thoughts = true;
+      prompt_style = "lean";
+      keybinds = {
+        "ctrl+page_up" = "previous_tab";
+        "ctrl+page_down" = "next_tab";
+      };
     }
     // lib.optionalAttrs config.stylix.enable {
       font_family = fonts.monospace.name;
       # Tern sizes in whole px (a float fails the whole file), stylix in pt.
       font_size = builtins.floor (fonts.sizes.terminal * 4.0 / 3 + 0.5);
+      code_font = fonts.monospace.name;
+      ui_font = fonts.sansSerif.name;
     }
   );
 

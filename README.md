@@ -94,8 +94,10 @@ consumer.
 ### Tern
 
 `homeFeatures.desktop.tern` installs Tern beside Ghostty, with a `tern-daemon`
-user service and a read-only `~/.config/tern/settings.json` (auto-update off,
-stylix's monospace font). The daemon is wanted by `default.target`, so it
+user service and a Nix-owned `~/.config/tern/settings.json`: auto-update off,
+stylix's fonts, and the few preferences off Tern's defaults. Changes made in
+Tern's Settings last until the next switch, which backs them up as
+`settings.json.hm-bak`. The daemon is wanted by `default.target`, so it
 starts at boot only when the consumer enables lingering
 (`users.users.<name>.linger = true`), and otherwise at the user's first login.
 Panes inherit the daemon's display variables. At graphical login,
