@@ -23,6 +23,22 @@
       set fish_greeting
     '';
 
+    # Tern hands its panes a fixed set of variables, not the graphical
+    # session's, so the KDE_* ones are missing and xdg-open falls back to the
+    # absent kfmclient. Fill in whatever the systemd user manager holds that
+    # the pane lacks. Its children inherit the result. Skips `__*` init markers
+    # (stale mise state included) and values systemctl shell-quotes as $'...'.
+    loginShellInit = ''
+      if set -q TERN_PANE
+          for line in (systemctl --user show-environment 2>/dev/null)
+              string match -q -- "*=\$'*" $line; and continue
+              set -l kv (string split -m1 = -- $line)
+              string match -q -- '__*' $kv[1]; and continue
+              set -q $kv[1]; or set -gx $kv[1] $kv[2]
+          end
+      end
+    '';
+
     # Tide 6.2 runs the tool binary without checking it exists, so entering a
     # tree with package.json/bun.lockb while node/bun is off PATH (e.g. after
     # leaving a direnv shell that provided it) prints "Unknown command: node"
