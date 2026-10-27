@@ -78,6 +78,7 @@ let
     smol = "anthropic/claude-sonnet-5-5:medium";
     tiny = "anthropic/claude-haiku-5-5:low";
     commit = "anthropic/claude-haiku-5-5:low";
+    widget = "anthropic/claude-haiku-5-5";
   };
 in
 {

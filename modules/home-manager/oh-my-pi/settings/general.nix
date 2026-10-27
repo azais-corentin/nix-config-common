@@ -52,8 +52,8 @@ in
         (`:minimal`/`:low`/`:medium`/`:high`/`:xhigh`/`:max`). A role may alias
         another via `@<role>` (`pi/<role>` still accepted as legacy), and a
         comma-separated list forms a fallback chain. Chat roles (`default`, `smol`,
-        `slow`, `vision`, `plan`, `commit`, `tiny`, `memory`, `task`, `advisor`)
-        resolve against chat models; kind roles (`image`, `web`, `speech`,
+        `slow`, `vision`, `plan`, `commit`, `tiny`, `memory`, `task`, `advisor`,
+        `widget`) resolve against chat models; kind roles (`image`, `web`, `speech`,
         `dictation`, `judge`) resolve against models of the matching kind. Ordered
         fallbacks live in `retry.fallbackChains.<role>`. Custom roles are accepted
         via the freeform escape hatch.
@@ -69,6 +69,7 @@ in
         memory = mkOpt t.str "Memory extraction/consolidation model; accepts tiny on-device models as well as chat models.";
         task = mkOpt t.str "Model for spawned task/subtask subagents.";
         advisor = mkOpt t.str "Passive per-turn reviewer model (only active when advisor.enabled is set).";
+        widget = mkOpt t.str "Model that writes the live-widget spec for background jobs (falls back to the smol role).";
         image = mkOpt t.str "Image-generation model backing the generate_image tool.";
         web = mkOpt t.str "Web-search model or web/<provider> backend used by the web_search tool.";
         speech = mkOpt t.str "Text-to-speech model used by the tts tool and spoken output.";
