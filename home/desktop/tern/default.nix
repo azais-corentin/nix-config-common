@@ -123,7 +123,6 @@ in
       auto_update = false;
       theme = "System";
       link_target = "Browser";
-      paste.confirm_if_large = true;
       overscroll = false;
       three_finger_swipes = false;
       layout = "Rail";
