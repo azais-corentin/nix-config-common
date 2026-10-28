@@ -14,7 +14,7 @@ nixpkgs (passed through the module system), so consumers declare
 | Output                 | Contents                                                                                                                                                       |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `homeModules`          | `{ oh-my-pi }` — leaf HM modules, safe to `attrValues`-import.                                                                                                 |
-| `nixosModules`         | `{ desktop, plasma6, stylix-theme, pipewire, docker, bluetooth, dconf, codex, v4l2loopback }`.                                                                 |
+| `nixosModules`         | `{ desktop, plasma6, stylix-theme, pipewire, docker, bluetooth, dconf, codex, v4l2loopback, fish }`.                                                           |
 | `homeFeatures`         | Nested attrset of opt-in HM feature **paths** (`cli.*`, `desktop.*`, `stylix-theme`); `desktop.ghostty` is a module closing over this flake's `ghostty` input. |
 | `lib.kwinOutputConfig` | `{ pkgs, outputs, setups }` → generated `kwinoutputconfig.json` derivation.                                                                                    |
 | `lib.mkDevShell`       | `{ pkgs, packages ? [ ], inPlace ? false, ... }` → dev shell with mise, dprint, nixfmt, gitleaks and the `.tooling` link.                                      |
@@ -73,6 +73,12 @@ palette/fonts via `lib.mkDefault`; neither sets `stylix.enable` or
 `stylix.image`. A consumer using stylix's NixOS→HM auto-injection
 (`homeManagerIntegration`) must import **only** the NixOS one — the HM values
 propagate automatically, and importing both would double-define.
+
+### fish login shell
+
+`nixosModules.fish` makes interactive bash `exec` fish, so users keep the bash
+default login shell. Do not set `users.users.<name>.shell = pkgs.fish`: fish
+runs a non-tty stdin only after it closes, which hangs VS Code Remote-SSH.
 
 ### oh-my-pi model presets
 
