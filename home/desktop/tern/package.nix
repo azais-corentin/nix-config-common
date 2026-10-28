@@ -1,8 +1,9 @@
 # Tern, Stencil's multiplexing terminal. Its Linux archive is a single binary
 # behind a build.stencil.so sign-in, so requireFile pins it and
 # `mise run tern:fetch` adds it to each machine's store. The binary dlopens its
-# windowing, GPU, audio and WebKit libraries, so they belong in the RPATH; its
-# desktop entries are rebuilt here and its icons carved out of the binary.
+# windowing, GPU, audio, screen-capture and WebKit libraries, so they belong in
+# the RPATH; its desktop entries are rebuilt here and its icons carved out of
+# the binary.
 {
   lib,
   stdenv,
@@ -21,6 +22,7 @@
   libxcb,
   libxkbcommon,
   linux-pam,
+  pipewire,
   vulkan-loader,
   wayland,
   webkitgtk_4_1,
@@ -71,6 +73,7 @@ stdenv.mkDerivation {
     libxcb
     libxkbcommon
     linux-pam
+    pipewire # libpipewire-0.3, screen sharing
     vulkan-loader
     wayland # libwayland-client, libwayland-egl
     webkitgtk_4_1 # browser blocks
