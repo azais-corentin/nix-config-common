@@ -32,6 +32,7 @@
       key = toString ./desktop/ghostty.nix;
       imports = [ (import ./desktop/ghostty.nix { inherit ghostty; }) ];
     };
+    kicad = ./desktop/kicad.nix;
     losslesscut = ./desktop/losslesscut.nix;
     mpv = ./desktop/mpv.nix;
     plasma = ./desktop/plasma.nix;
