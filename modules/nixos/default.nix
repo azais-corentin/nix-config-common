@@ -10,4 +10,5 @@
   codex = ./codex.nix;
   v4l2loopback = ./v4l2loopback.nix;
   fish = ./fish.nix;
+  home-manager = ./home-manager.nix;
 }

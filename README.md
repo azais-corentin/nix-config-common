@@ -14,7 +14,7 @@ nixpkgs (passed through the module system), so consumers declare
 | Output                 | Contents                                                                                                                                                       |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `homeModules`          | `{ oh-my-pi }` — leaf HM modules, safe to `attrValues`-import.                                                                                                 |
-| `nixosModules`         | `{ desktop, plasma6, stylix-theme, pipewire, docker, bluetooth, dconf, codex, v4l2loopback, fish }`.                                                           |
+| `nixosModules`         | `{ desktop, plasma6, stylix-theme, pipewire, docker, bluetooth, dconf, codex, v4l2loopback, fish, home-manager }`.                                             |
 | `homeFeatures`         | Nested attrset of opt-in HM feature **paths** (`cli.*`, `desktop.*`, `stylix-theme`); `desktop.ghostty` is a module closing over this flake's `ghostty` input. |
 | `lib.kwinOutputConfig` | `{ pkgs, outputs, setups }` → generated `kwinoutputconfig.json` derivation.                                                                                    |
 | `lib.mkDevShell`       | `{ pkgs, packages ? [ ], inPlace ? false, ... }` → dev shell with mise, dprint, nixfmt, gitleaks and the `.tooling` link.                                      |
