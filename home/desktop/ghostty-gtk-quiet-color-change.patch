@@ -1,8 +1,8 @@
 diff --git a/src/apprt/gtk/class/application.zig b/src/apprt/gtk/class/application.zig
-index 039e853aa..62bdd9b48 100644
+index 08d5d7c..384f63d 100644
 --- a/src/apprt/gtk/class/application.zig
 +++ b/src/apprt/gtk/class/application.zig
-@@ -764,6 +764,11 @@ pub const Application = extern struct {
+@@ -805,6 +805,11 @@ pub const Application = extern struct {
              .search_total => Action.searchTotal(target, value),
              .search_selected => Action.searchSelected(target, value),
  
@@ -14,8 +14,8 @@ index 039e853aa..62bdd9b48 100644
              // Unimplemented
              .secure_input,
              .close_all_windows,
-@@ -773,7 +778,6 @@ pub const Application = extern struct {
-             .cell_size,
+@@ -813,7 +818,6 @@ pub const Application = extern struct {
+             .toggle_background_opacity,
              .render_inspector,
              .renderer_health,
 -            .color_change,
