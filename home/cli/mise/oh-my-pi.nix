@@ -26,20 +26,20 @@ let
     wshobson = pkgs.fetchFromGitHub {
       owner = "wshobson";
       repo = "agents";
-      rev = "0874a27b17a22e2b7c2e2bcd725768e0803cad06";
-      hash = "sha256-v4Qt1zPrIp0rlmEWh+3qrTRbx6oVvY0ci80WbkmXzWg=";
+      rev = "7e2fb559cf4b824b27f1fec49fe88f7511066d26";
+      hash = "sha256-UBBcidGPtl3sKG1+m5aPW/xS31SPVw3Qyo6J4ELlj6I=";
     };
     apollographql = pkgs.fetchFromGitHub {
       owner = "apollographql";
       repo = "skills";
-      rev = "ff4534868e089580c2e09563c20f86a410179628";
-      hash = "sha256-OeAhEbmDcZdwJavcGw4PYxL2CkKDhY8TCFG+bLhIu7E=";
+      rev = "9dda1397730370aeb8df4ff8f2015c34c86b5003";
+      hash = "sha256-TSGowC+gRHxPqhSvT1ySu+/yZPp4R2rbYWZ3V4IadcU=";
     };
     antfu = pkgs.fetchFromGitHub {
       owner = "antfu";
       repo = "skills";
-      rev = "8886fe2d385d3644cbb47e46ae9cb1cf09307d3b";
-      hash = "sha256-SBWLQ3zIBBfXEUS4DHPTdY4z0fsXOhcQjNk4+/mAxrA=";
+      rev = "7de210b51c8d48cc405a4eac3e17cbb1396c653b";
+      hash = "sha256-6vLFCBhXuQa6qCYbGvWPR1yk8MJ9IKNT4cuTq+/1xMU=";
     };
   };
   skill = source: subdir: {
