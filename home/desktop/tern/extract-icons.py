@@ -1,8 +1,9 @@
 """Extract Tern's hicolor icon set from its binary.
 
 Tern embeds the PNGs its own desktop integration writes, as one contiguous run
-of 16 to 512 px icons. The binary embeds other PNGs too, some of them square
-512 px images, so only that exact run counts.
+of 16 to 1024 px icons. The binary embeds other PNGs too, some of them square
+512 px images, so only that exact run counts. hicolor has no 1024 px size, so
+that icon becomes the scale-2 512 px one.
 Usage: extract-icons.py BINARY HICOLOR_DIR
 """
 
@@ -10,7 +11,8 @@ import struct
 import sys
 from pathlib import Path
 
-SIZES = (16, 32, 48, 64, 128, 256, 512)
+SIZES = (16, 32, 48, 64, 128, 256, 1024)
+DIRECTORIES = {size: f"{size}x{size}" for size in SIZES} | {1024: "512x512@2"}
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 binary, hicolor = Path(sys.argv[1]).read_bytes(), Path(sys.argv[2])
@@ -37,6 +39,6 @@ if len(runs) != 1:
     sys.exit(f"expected one contiguous {SIZES} icon run, found {len(runs)}")
 
 for begin, end, size, _ in runs[0]:
-    target = hicolor / f"{size}x{size}" / "apps" / "so.stencil.tern.png"
+    target = hicolor / DIRECTORIES[size] / "apps" / "so.stencil.tern.png"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(binary[begin:end])
