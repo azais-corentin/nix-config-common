@@ -79,6 +79,10 @@ propagate automatically, and importing both would double-define.
 `nixosModules.fish` makes interactive bash `exec` fish, so users keep the bash
 default login shell. Do not set `users.users.<name>.shell = pkgs.fish`: fish
 runs a non-tty stdin only after it closes, which hangs VS Code Remote-SSH.
+Bash still runs `-c` strings itself, including the `$SHELL -lic env` probes
+desktop programs use to read the login environment (Tern's Carly finds omp
+this way). `cli.fish` therefore enables a bare Home Manager bash whose only
+integration is mise's activation (`cli.mise`).
 
 ### oh-my-pi model presets
 

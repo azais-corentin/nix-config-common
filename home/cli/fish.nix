@@ -91,6 +91,17 @@
   };
   programs.nh.enable = true;
 
+  # Login shells stay bash, whose interactive init execs fish (nixosModules.fish)
+  # unless bash runs a `-c` string. Programs that read the login environment
+  # through `$SHELL -lic env` (Tern's Carly and git AI help among them) hit that
+  # exception, so ~/.bashrc gets only mise's activation (cli.mise opts in) to
+  # put the same tools on PATH: no completion, no other shell integrations.
+  programs.bash = {
+    enable = true;
+    enableCompletion = false;
+  };
+  home.shell.enableBashIntegration = false;
+
   # Tide preset lives in conf.d so it loads at fish startup. The `00-` prefix
   # keeps it ahead of any future tide-shipped conf.d snippets lexically. The
   # preset only sets `tide_*` variables; the prompt functions in tide are

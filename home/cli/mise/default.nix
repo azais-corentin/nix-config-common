@@ -11,6 +11,8 @@ in
     enable = true;
     package = misePackage;
     enableZshIntegration = config.programs.zsh.enable;
+    # cli.fish turns other bash integrations off; `bash -lic` probes need this.
+    enableBashIntegration = true;
     globalConfig = {
       settings = {
         all_compile = false;
