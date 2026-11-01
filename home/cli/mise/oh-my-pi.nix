@@ -47,13 +47,6 @@ let
     inherit subdir;
   };
 
-  # `mise run update:apps omp-telegram` rewrites url and hash together. The
-  # npm tarball needs no install: omp maps its peer imports onto host copies.
-  ompTelegram = pkgs.fetchzip {
-    url = "https://registry.npmjs.org/@tickernelz/omp-telegram/-/omp-telegram-0.6.16.tgz";
-    hash = "sha256-nHhjMXHEgxAqgex8UacVBNHm40NfFPZ+gScmE/hincQ=";
-  };
-
   # Burn push for claude-usage-estimator; consumers without the flake input skip it.
   cueOmpExtension = lib.optional (
     pkgs ? inputs.claude-usage-estimator
@@ -248,8 +241,7 @@ in
         proactiveLinking = true;
       };
       autolearn.enabled = false;
-      # Telegram bridge; tokens are per consumer (telegram.json / env).
-      extensions = [ "${ompTelegram}" ] ++ cueOmpExtension;
+      extensions = cueOmpExtension;
     };
 
     skills = {

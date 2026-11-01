@@ -3,7 +3,7 @@
 #MISE description="Update pinned applications and the Firefox theme"
 #MISE quiet=true
 #USAGE arg "[targets]" var=#true help="Targets to update (default: all)" {
-#USAGE   choices "spotifast" "mise" "ff-ultima" "omp-telegram" "tern"
+#USAGE   choices "spotifast" "mise" "ff-ultima" "tern"
 #USAGE }
 */
 
@@ -156,44 +156,6 @@ async function ffUltima(root: string): Promise<Outcome> {
   return { from: current, to: revision, written: publish([source]) };
 }
 
-async function ompTelegram(root: string): Promise<Outcome> {
-  const source = readSource(root, "home/cli/mise/oh-my-pi.nix");
-  const pattern = /^  ompTelegram = pkgs\.fetchzip \{[\s\S]*?^  \};/m;
-  const block = one(source.body, pattern, "omp-telegram source")[0];
-  const tarball =
-    /^https:\/\/registry\.npmjs\.org\/@tickernelz\/omp-telegram\/-\/omp-telegram-(\d+\.\d+\.\d+)\.tgz$/;
-  const current = one(nixString(block, "url").value, tarball, "omp-telegram pinned url")[1]!;
-  const registry = object(
-    await json("https://registry.npmjs.org/@tickernelz/omp-telegram"),
-    "omp-telegram registry",
-  );
-  const version = text(
-    object(registry["dist-tags"], "omp-telegram dist-tags").latest,
-    "omp-telegram latest version",
-    /^\d+\.\d+\.\d+$/,
-  );
-  noDowngrade(current, version);
-  const release = object(
-    object(registry.versions, "omp-telegram versions")[version],
-    `omp-telegram ${version}`,
-  );
-  const url = text(
-    object(release.dist, `omp-telegram ${version} dist`).tarball,
-    "omp-telegram tarball",
-    tarball,
-  );
-  if (nixString(block, "url").value !== url) {
-    const fetched = await prefetch(root, url, true);
-    source.body = replaceOne(
-      source.body,
-      pattern,
-      (match) => nixString(nixString(match[0], "url").set(url), "hash").set(fetched.hash),
-      "omp-telegram source",
-    );
-  }
-  return { from: current, to: version, written: publish([source]) };
-}
-
 // Invite-only: the package uses requireFile, so the new archive is added to
 // this machine's store before the pin moves (`mise run tern:fetch` elsewhere).
 async function tern(root: string): Promise<Outcome> {
@@ -211,6 +173,5 @@ await runTargets("update:apps", {
   spotifast,
   mise,
   "ff-ultima": ffUltima,
-  "omp-telegram": ompTelegram,
   tern,
 });
