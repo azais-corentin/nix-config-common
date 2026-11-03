@@ -36,6 +36,7 @@
     losslesscut = ./desktop/losslesscut.nix;
     mpv = ./desktop/mpv.nix;
     plasma = ./desktop/plasma.nix;
+    qalculate = ./desktop/qalculate.nix;
     scrcpy = ./desktop/scrcpy.nix;
     spotifast = ./desktop/spotifast;
     tern = ./desktop/tern;
