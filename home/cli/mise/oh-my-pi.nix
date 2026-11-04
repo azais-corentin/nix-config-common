@@ -178,6 +178,7 @@ in
       # Caller `effort: "hi"` maps to the model's top tier (max on Claude);
       # cap spawns at high so neither med nor hi escalates past it.
       task.maxEffort = "high";
+      task.perCallModel = "on";
       task.isolation.enabled = true;
       task.isolation.merge = "branch";
       task.disabledAgents = [ "librarian" ];
