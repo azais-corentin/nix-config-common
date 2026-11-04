@@ -23,14 +23,20 @@ in
         "deny"
       ]
     )) "Per-tool approval policies (allow/prompt/deny).";
-    approvalMode = mkOpt (t.enum [
-      "always-ask"
-      "write"
-      "yolo"
-    ]) "Default approval behaviour for tool calls.";
+    approvalMode =
+      mkOpt
+        (t.enum [
+          "always-ask"
+          "always-ask-cached"
+          "write"
+          "yolo"
+        ])
+        "Default approval behaviour for tool calls: always-ask auto-approves read-only tools; always-ask-cached also asks before file reads and can remember a file or folder; write auto-approves read and workspace-write tools; yolo (upstream default) auto-approves every tier.";
+    restrictedFolders = mkOpt (t.listOf t.str) "Folders (supports ~) where every read, write, edit, search or command needs an explicit approval, whatever the approval mode or a remembered grant; commands match by the directory they run in.";
     intentTracing = mkOpt t.bool "Ask the agent to describe the intent of each tool call before executing it.";
     maxTimeout = mkOpt num "Maximum timeout in seconds the agent can set for any tool (0 = no limit).";
     xdev = mkOpt t.bool "Mount rarely-used (discoverable) tools under xd:// device URLs driven via read/write instead of shipping their schemas on every request; sessions granted read but not write get a device-only write transport (only local:// scratch stays writable). Disable to expose every enabled tool top-level.";
+    xdevNotices = mkOpt t.bool "Show an `xd://: mounted …` notice when MCP or extension tools are mounted or unmounted; the model still learns of the change with its next prompt.";
     abortOnFabricatedResult = mkOpt t.bool "Abort the turn when a fabricated tool result is detected.";
     format = mkOpt (t.enum [
       "auto"
@@ -173,6 +179,13 @@ in
     display = mkOpt t.str "Capture the active window's display (\"active\"), all displays (\"all\"), or a native display id.";
     maxWidth = mkOpt num "Maximum composite screenshot width in pixels.";
     maxHeight = mkOpt num "Maximum composite screenshot height in pixels.";
+    backgroundFallback =
+      mkOpt
+        (t.enum [
+          "takeover"
+          "refuse"
+        ])
+        "What window input does when its background route is unavailable: takeover reruns it in the foreground and returns focus (macOS; elsewhere plain takeover), refuse also keeps the agent from taking the foreground or opening macOS menus.";
   };
 
   archive = mkSection "Read-only archive eval prelude." {
@@ -182,6 +195,12 @@ in
   async = mkSection "Async background jobs." {
     enabled = mkOpt t.bool "Enable async bash commands and background task execution.";
     maxJobs = mkOpt num "Maximum concurrent background jobs.";
+    printWake = mkOpt t.bool "In print mode (-p, --mode json), keep running while this run's background jobs are active and start another turn with each job's result (omp -p --wait-async); off cancels running jobs after the last prompt.";
+    widgets = mkOpt t.bool "Draw a live widget per running background job (charts, bars, status grids) in the wait card, jobs pill and jobs sheet, and caption long shell commands; the widget model role (default: smol) writes one spec and at most one caption per job.";
+  };
+
+  out = mkSection "Interim replies through out://." {
+    enabled = mkOpt t.bool "Let the agent reply mid-task by writing to out://, shown like a response without ending its turn (unset: on in the interactive TUI, off in print, RPC and ACP).";
   };
 
   mcp = mkSection "MCP runtime behaviour (server definitions live in mcp.json, not here)." {
@@ -194,6 +213,11 @@ in
 
   extensionHandlers = mkSection "Extension event handlers." {
     toolCallTimeoutMs = mkOpt num "Positive finite active-work timeout in ms for extension tool_call handlers (invalid values fall back to 30000); time awaiting OMP-owned dialogs does not count.";
+    modeControl = mkOpt t.bool "Let extensions enter and exit plan, vibe, goal and loop modes via ctx.sessionModes.set(); reading mode state stays available.";
+  };
+
+  extensionRenderers = mkSection "Extension renderers." {
+    assistantText = mkOpt t.bool "Let extensions change how assistant replies are drawn, redraw a reply in place and receive clicks on their own links; the session, exports and model context keep the reply as written.";
   };
 
   security = mkSection "Security scanning." {

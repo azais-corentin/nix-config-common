@@ -126,6 +126,15 @@ let
       "strict"
     ]) "Catch-up policy for this advisor; omitted inherits advisor.syncBacklog.";
     maxNotesPerUpdate = mkOpt num "Non-blocker notes accepted per update for this advisor (1-32); omitted inherits the top-level value, then advisor.maxNotesPerUpdate.";
+    scope =
+      mkOpt
+        (t.enum [
+          "main"
+          "subagent"
+          "all"
+        ])
+        "Session kinds this advisor attaches to: the top-level session, advised subagents, or both (omitted = all).";
+    includeReasoning = mkOpt t.bool "Include primary assistant thinking blocks in the review deltas sent to this advisor (omitted = true).";
   };
 
   watchdogType = subType {

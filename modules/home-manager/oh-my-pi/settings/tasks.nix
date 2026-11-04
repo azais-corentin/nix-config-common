@@ -47,6 +47,7 @@ in
     maxRuntimeMs = mkOpt num "Hard wall-clock limit per subagent in ms (0 disables).";
     agentIdleTtlMs = mkOpt num "How long an idle subagent stays live before parking to disk, in ms (0 = until exit).";
     softRequestBudget = mkOpt num "Soft per-subagent request budget; crossing it injects a wrap-up notice, 1.5x aborts gracefully (0 disables).";
+    agentSoftRequestBudget = mkOpt (t.attrsOf t.ints.unsigned) "Per-agent soft request budget keyed by agent id, overriding task.softRequestBudget (0 disables the guard for that agent).";
     softRequestBudgetNotice = mkOpt t.bool "Inject one steering notice when a subagent crosses its soft request budget (off by default).";
     disabledAgents = mkOpt (t.listOf t.str) "Agent ids that cannot be spawned.";
     agentModelOverrides = mkOpt (t.attrsOf (t.either t.str (t.listOf t.str))) "Per-agent model overrides keyed by agent id: a model pattern or an ordered fallback list.";
@@ -71,6 +72,17 @@ in
     speculativeLaunch = mkOpt t.bool "Start each batch subagent as soon as its tasks[] item finishes streaming instead of waiting for the whole task call (requires auto-allowed task approval and no extension tool lifecycle handlers).";
     completionProbe = mkOpt t.bool "Periodically ask working subagents of interactive main sessions for a completion estimate (after 2, 5, 10 and 30 more minutes, then hourly), shown in wait and task views.";
     agentAccountPools = mkOpt (t.attrsOf (t.attrsOf (t.listOf (t.strMatching "[^[:space:]](.*[^[:space:]])?")))) "Exact-name task/eval agent -> provider id -> OAuth identity keys (e.g. \"email:you@example.com|org:<org-id>\"; `omp usage accounts` lists them). The agent authenticates for each listed provider only with those accounts, never another account or an API key; an empty list allows no account.";
+    file = mkOpt t.bool "Let the task tool read subagent instructions from a file (taskFile: an absolute UTF-8 path or local:// URL), recording its path and SHA-256.";
+    structured = mkOpt t.bool "Expose outputSchema/schemaMode on the task tool and return subagent results through the yield tool, validated against caller or agent output schemas. Off: subagents return their final message as plain text, except agents whose definition sets structured: true; eval agent()/workpool spawns always keep structured results.";
+    perCallModel =
+      mkOpt
+        (t.enum [
+          "off"
+          "eval"
+          "on"
+        ])
+        "Whether a subagent call may pick its model with one exact provider/model-id[@upstream][:level] selector (eval = only eval agent()/workpool spawns). Only models the configuration already routes to are accepted; project settings can turn it off but not on.";
+    perCallModelAllow = mkOpt (t.listOf t.str) "Exact provider/model-id selectors (with @upstream only for a pinned OpenRouter/Vercel route) a per-call model must also match; empty allows every model the configuration grants. A project list can only narrow this one.";
   };
 
   isolation = mkSection "Subagent/worktree isolation backend." {
@@ -99,6 +111,7 @@ in
           "tiny"
         ])
         "What names an untitled session: fork = side turn on the session's model (reuses its prompt cache, adds the icon card), tiny = the title model role only (plain titles).";
+    refreshAfterPrompts = mkOpt t.ints.unsigned "Every this many operator prompts, ask the judge model whether a generated session title still fits the conversation and regenerate it if not (0, upstream default, disables).";
     icons =
       mkOpt
         (t.enum [

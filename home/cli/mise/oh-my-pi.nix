@@ -163,6 +163,8 @@ in
         cacheMissMarker = true;
       };
       title.icons = "boring";
+      # Every 10 prompts the judge re-checks that a generated title still fits.
+      title.refreshAfterPrompts = 10;
       recap = {
         enabled = true;
         idleSeconds = 180;

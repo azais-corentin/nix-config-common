@@ -140,7 +140,7 @@ in
           "idle"
         ])
         "Re-send the last request with a one-token output budget shortly before its prompt-cache entry expires.";
-    openaiLiveSteering = mkOpt t.bool "Deliver messages typed while a GPT-6 response streams into that response over the Codex WebSocket instead of waiting for the next tool boundary.";
+    openaiLiveSteering = mkOpt t.bool "Deliver messages typed while a GPT-6 response streams into that response over the Codex WebSocket instead of waiting for the next tool boundary (upstream default: off).";
     anthropic = mkSection "Anthropic-specific provider behaviour." {
       serverSideFallback = mkOpt t.bool "Retry safety-classifier-blocked Claude Fable 5 / Mythos 5 requests on Claude Opus 4.8 server-side (beta; opt-in).";
       slowMode =
@@ -158,15 +158,7 @@ in
       maxConcurrency = mkOpt num "Max concurrent Ollama Cloud subagent runs per process (0 disables the limit).";
     };
     "openai-codex" = mkSection "OpenAI Codex provider behaviour." {
-      codeMode =
-        mkOpt
-          (t.enum [
-            "off"
-            "on"
-            "auto"
-          ])
-          "Route Codex code_mode_only models (GPT-5.6) through eval, mirroring codex-rs Code Mode; auto follows the model catalog flag.";
-      codeModeDirectTools = mkOpt (t.listOf t.str) "Extra direct tools for Codex Code Mode; the standard direct tools are eval, ask, todo, yield, think, checkpoint and rewind.";
+      daybreak = mkOpt t.bool "Automatically request the Daybreak Blue cyber access program on eligible ChatGPT accounts (upstream default: on). OpenAI may use content from Daybreak Blue sessions to improve its models; dedicated gpt-daybreak-blue-* models are not covered.";
     };
   };
 

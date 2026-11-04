@@ -61,6 +61,7 @@ in
     lazy = mkOpt t.bool "Start language servers on first use instead of at session startup.";
     diagnosticsDeduplicate = mkOpt t.bool "Suppress post-edit LSP diagnostics already shown for a file; only surface new or changed ones.";
     shared = mkOpt t.bool "Share one language server per project across omp instances via the daemon broker (falls back to private servers when unavailable). This is a config.yml setting, not an lsp.json server field.";
+    requestTimeout = mkOpt num "Seconds to wait for a language server's diagnostics, hover and other answers when the agent sets no timeout (upstream default: 10); late post-edit diagnostics wait at least this long. The lsp tool's timeout argument still overrides it per call.";
   };
 
   bashInterceptor = mkSection "Bash interceptor: block shell commands that have dedicated tools." {

@@ -105,6 +105,22 @@ in
     notify = mkOpt onOff "Notify when the ask tool is waiting for input.";
   };
 
+  btw = mkSection "/btw side questions." {
+    inject = mkOpt t.bool "When asked for a steering prompt, /btw drafts one in <inject> tags, highlighted in the answer; Alt+I (app.btw.inject) sends it to the main session.";
+  };
+
+  session = mkSection "Session resume and spend limits." {
+    worktreeScope =
+      mkOpt
+        (t.enum [
+          "directory"
+          "repo"
+        ])
+        "Whether the resume picker's current-folder list also includes sessions from sibling repository worktrees (repo, upstream default) or only this directory.";
+    warnCost = mkOpt num "Session-tree spend in USD (subagents included) at which omp warns once; must be positive. --warn-cost overrides it for one run.";
+    maxCost = mkOpt num "Session-tree spend in USD (subagents included) at which omp stops sending model requests; must be positive. --max-cost overrides it for one run.";
+  };
+
   stt = mkSection "Speech-to-text input." {
     enabled = mkOpt t.bool "Enable speech-to-text input via microphone.";
     language = mkOpt t.str "Spoken language code (default: en).";

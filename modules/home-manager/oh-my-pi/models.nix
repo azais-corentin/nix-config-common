@@ -27,6 +27,8 @@ let
     "google-gemini-cli"
     "google-vertex"
     "openrouter-decisions"
+    "openai-decisions"
+    "workers-ai-systemone"
     "typesafe"
   ];
   apiEnum = t.enum apis;
@@ -166,6 +168,7 @@ let
     requiresToolResultId = mkOpt t.bool "Tool results must carry the tool-use id (anthropic-messages).";
     replayUnsignedThinking = mkOpt t.bool "Replay unsigned thinking blocks (anthropic-messages).";
     bedrockMessagesApi = mkOpt t.bool "Fit anthropic-messages requests to Bedrock's Anthropic Messages API (drops tool strict and non-conforming metadata.user_id). Auto-detected from a Bedrock /anthropic baseUrl; set it for a proxy or reroute.";
+    requiresThinkingPresence = mkOpt t.bool "Pad every assistant turn of a thinking-mode history with a thinking block (anthropic-messages), for a gateway model group that may fail over to a strict endpoint such as DeepSeek's Anthropic API (default false).";
     promptCacheMode = mkOpt (t.enum [
       "none"
       "automatic"
@@ -248,6 +251,7 @@ let
     thinking = mkOpt thinkingType "Thinking control configuration.";
     input = mkOpt (t.listOf inputEnum) "Accepted input modalities.";
     imageInputDecoder = mkOpt (t.enum [ "stb" ]) "Decoder used for image inputs.";
+    imageCountBudget = mkOpt t.ints.positive "Most images the host accepts per request (upstream default: 5); past it the oldest images are dropped.";
     tokenizer = mkOpt (t.enum [
       "claude-v3"
       "claude-v47"
@@ -257,6 +261,8 @@ let
       "deepseek-v3"
       "kimi-k2"
       "glm5"
+      "cl100k"
+      "o200k"
     ]) "Tokenizer used for local token counting.";
     api = mkOpt modelApiEnum "API variant for this model; a runner API (e.g. openai-images) implies its kind.";
     kind = mkOpt kindEnum "Model kind; defaults to the api's kind (chat for chat transports) and must be one the api serves.";
@@ -317,6 +323,7 @@ let
       };
       timeoutMs = mkOpt num "Discovery request timeout in ms; upstream requires a positive finite number.";
       injectV1 = mkOpt t.bool "Inject /v1 into the discovery model-list URL (default true). Upstream accepts this only when discovery.type = \"openai-models-list\"; set false for gateways rooting their OpenAI-compatible surface at a versioned path.";
+      advertisedReasoning = mkOpt t.bool "Build each model's thinking surface from the reasoning ladder its /v1/models row advertises (default true); set false to use the bundled catalog reference alone. Upstream accepts this only for openai-models-list, lm-studio and proxy discovery.";
     }) "Dynamic model discovery.";
     models = mkOpt (t.listOf modelType) "Explicit model definitions.";
     modelOverrides = mkOpt (t.attrsOf overrideType) "Per-model-id overrides.";

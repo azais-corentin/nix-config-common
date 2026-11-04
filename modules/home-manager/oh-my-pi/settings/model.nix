@@ -102,6 +102,7 @@ in
       "fail-closed"
     ]) "Action when every same-provider coding-plan account is inside the reserve margin.";
     waitForUsageReset = mkOpt t.bool "On a provider usage-limit reset time (5-hour or weekly quota windows), sleep until the reset instead of failing fast past retry.maxDelayMs; waits are abortable but also hold subagents.";
+    rateLimitWalksChain = mkOpt t.bool "On a rate limit, walk retry.fallbackChains even for a turn whose thinking is signed by the failing model (off: such a turn keeps retrying the rate-limited model until retry.maxRetries is spent).";
   };
 
   thinkingBudgets = mkSection "Token budgets per thinking level (budget-mode models)." {
@@ -136,10 +137,33 @@ in
     reviewInterval = mkOpt t.ints.positive "Advisor cadence when no WATCHDOG.yml roster is present: review every Nth eligible primary update (skipped updates ride along with the next review).";
     maxNotesPerUpdate = mkOpt num "Maximum non-blocker advice notes accepted per advisor prompt update (1-32); blockers are exempt.";
     evictStaleResults = mkOpt t.bool "Before each review, replace the advisor's read/grep/glob output from older reviews with a short placeholder (the latest review is kept).";
+    continueSeverity =
+      mkOpt
+        (t.enum [
+          "nit"
+          "concern"
+          "blocker"
+        ])
+        "Minimum severity of an advisor note that wakes the agent after it finished with a final answer (upstream default: concern); lower-severity notes stay as a card at the end of the transcript and reach the agent with the next message.";
   };
 
   prewalk = mkSection "Prewalk: strong model plans, cheap model implements." {
-    enabled = mkOpt t.bool "Start on the active model, then hand off to the smol role at the first edit/write after the plan nudge's todo list exists (per-session --prewalk / --no-prewalk override).";
+    enabled = mkOpt t.bool "Start on the active model, then hand off to prewalk.into at the first edit/write after the plan nudge's todo list exists (per-session --prewalk / --no-prewalk override).";
+    from = mkOpt t.str "Model or role that /prewalk restart returns to for planning (upstream default: @default).";
+    into = mkOpt t.str "Model or role prewalk hands off to at the first edit/write: /prewalk, /prewalk restart, Enable Prewalk and --prewalk (upstream default: @smol). Auto-prewalk uses prewalk.autoTarget.";
+    auto =
+      mkOpt
+        (t.enum [
+          "off"
+          "suggest"
+          "on"
+        ])
+        "Ask the native judge (judge role) whether each new top-level user task front-loads its hard reasoning: suggest reports the decision only, on also arms a handoff to prewalk.autoTarget. Needs a native judge; independent of prewalk.enabled.";
+    autoTarget = mkOpt t.str "Model or role auto-prewalk hands off to at the first edit/write (upstream default: @smol).";
+  };
+
+  judgment = mkSection "Native judge calls." {
+    attemptTimeoutMs = mkOpt t.ints.positive "Total provider budget in ms for one native judge candidate, including setup and retries (upstream default: 3000).";
   };
 
   tier = mkSection "Per-family processing tier (service_tier)." {

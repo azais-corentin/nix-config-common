@@ -112,12 +112,14 @@ in
     mentalModelsEnabled = mkOpt t.bool "Read curated reflect summaries into developer instructions at boot.";
     mentalModelAutoSeed = mkOpt t.bool "Auto-create built-in mental models that do not yet exist on the bank.";
     mentalModelMaxRenderChars = mkOpt num "Maximum characters rendered for mental models.";
+    globalScope = mkOpt t.bool "Let retain and learn take scope: global, storing a memory without the project tag so every project recalls it (needs global or per-project-tagged scoping).";
   };
 
   sharpshooter = mkSection "Sharpshooter friction-gated project decision files." {
     injectionTokenLimit = mkOpt num "Token limit for injecting decision files into the conversation (upstream default: 15000).";
     intervalMinutes = mkOpt num "Minutes between background consolidation passes (upstream default: 5).";
     model = mkOpt t.str "Model selector for extraction/consolidation; empty uses the smol role.";
+    minPromptLength = mkOpt num "Minimum prompt length in characters before sharpshooter considers it (upstream default: 16).";
   };
 
   autolearn = mkSection "Autolearn lesson extraction from completed turns." {

@@ -30,6 +30,7 @@ in
 {
   autoResume = mkOpt t.bool "Automatically resume the most recent session in the current directory.";
   shellPath = mkOpt t.str "Override the shell binary used for bash tool execution.";
+  shellCommandPrefix = mkOpt t.str "Pi shell command prefix forwarded to legacy pi extensions; omp's native shell does not apply it.";
 
   extensions = mkOpt (t.listOf t.str) "Explicit extension module file or directory paths to load.";
   enabledModels = mkOpt (t.listOf (pathScopedEntry "models")) "Explicit allow-list of model ids to expose; entries may be scoped to working-directory prefixes.";
@@ -139,6 +140,9 @@ in
     stale = mkOpt t.bool "Also prune stale state during gc: orphaned session markers and breadcrumbs, plus debug report bundles and collab guest replicas past both stale retention limits (deletes user-visible files; upstream default off).";
     staleRetainNewest = mkOpt num "Stale pruning always keeps this many newest debug reports and collab replicas.";
     staleRetainDays = mkOpt num "Stale pruning only removes debug reports and collab replicas older than this many days.";
+    compress = mkOpt t.bool "Also rewrite cold session files in place through the filesystem's transparent compression (APFS, NTFS) during gc (upstream default off).";
+    compressAfterDays = mkOpt num "Minimum session age in days before gc compresses it (upstream default: 7).";
+    autoCompress = mkOpt t.bool "Have interactive launches start a detached, low-priority `omp gc --compress --apply` at most once a day; skipped on volumes where compression does not shrink a probe file.";
   };
 
   workspace = mkSection "Multi-root workspace." {

@@ -98,7 +98,7 @@ let
       providers = {
         fetch = "firecrawl";
         kimiApiFormat = "auto";
-        "openai-codex".codeMode = "auto";
+        "openai-codex".daybreak = false;
       };
       computer.enabled = true;
       tui.titleState = false;
@@ -205,6 +205,8 @@ let
           tools = [ ];
           instructions = "Review Nix module behavior.";
           enabled = false;
+          scope = "main";
+          includeReasoning = false;
         }
       ];
     };
@@ -533,7 +535,7 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
     yq -e '.edit.autoRepair.enabled == true' ${defaultConfig} >/dev/null
     yq -e '.task.agentAdvisor.scout == "off"' ${defaultConfig} >/dev/null
     yq -e '.compaction.methodOrder | join(",") == "snapcompact,soft"' ${defaultConfig} >/dev/null
-    yq -e '.providers["openai-codex"].codeMode == "auto"' ${defaultConfig} >/dev/null
+    yq -e '.providers["openai-codex"].daybreak == false' ${defaultConfig} >/dev/null
     yq -e '.features.unexpectedStopDetection == "smart"' ${defaultConfig} >/dev/null
     yq -e '.task.agentCompactionThresholdOverrides.scout == 90000' ${defaultConfig} >/dev/null
     yq -e '.task.agentCompactionThresholdOverrides.reviewer == "80%"' ${defaultConfig} >/dev/null
@@ -620,7 +622,9 @@ pkgs.runCommand "oh-my-pi-profile-module-tests"
               "model": "openai-codex/gpt-5.6-sol:xhigh",
               "tools": [],
               "instructions": "Review Nix module behavior.",
-              "enabled": false
+              "enabled": false,
+              "scope": "main",
+              "includeReasoning": false
             }
           ]
         }' >/dev/null

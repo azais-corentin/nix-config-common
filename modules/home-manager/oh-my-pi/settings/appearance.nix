@@ -57,6 +57,7 @@ in
     recallClearedDrafts = mkOpt t.bool "Keep drafts cleared with Ctrl+C in local Up/Down history until exit.";
     tokenRate = mkOpt t.bool "Show a live generation tok/s readout on the working row next to the session title.";
     predictions = mkOpt t.bool "After a completed turn, ask the active model to predict your next message and show it as ghost text in the empty composer (Tab or Right inserts it). Every completed turn sends one more billed request over the whole conversation.";
+    predictionAlternatives = mkOpt t.bool "Ask for up to four distinct predictions instead of one, most likely first; the ghost text shows the first one the draft matches, and Tab again after inserting picks another. The same single request returns a few more output tokens.";
   };
 
   statusLine = mkSection "Status line configuration." {
@@ -137,11 +138,12 @@ in
     autoGraph =
       mkOpt
         (t.enum [
+          "auto"
           "smart"
           "always"
           "off"
         ])
-        "Chart numeric tables in the agent's answers on graphics-capable terminals (smart = the judge model picks chart kind and columns, always = built-in best guess, off = tables stay tables).";
+        "Chart numeric tables in the agent's answers on graphics-capable terminals (auto = smart when the judge role resolves to a native TypeSafe model, else always; smart = the judge model picks chart kind and columns; always = built-in best guess; off = tables stay tables). Upstream default: auto.";
     codexResetFireworks = mkOpt t.bool "Celebrate unscheduled Codex weekly usage resets and newly banked saved resets with a fireworks overlay that remains until Escape.";
     resizeScrollback =
       mkOpt
@@ -151,6 +153,7 @@ in
           "preserve"
         ])
         "How a settled terminal resize refreshes transcript rows retained in terminal scrollback (append replays below history, rebuild erases and replays, preserve repaints only the viewport).";
+    completeScrollback = mkOpt t.bool "Send transcript rows pushed off screen by a growing HUD or dialog straight to scrollback; when it shrinks, blank rows sit between the transcript and the input until new output fills them.";
     imeSafeCursor = mkOpt t.bool "Move the prompt's bottom border to a separate row so macOS IME preedit cannot displace it.";
     titleState = mkOpt t.bool "Show the agent run state in the terminal title separator (spinner/>/!).";
     mouse = mkOpt t.bool "Capture mouse clicks so live subagent cards and HUD rows focus on click; native selection becomes Shift+drag and wheel becomes Shift+wheel.";
@@ -182,6 +185,7 @@ in
     hideToolActivity = mkOpt t.bool "Hide model-initiated tool calls and results from the transcript.";
     showTurnTime = mkOpt t.bool "Show the total prompt-to-yield time (including tool calls) on assistant message usage rows.";
     subagentLivePreview = mkOpt t.bool "Show each pinned subagent's current (or most recent) tool call beneath its row.";
+    advisorCollapsedLines = mkOpt helpers.num "Maximum note lines a collapsed advisor card shows below its header (0 keeps the full preview; expand with the tool-output toggle).";
     pinnedAgents =
       mkOpt
         (t.enum [
