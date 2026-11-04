@@ -3,7 +3,8 @@
 Tern embeds the PNGs its own desktop integration writes, as one contiguous run
 of 16 to 1024 px icons. The binary embeds other PNGs too, some of them square
 512 px images, so only that exact run counts. hicolor has no 1024 px size, so
-that icon becomes the scale-2 512 px one.
+that icon becomes the scale-2 512 px one. The binary also holds stray PNG
+signatures, so only a signature followed by an IHDR chunk starts a PNG.
 Usage: extract-icons.py BINARY HICOLOR_DIR
 """
 
@@ -11,7 +12,7 @@ import struct
 import sys
 from pathlib import Path
 
-SIZES = (16, 32, 48, 64, 128, 256, 1024)
+SIZES = (16, 32, 48, 64, 128, 256, 512, 1024)
 DIRECTORIES = {size: f"{size}x{size}" for size in SIZES} | {1024: "512x512@2"}
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
@@ -20,6 +21,9 @@ binary, hicolor = Path(sys.argv[1]).read_bytes(), Path(sys.argv[2])
 pngs = []
 start = binary.find(SIGNATURE)
 while start != -1:
+    if binary[start + 12 : start + 16] != b"IHDR":
+        start = binary.find(SIGNATURE, start + 1)
+        continue
     width, height = struct.unpack(">II", binary[start + 16 : start + 24])
     end = binary.find(b"IEND", start) + 8
     pngs.append((start, end, width, height))
