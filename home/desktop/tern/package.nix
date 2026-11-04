@@ -17,6 +17,7 @@
   glib-networking,
   kdePackages,
   libGL,
+  libnotify,
   libpulseaudio,
   libsecret,
   libxcb,
@@ -123,9 +124,9 @@ stdenv.mkDerivation {
   ];
 
   # WebKitGTK needs glib-networking for TLS. Tern shells out to secret-tool for
-  # the Stencil sign-in, gdbus for the portal's colour scheme and kdialog for
-  # dialogs. The wrapper's environment reaches every pane, so PATH is
-  # suffixed rather than prefixed.
+  # the Stencil sign-in, gdbus for the portal's colour scheme, kdialog for
+  # dialogs and notify-send for notifications. The wrapper's environment
+  # reaches every pane, so PATH is suffixed rather than prefixed.
   installPhase = ''
     runHook preInstall
     install -Dm755 tern $out/libexec/tern/tern
@@ -135,6 +136,7 @@ stdenv.mkDerivation {
         lib.makeBinPath [
           glib
           kdePackages.kdialog
+          libnotify
           libsecret
         ]
       }
