@@ -219,15 +219,15 @@ in
           tiny = "google-antigravity/gemini-3.8-flash:minimal";
         };
         deepseek.modelRoles = sharedRoles // {
-          slow = "openrouter/~deepseek/deepseek-flash-latest:max";
-          plan = "openrouter/~deepseek/deepseek-flash-latest:max";
-          default = "openrouter/~deepseek/deepseek-flash-latest:high";
-          advisor = "openrouter/~deepseek/deepseek-flash-latest:high";
-          task = "openrouter/~deepseek/deepseek-flash-latest:high";
-          vision = "openrouter/~deepseek/deepseek-flash-latest:high";
-          smol = "openrouter/~deepseek/deepseek-flash-latest:low";
-          tiny = "openrouter/~deepseek/deepseek-flash-latest:low";
-          commit = "openrouter/~deepseek/deepseek-flash-latest:low";
+          slow = "commandcode/deepseek/deepseek-v4.1-flash:max";
+          plan = "commandcode/deepseek/deepseek-v4.1-flash:max";
+          default = "commandcode/deepseek/deepseek-v4.1-flash:high";
+          advisor = "commandcode/deepseek/deepseek-v4.1-flash:high";
+          task = "commandcode/deepseek/deepseek-v4.1-flash:high";
+          vision = "commandcode/deepseek/deepseek-v4.1-flash:high";
+          smol = "commandcode/deepseek/deepseek-v4.1-flash:low";
+          tiny = "commandcode/deepseek/deepseek-v4.1-flash:low";
+          commit = "commandcode/deepseek/deepseek-v4.1-flash:low";
         };
         muse.modelRoles = lib.mapAttrs (_: _: "opencode-go/muse-spark-1.3-contributor") claudeRoles;
       };
