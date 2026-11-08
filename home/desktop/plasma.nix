@@ -183,8 +183,9 @@
         programs.plasma.shortcuts.kwin."Window to Desktop 3" = "Meta+Alt+\"";
         programs.plasma.shortcuts.kwin."Window to Desktop 4" = "Meta+Alt+'";
 
-        # AI usage plasmoid (Claude and OpenCode Go, from the claude-usage-estimator daemon); installed on every
-        # Plasma host and pinned into the shared panel below. Source vendored at ./claude-usage-widget.
+        # AI usage plasmoid (every provider the claude-usage-estimator daemon tracks, rendered from its view);
+        # installed on every Plasma host and pinned into the shared panel below. Source vendored at
+        # ./claude-usage-widget (view fixtures and a mock estimator for testing in ./claude-usage-widget/fixtures).
         home.packages = [ (pkgs.callPackage ./claude-usage-widget { }) ];
 
         # Regional formats (French) with an English UI. Hardcoded fr_FR (matches both

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Stand-in for `claude-usage-estimator get view --json [--server URL]`: prints the view fixture
+# named by $CUE_FIXTURE (default runs-out) from this directory. Not shipped with the plasmoid.
+set -euo pipefail
+dir=$(dirname "$(readlink -f "$0")")
+if [[ "${1:-}" != get || "${2:-}" != view ]]; then
+  echo "mock estimator: only 'get view --json' is supported, got: $*" >&2
+  exit 2
+fi
+exec cat "$dir/${CUE_FIXTURE:-runs-out}.json"

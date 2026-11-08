@@ -1,52 +1,49 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
+import QtQuick.Window
 import org.kde.plasma.plasmoid
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.plasma.plasma5support as Plasma5Support
 import org.kde.kirigami as Kirigami
 
+// A thin renderer of the estimator daemon's view (`<estimator> get view --json`): every verdict,
+// outage, pooled value and event comes from the daemon; this file only formats and lays out.
 PlasmoidItem {
     id: root
 
-    // Last good snapshot from `claude-usage-estimator get --json`, one pool per provider:
-    //   [{ provider, label, short, members: [account], accounts: [acct], windows: [win],
-    //      block, verdict }]
-    // windows are sorted shortest first.
-    // win: { key, limit, windowMs, state, used, start, resetsAt, forecast, verdict, runsOut,
-    //        outAt, outEarly, outLate, out, of }, times in unix ms, fractions in 0..1; `used`
-    //        is the mean over the pool, `out` of the `of` accounts are out of this window now.
-    //        key: "5h", "7d" or "30d".
-    // acct: { name, share, windows }: `share` of the provider's capacity (null unless the
-    //        estimator weighs the pool), `windows` the account's own, raw from the daemon.
-    // block: the window that makes the pool unusable soonest (exhausted now, else the
-    //        earliest median run-out): { from, until, key, exhausted } or null.
-    property var pools: []
-    // Daemon health carried by the snapshot.
-    property double generatedAt: 0
-    property string pollError: ""
-    property string historyError: ""
-    // Stored samples of the last month, keyed "account|limit" -> [[t, used], …] sorted by t.
-    // Only fetched while the popup is open; the charts fall back to a straight line.
-    property var samples: ({})
+    // The last view that parsed, null before the first one:
+    //   { generatedAt, stale, error?, providers: [ProviderView], events: [ViewEvent] }
+    // providers come most urgent first (`rank`), events sorted by time.
+    property var view: null
+    // Why the last `get view` failed, "" when it worked.
     property string lastError: ""
-    property bool loading: false
-    // Bumped by the countdown timer so every time-relative binding re-evaluates.
-    property double nowMs: Date.now()
 
     readonly property string serverArg: {
         const s = Plasmoid.configuration.server.trim();
         return s === "" ? "" : " --server '" + s.replace(/'/g, "'\\''") + "'";
     }
-    readonly property string estimatesCommand: Plasmoid.configuration.estimator + " get --json" + serverArg
-    readonly property string samplesCommand: Plasmoid.configuration.estimator + " get samples --json" + serverArg
+    readonly property string viewCommand: Plasmoid.configuration.estimator + " get view --json" + serverArg
+
+    /** "Now" for every relative time: the view's snapshot time. */
+    readonly property double now: view !== null ? view.generatedAt : Date.now()
+    readonly property var providers: view !== null ? (view.providers || []) : []
+    readonly property var events: view !== null ? (view.events || []) : []
+    readonly property bool stale: view !== null && view.stale === true
+    readonly property string daemonError: view !== null && view.error ? view.error : ""
+    readonly property bool trouble: stale || daemonError !== "" || lastError !== ""
+    /** provider id -> ProviderView. */
+    readonly property var providerById: {
+        const m = {};
+        for (const p of providers)
+            m[p.provider] = p;
+        return m;
+    }
+    /** The panel rings sorted by label, not urgency, so a ring never jumps to another slot. */
+    readonly property var ringProviders: providers.slice().sort((a, b) => a.label.localeCompare(b.label))
 
     readonly property double minuteMs: 60000
-    readonly property double hourMs: 3600000
     readonly property double dayMs: 86400000
-    /** The daemon looks stuck past this snapshot age (cue_core STALE_AFTER_MS). */
-    readonly property double staleAfterMs: 3 * minuteMs
-    readonly property bool stale: generatedAt > 0 && nowMs - generatedAt > staleAfterMs
-    readonly property bool unhealthy: stale || pollError !== "" || historyError !== ""
 
     /** Bounds for the panel's text line, in px; the rings add 36 px per provider. Mirrored by
      *  the config spin box. */
@@ -57,19 +54,14 @@ PlasmoidItem {
     property int dragTextWidth: -1
     readonly property int textWidth: Math.max(minTextWidth, Math.min(maxTextWidth,
         dragTextWidth >= 0 ? dragTextWidth : Plasmoid.configuration.textWidth))
-    /** Rings shown in the panel: one per pool, or one per known provider before the first poll. */
-    readonly property int ringCount: pools.length > 0 ? pools.length : providerOrder.length
-    readonly property int panelWidth: 4 + ringCount * 32 + (ringCount - 1) * 4 + 8 + textWidth + 4
+    readonly property int ringCount: ringProviders.length
+    readonly property int panelWidth: 4 + (ringCount > 0 ? ringCount * 32 + (ringCount - 1) * 4 + 8 : 0) + textWidth + 4
 
-    /** Display names of the providers the daemon reports, in display order. */
-    readonly property var providerLabels: ({ "anthropic": "Claude", "opencode-go": "OpenCode Go" })
-    /** The names under the panel rings. */
-    readonly property var providerShortLabels: ({ "anthropic": "Claude", "opencode-go": "Go" })
-    readonly property var providerOrder: ["anthropic", "opencode-go"]
-
-    // Verdict colours from the desktop's Monokai Pro Spectrum palette. Fixed rather than
-    // theme roles: the stylix scheme maps neutralTextColor to cyan.
-    readonly property var verdictColors: ({ "ok": "#7bd88f", "warn": "#fce566", "bad": "#fc618d" })
+    // Colours from the desktop's Monokai Pro Spectrum palette. Fixed rather than theme roles:
+    // the stylix scheme maps neutralTextColor to cyan.
+    readonly property color goodColor: "#7bd88f"
+    readonly property color warnColor: "#fce566"
+    readonly property color badColor: "#fc618d"
     readonly property color textColor: Kirigami.Theme.textColor
     // Secondary text. Opaque so it also works in Canvas and StyledText, and derived from the
     // text colour because the stylix scheme sets inactive/disabled text equal to normal text.
@@ -81,8 +73,9 @@ PlasmoidItem {
         return Qt.rgba(textColor.r, textColor.g, textColor.b, a);
     }
 
-    function verdictColor(v) {
-        return verdictColors[v] || verdictColors.ok;
+    /** A provider status ("out", "runs_out", "warn", "ok") as a colour. */
+    function statusColor(status) {
+        return status === "out" || status === "runs_out" ? badColor : status === "warn" ? warnColor : textColor;
     }
 
     /** Point size of a font sized `px` logical pixels. */
@@ -90,16 +83,17 @@ PlasmoidItem {
         return px * 0.75;
     }
 
-    function clamp01(x) {
-        return Math.max(0, Math.min(1, x));
+    function present(v) {
+        return v !== undefined && v !== null;
     }
 
     function pct(f) {
         return Math.round(f * 100) + "%";
     }
 
-    function pace(f) {
-        return f.pace.toFixed(1) + "×";
+    /** 56.74, 12 or 0.5: at most two decimals. */
+    function amount(x) {
+        return String(Math.round(x * 100) / 100);
     }
 
     function pad2(n) {
@@ -111,21 +105,12 @@ PlasmoidItem {
         return pad2(d.getHours()) + ":" + pad2(d.getMinutes());
     }
 
-    function dayDelta(t, now) {
+    /** Calendar days from the snapshot's day to `t`'s, in local time. */
+    function dayDelta(t) {
         const a = new Date(t), b = new Date(now);
         const da = new Date(a.getFullYear(), a.getMonth(), a.getDate()).getTime();
         const db = new Date(b.getFullYear(), b.getMonth(), b.getDate()).getTime();
         return Math.round((da - db) / dayMs);
-    }
-
-    /** "17:15" today, "Wed 16:00" within the week, else "12 Nov". */
-    function shortTime(t, now) {
-        const dd = dayDelta(t, now);
-        if (dd === 0)
-            return hm(t);
-        if (dd > -7 && dd < 7)
-            return weekdays[new Date(t).getDay()] + " " + hm(t);
-        return dayMonth(t);
     }
 
     /** "12 Nov". */
@@ -134,9 +119,32 @@ PlasmoidItem {
         return d.getDate() + " " + months[d.getMonth()];
     }
 
-    /** "17:15", "tomorrow 16:00", "Wed 16:00" or "12 Nov". */
-    function longTime(t, now) {
-        return dayDelta(t, now) === 1 ? "tomorrow " + hm(t) : shortTime(t, now);
+    /** "17:15" today, "Wed 16:00" within the week, else "12 Nov 16:00". */
+    function shortTime(t) {
+        const dd = dayDelta(t);
+        if (dd === 0)
+            return hm(t);
+        if (dd > -7 && dd < 7)
+            return weekdays[new Date(t).getDay()] + " " + hm(t);
+        return dayMonth(t) + " " + hm(t);
+    }
+
+    /** As shortTime, with "tomorrow 16:00" for tomorrow. */
+    function longTime(t) {
+        return dayDelta(t) === 1 ? "tomorrow " + hm(t) : shortTime(t);
+    }
+
+    /** "Wed 18:00–23:00" within a day, else "Wed 18:00–Thu 04:00". */
+    function span(a, b) {
+        return shortTime(a) + "–" + (dayDelta(a) === dayDelta(b) ? hm(b) : shortTime(b));
+    }
+
+    /** Agenda day heading: "Tomorrow", "Wed 11 Nov" within the week, else "18 Nov". */
+    function dayHeading(t) {
+        const dd = dayDelta(t);
+        if (dd === 1)
+            return "Tomorrow";
+        return dd > -7 && dd < 7 ? weekdays[new Date(t).getDay()] + " " + dayMonth(t) : dayMonth(t);
     }
 
     /** "2h 18m", "3d 2h", "45m", "now"; `compact` drops the spaces: "2h18", "3d2h". */
@@ -155,21 +163,9 @@ PlasmoidItem {
         return m + "m";
     }
 
-    /** "5h", "7d" or "30d" from a window length. */
-    function windowKey(windowMs) {
-        if (windowMs <= 6 * hourMs)
-            return "5h";
-        return windowMs <= 8 * dayMs ? "7d" : "30d";
-    }
-
-    /** Rounds a run-out time to what the forecast resolves: 5 min (5h) or 1 h (longer). */
-    function roundRunsOut(t, windowMs) {
-        const step = windowMs > 6 * hourMs ? hourMs : 5 * minuteMs;
-        return Math.floor((t + step / 2) / step) * step;
-    }
-
-    function present(v) {
-        return v !== undefined && v !== null;
+    /** "A", "A and B", "A, B and C". */
+    function joinAnd(xs) {
+        return xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];
     }
 
     /** `s` safe inside StyledText. */
@@ -211,363 +207,228 @@ PlasmoidItem {
         }).join("");
     }
 
-    function normalizeWindow(e) {
-        const f = e.forecast || null;
-        const resetsAt = present(e.resetsAt) ? e.resetsAt : null;
-        const start = present(e.start) ? e.start : (resetsAt !== null ? resetsAt - e.windowMs : null);
-        const runsOut = e.state === "active" && f !== null && present(f.emptyAt.p50);
-        let verdict = "ok";
-        if (e.state === "exhausted" || runsOut)
-            verdict = "bad";
-        else if (e.state === "active" && f !== null && f.pEmpty >= 0.25)
-            verdict = "warn";
-        const r = t => present(t) ? roundRunsOut(t, e.windowMs) : null;
-        return {
-            "key": windowKey(e.windowMs),
-            "limit": e.limit,
-            "windowMs": e.windowMs,
-            "state": e.state,
-            "used": e.used,
-            "start": start,
-            "resetsAt": resetsAt,
-            "forecast": f,
-            "verdict": verdict,
-            "runsOut": runsOut,
-            "outAt": runsOut ? r(f.emptyAt.p50) : null,
-            "outEarly": f ? r(f.emptyAt.p10) : null,
-            "outLate": f ? r(f.emptyAt.p90) : null,
-            "out": e.exhausted || 0,
-            "of": e.accounts || 1
-        };
+    /** A provider's pool window by limit id, null when absent. */
+    function windowOf(p, limit) {
+        return p.windows.find(w => w.limit === limit) || null;
     }
 
-    function normalizePool(p, now) {
-        const ws = (p.windows || []).map(normalizeWindow).sort((x, y) => x.windowMs - y.windowMs);
-        const ex = ws.filter(w => w.state === "exhausted" && w.resetsAt !== null)
-            .sort((x, y) => y.resetsAt - x.resetsAt)[0];
-        const outs = ws.filter(w => w.runsOut).sort((x, y) => x.outAt - y.outAt);
-        let block = null;
-        if (ex)
-            block = { "from": now, "until": ex.resetsAt, "key": ex.key, "exhausted": true };
-        else if (outs.length > 0)
-            block = { "from": outs[0].outAt, "until": outs[0].resetsAt, "key": outs[0].key, "exhausted": false };
-        // An account's share of the pool, from the longest window's capacity.
-        const longest = ws.length > 0 ? ws[ws.length - 1].limit : null;
-        const accounts = (p.accounts || []).map(a => {
-            const cap = (a.capacity || []).find(c => c.limit === longest);
-            return {
-                "name": a.account,
-                "share": cap && present(cap.share) ? cap.share : null,
-                "windows": a.windows || []
-            };
-        });
-        return {
-            "provider": p.provider,
-            "label": providerLabels[p.provider] || p.provider,
-            "short": providerShortLabels[p.provider] || p.provider,
-            "members": accounts.map(a => a.name),
-            "accounts": accounts,
-            "windows": ws,
-            "block": block,
-            "verdict": ws.some(w => w.verdict === "bad") ? "bad" : (ws.some(w => w.verdict === "warn") ? "warn" : "ok")
-        };
+    /** The window behind a provider's ring. */
+    function ringWindow(p) {
+        return windowOf(p, p.ring.limit);
     }
 
-    /** Usage the median forecast lands on at reset, else usage now. */
-    function projected(w) {
-        return w.forecast ? w.forecast.atReset.p50 : w.used;
+    /** "<label> 7d 54%": a provider's ring as text. */
+    function ringSummary(p) {
+        const w = ringWindow(p);
+        return p.label + " " + (w !== null ? w.label + " " : "") + pct(p.ring.used);
     }
 
-    /** The window that speaks for a pool: the blocking one, else the riskiest, else the one
-     *  projected fullest. */
-    function bindingWindow(p) {
-        if (p.block !== null)
-            return p.windows.find(w => w.key === p.block.key);
-        const risky = p.windows.filter(w => w.verdict === "warn")
-            .sort((a, b) => b.forecast.pEmpty - a.forecast.pEmpty);
-        if (risky.length > 0)
-            return risky[0];
-        return p.windows.slice().sort((a, b) => projected(b) - projected(a))[0];
+    /** One clause about a provider that is not ok: "<label> may run out (38%)". */
+    function brief(p) {
+        const o = p.outage;
+        if (p.status === "out")
+            return p.label + " is out" + (present(o.until) ? " until " + longTime(o.until) : "");
+        if (p.status === "runs_out")
+            return p.label + " runs out around " + longTime(o.from);
+        return p.label + " may run out (" + pct(o.p) + ")";
     }
 
-    /** A pool at a glance: kind "back" (out now), "out" (runs out), "warn" or "ok". */
-    function glance(p, now) {
-        const b = p.block, bw = bindingWindow(p);
-        if (b !== null && b.exhausted)
-            return { "kind": "back", "big": duration(b.until - now), "bw": bw };
-        if (b !== null)
-            return { "kind": "out", "big": duration(b.from - now), "bw": bw };
-        return { "kind": p.verdict === "warn" ? "warn" : "ok", "big": "", "bw": bw };
+    /** Sentences about the providers besides the hero's. */
+    function othersText(others) {
+        const parts = others.filter(p => p.status !== "ok").map(p => brief(p) + ".");
+        const fine = others.filter(p => p.status === "ok").map(p => p.label);
+        if (fine.length > 0)
+            parts.push(joinAnd(fine) + (fine.length > 1 ? " are" : " is") + " fine.");
+        return parts.join(" ");
     }
 
-    function glanceColor(kind) {
-        return kind === "ok" ? textColor : verdictColor(kind === "warn" ? "warn" : "bad");
-    }
-
-    /** The pool the panel and the popup headline speak about: the first to run out, else
-     *  one at risk, else the one resetting soonest. */
-    function urgentPool(ps) {
-        const blocked = ps.filter(p => p.block !== null).sort((a, b) => a.block.from - b.block.from);
-        if (blocked.length > 0)
-            return blocked[0];
-        const risky = ps.find(p => p.verdict === "warn");
-        if (risky)
-            return risky;
-        const reset = p => {
-            const t = bindingWindow(p).resetsAt;
-            return t === null ? Infinity : t;
-        };
-        return ps.slice().sort((a, b) => reset(a) - reset(b))[0];
-    }
-
-    /** A pool's one-line status in its popup section: [text, colour]. */
-    function poolStatus(p, now) {
-        const b = p.block, bw = bindingWindow(p);
-        if (b !== null && b.exhausted)
-            return ["out · back " + longTime(b.until, now), verdictColors.bad];
-        if (b !== null)
-            return ["out " + longTime(b.from, now) + " · back " + longTime(b.until, now), verdictColors.bad];
-        if (p.verdict === "warn")
-            return [pct(bw.forecast.pEmpty) + " risk before " + shortTime(bw.resetsAt, now), verdictColors.warn];
-        if (bw.resetsAt === null)
-            return [bw.key + " " + pct(bw.used), dimTextColor];
-        return [bw.key + " " + pct(bw.used) + " · resets in " + duration(bw.resetsAt - now), dimTextColor];
-    }
-
-    /** The panel: rings, two lines about the urgent pool, the trouble icon. */
-    readonly property var panelView: {
-        const now = nowMs;
-        const warn = unhealthy || lastError !== "";
-        if (pools.length === 0)
-            return {
-                "rings": providerOrder.map(p => ({ "label": providerShortLabels[p], "used": 0, "color": dimTextColor, "text": "" })),
-                "line1": "Connecting…", "line2": "—", "color": dimTextColor, "warn": warn, "opacity": 1
-            };
-        const rings = pools.map(p => {
-            const g = glance(p, now), u = clamp01(g.bw.used);
-            return { "label": p.short, "used": u, "color": glanceColor(g.kind), "text": String(Math.round(u * 100)) };
-        });
-        // The short name, as under the rings: the line is narrow.
-        const u = urgentPool(pools), g = glance(u, now), bw = g.bw;
-        let line1, line2;
-        if (g.kind === "back") {
-            line1 = u.short + " back in";
-            line2 = g.big;
-        } else if (g.kind === "out") {
-            line1 = u.short + " out in";
-            line2 = g.big;
-        } else if (g.kind === "warn") {
-            line1 = u.short + " may run out";
-            line2 = "by " + shortTime(bw.resetsAt, now);
-        } else {
-            line1 = u.short + " resets";
-            line2 = bw.resetsAt !== null ? bw.key + " in " + duration(bw.resetsAt - now, true) : "—";
-        }
-        return { "rings": rings, "line1": line1, "line2": line2, "color": glanceColor(g.kind), "warn": warn, "opacity": stale ? 0.5 : 1 };
-    }
-
-    /** The popup's and tooltip's answer: { title: [{ t, c }], sub }. */
+    /** The popup's and tooltip's answer, about the most urgent provider: { title: [{ t, c }], sub }. */
     readonly property var heroView: {
-        const now = nowMs, T = textColor;
-        if (pools.length === 0)
+        const T = textColor;
+        if (view === null)
             return {
                 "title": [{ "t": "Waiting for data…", "c": dimTextColor }],
-                "sub": "No estimates from the daemon yet. They'll appear after its first poll."
+                "sub": "No view from the estimator daemon yet."
             };
-        const u = urgentPool(pools), g = glance(u, now), bw = g.bw, f = bw.forecast;
-        const others = pools.filter(p => p !== u && p.block === null && p.verdict === "ok").map(p => p.label);
-        const verb = others.length > 1 ? " are" : " is";
-        const fine = others.length > 0 ? " " + others.join(" and ") + verb + " fine." : "";
-        if (g.kind === "back")
+        if (providers.length === 0)
             return {
-                "title": [{ "t": u.label + " is out for ", "c": T }, { "t": g.big, "c": verdictColors.bad }, { "t": ".", "c": T }],
-                "sub": "Back at " + longTime(u.block.until, now) + "."
-                    + (others.length > 0 ? " " + others.join(" and ") + verb + " available meanwhile." : "")
+                "title": [{ "t": "Nothing to show.", "c": T }],
+                "sub": "No provider has reported usage recently."
             };
-        if (g.kind === "out")
+        const p = providers[0], o = p.outage, others = othersText(providers.slice(1));
+        const tail = others !== "" ? " " + others : "";
+        if (p.status === "out")
             return {
-                "title": [{ "t": u.label + " runs out in ", "c": T }, { "t": g.big, "c": verdictColors.bad }, { "t": ".", "c": T }],
-                "sub": "Around " + longTime(u.block.from, now) + ", back at " + longTime(u.block.until, now) + "." + fine
+                "title": present(o.until)
+                    ? [{ "t": p.label + " is out until ", "c": T }, { "t": longTime(o.until), "c": badColor }, { "t": ".", "c": T }]
+                    : [{ "t": p.label + " is ", "c": T }, { "t": "out", "c": badColor }, { "t": ".", "c": T }],
+                "sub": (present(o.until) ? "Back in " + duration(o.until - now) + "." : "Not back within the forecast.")
+                    + " Every account is blocked (" + o.windowLabel + ")." + tail
             };
-        if (g.kind === "warn")
+        if (p.status === "runs_out")
             return {
-                "title": [{ "t": u.label + " might run out by ", "c": T }, { "t": longTime(bw.resetsAt, now), "c": verdictColors.warn }, { "t": ".", "c": T }],
-                "sub": pct(f.pEmpty) + " chance on the " + bw.key + " window at " + pace(f) + " pace." + fine
+                "title": [{ "t": p.label + " runs out in ", "c": T }, { "t": duration(o.from - now), "c": badColor }, { "t": ".", "c": T }],
+                "sub": "Around " + longTime(o.from) + (present(o.until) ? ", back " + longTime(o.until) : "") + "."
+                    + (o.p < 0.9 ? " " + pct(o.p) + " chance." : "") + tail
             };
-        const outs = [];
-        for (const p of pools)
-            for (const w of p.windows)
-                if (w.out > 0 && w.resetsAt !== null)
-                    outs.push(w.out + " of " + w.of + " " + p.label + " accounts out until " + shortTime(w.resetsAt, now) + ".");
-        const summary = pools.map(p => {
-            const b = bindingWindow(p);
-            return p.label + " " + b.key + " at " + pct(b.used)
-                + (b.resetsAt !== null ? ", resets in " + duration(b.resetsAt - now) : "") + ".";
+        if (p.status === "warn")
+            return {
+                "title": [{ "t": p.label + " may run out (", "c": T }, { "t": pct(o.p) + " chance", "c": warnColor }, { "t": ").", "c": T }],
+                "sub": "If it does, around " + longTime(o.from) + " on the " + o.windowLabel + " window"
+                    + (present(o.until) ? ", back " + longTime(o.until) : "") + "." + tail
+            };
+        const lines = providers.map(q => {
+            const w = ringWindow(q), out = q.accounts.filter(a => a.blocked).length;
+            return ringSummary(q)
+                + (w !== null && present(w.nextReset) ? ", resets in " + duration(w.nextReset - now) : "")
+                + (out > 0 ? ", " + out + " of " + q.accounts.length + " accounts out" : "") + ".";
         });
-        return { "title": [{ "t": "All clear.", "c": T }], "sub": outs.concat(summary).join(" ") };
+        return { "title": [{ "t": "All providers fine.", "c": T }], "sub": lines.join(" ") };
     }
 
-    /** Run-outs, returns and resets from now on, sorted: [{ t, kind, title, detail }],
-     *  kind "now", "out", "back", "risk" or "reset". */
-    readonly property var events: {
-        const now = nowMs;
-        if (pools.length === 0)
-            return [];
-        const ev = [{
-            "t": now, "kind": "now", "title": "Now",
-            "detail": pools.map(p => p.label + " " + p.windows[0].key + " " + pct(p.windows[0].used)).join(" · ")
-        }];
-        for (const p of pools)
-            for (const w of p.windows) {
-                if (w.resetsAt === null)
-                    continue;
-                const f = w.forecast;
-                if (w.state === "exhausted") {
-                    ev.push({ "t": w.resetsAt, "kind": "back", "title": p.label + " back", "detail": w.key + " limit resets" });
-                } else if (w.runsOut) {
-                    const likely = w.outEarly !== null && w.outLate !== null ? " · likely " + hm(w.outEarly) + "–" + hm(w.outLate) : "";
-                    ev.push({ "t": w.outAt, "kind": "out", "title": p.label + " runs out", "detail": w.key + likely + " · " + pace(f) + " pace" });
-                    ev.push({ "t": w.resetsAt, "kind": "back", "title": p.label + " back", "detail": w.key + " resets" });
-                } else if (w.verdict === "warn") {
-                    if (w.outEarly !== null)
-                        ev.push({ "t": w.outEarly, "kind": "risk", "title": p.label + " may run out", "detail": w.key + " · " + pct(f.pEmpty) + " chance, earliest now" });
-                    ev.push({ "t": w.resetsAt, "kind": "reset", "title": p.label + " " + w.key + " resets", "detail": "lands around " + pct(Math.min(1, f.atReset.p50)) });
-                } else {
-                    ev.push({
-                        "t": w.resetsAt, "kind": "reset", "title": p.label + " " + w.key + " resets",
-                        "detail": (w.out > 0 ? w.out + "/" + w.of + " accounts back · " : "")
-                            + "lands around " + pct(Math.min(1, f ? f.atReset.p50 : w.used)) + " · now " + pct(w.used)
-                    });
-                }
-            }
-        return ev.sort((a, b) => a.t - b.t);
+    /** The panel's two lines about the most urgent provider. */
+    readonly property var panelView: {
+        if (view === null)
+            return { "line1": "Connecting…", "line2": "—", "color": dimTextColor };
+        if (providers.length === 0)
+            return { "line1": "No providers", "line2": "—", "color": dimTextColor };
+        const p = providers[0], o = p.outage, c = statusColor(p.status);
+        if (p.status === "out")
+            return present(o.until)
+                ? { "line1": p.short + " back in", "line2": duration(o.until - now), "color": c }
+                : { "line1": p.short + " is", "line2": "out", "color": c };
+        if (p.status === "runs_out")
+            return { "line1": p.short + " out in", "line2": duration(o.from - now), "color": c };
+        if (p.status === "warn")
+            return { "line1": p.short + " may run out", "line2": pct(o.p) + " risk", "color": c };
+        const w = ringWindow(p);
+        return {
+            "line1": w !== null ? "All fine · " + p.short + " " + w.label : "All fine",
+            "line2": w !== null && present(w.nextReset) ? "resets " + duration(w.nextReset - now, true) : "—",
+            "color": textColor
+        };
+    }
+
+    /** A provider section's one-line status: [text, colour]. */
+    function sectionStatus(p) {
+        const o = p.outage;
+        const until = o && present(o.until) ? " · back " + shortTime(o.until) : "";
+        if (p.status === "out")
+            return ["out" + until, badColor];
+        if (p.status === "runs_out")
+            return ["out " + shortTime(o.from) + until, badColor];
+        if (p.status === "warn")
+            return [pct(o.p) + " risk · around " + shortTime(o.from), warnColor];
+        const w = ringWindow(p);
+        return [ringSummary(p).slice(p.label.length + 1)
+            + (w !== null && present(w.nextReset) ? " · resets in " + duration(w.nextReset - now) : ""), dimTextColor];
     }
 
     function eventColor(kind) {
-        return { "now": textColor, "out": verdictColors.bad, "back": verdictColors.ok, "risk": verdictColors.warn }[kind] || dimTextColor;
+        return ({
+                "now": textColor,
+                "pool_out": badColor,
+                "pool_back": goodColor,
+                "runs_out": warnColor,
+                "back": textColor
+            })[kind] || dimTextColor;
     }
 
-    /** The popup agenda: event rows and a day row wherever the day changes. Each row carries
-     *  its rail: pink while a pool is out, else a neutral line, ending at the last event.
-     *  rows: { day, rail } | { event, railIn, railOut }. */
+    function eventTitle(e) {
+        const p = providerById[e.provider], label = p ? p.label : e.provider;
+        if (e.kind === "pool_out")
+            return label + " runs out";
+        if (e.kind === "pool_back")
+            return label + " back";
+        if (e.kind === "runs_out")
+            return label + " account runs out";
+        if (e.kind === "back")
+            return label + " account back";
+        return label + " " + e.windowLabel + " resets";
+    }
+
+    function eventDetail(e) {
+        const p = providerById[e.provider], parts = [];
+        if (present(e.account) && (e.kind !== "reset" || (p && p.accounts.length > 1)))
+            parts.push(e.account);
+        if (e.kind === "pool_out" || e.kind === "runs_out") {
+            parts.push(e.windowLabel);
+            if (present(e.early) && present(e.late))
+                parts.push("likely " + span(e.early, e.late));
+            if (present(e.until))
+                parts.push("back " + shortTime(e.until));
+        } else if (e.kind === "pool_back" || e.kind === "back") {
+            parts.push(e.windowLabel + " resets");
+        } else if (present(e.usedBefore)) {
+            parts.push("from " + pct(e.usedBefore));
+        }
+        if (e.p < 0.9)
+            parts.push(pct(e.p) + " chance");
+        // A no-break space before each dot, so a wrapped line never starts with one.
+        return parts.join("\u00a0· ");
+    }
+
+    /** The popup agenda: a Now row, the view's events and a day row wherever the day changes.
+     *  The rail between rows is pink while a provider is out (yellow while only an unlikely
+     *  outage is), following the view's pool_out/pool_back events.
+     *  rows: { day, rail } | { event: { t, kind, title, detail }, railIn, railOut }. */
     readonly property var agendaRows: {
-        const now = nowMs, ev = events, rows = [];
-        const blocks = pools.filter(p => p.block !== null).map(p => p.block);
-        const out = (a, b) => blocks.some(k => k.from <= a + 1 && k.until >= b - 1);
-        let prevDay = null, rail = "transparent";
-        ev.forEach((e, i) => {
-            const dd = dayDelta(e.t, now);
+        if (view === null)
+            return [];
+        const open = {};
+        for (const p of providers)
+            if (p.status === "out")
+                open[p.provider] = 1;
+        const railColor = () => {
+            const ps = Object.keys(open).map(k => open[k]);
+            if (ps.length === 0)
+                return textAlpha(0.14);
+            return ps.some(x => x >= 0.5) ? badColor : warnColor;
+        };
+        const items = [{ "t": now, "kind": "now", "title": "Now", "detail": providers.map(ringSummary).join("\u00a0· ") }]
+            .concat(events.map(e => ({ "t": e.t, "kind": e.kind, "provider": e.provider, "p": e.p, "title": eventTitle(e), "detail": eventDetail(e) })));
+        const rows = [];
+        let prevDay = 0, rail = "transparent";
+        items.forEach((e, i) => {
+            if (e.kind === "pool_out")
+                open[e.provider] = e.p;
+            else if (e.kind === "pool_back")
+                delete open[e.provider];
+            const dd = dayDelta(e.t);
             if (dd !== prevDay) {
-                if (i > 0) {
-                    const date = dayMonth(e.t);
-                    rows.push({ "day": dd === 1 ? "Tomorrow" : (dd < 7 ? weekdays[new Date(e.t).getDay()] + " " + date : date), "rail": rail });
-                }
+                rows.push({ "day": dayHeading(e.t), "rail": rail });
                 prevDay = dd;
             }
-            const next = ev[i + 1];
-            const railOut = next ? (out(e.t, next.t) ? verdictColors.bad : textAlpha(0.14)) : "transparent";
+            const railOut = i < items.length - 1 ? railColor() : "transparent";
             rows.push({ "event": e, "railIn": i === 0 ? "transparent" : rail, "railOut": railOut });
             rail = railOut;
         });
         return rows;
     }
 
-    /** Pooled usage history of one window, [[t, used], …]: the members' sample series merged
-     *  by time, each member holding its latest `used` (0 before its first sample), averaged
-     *  over the window's `of` accounts. */
-    function poolPoints(pool, win) {
-        const events = [];
-        pool.members.forEach((m, i) => {
-            for (const s of samples[m + "|" + win.limit] || [])
-                events.push([s[0], i, s[1]]);
-        });
-        events.sort((p, q) => p[0] - q[0]);
-        const latest = pool.members.map(() => 0);
-        let sum = 0;
-        const out = [];
-        for (const e of events) {
-            sum += e[2] - latest[e[1]];
-            latest[e[1]] = e[2];
-            const pt = [e[0], sum / win.of];
-            if (out.length > 0 && out[out.length - 1][0] === e[0])
-                out[out.length - 1] = pt;
-            else
-                out.push(pt);
-        }
-        return out;
-    }
-
     function refresh() {
-        loading = true;
-        if (exec.connectedSources.indexOf(root.estimatesCommand) === -1)
-            exec.connectSource(root.estimatesCommand);
+        if (exec.connectedSources.indexOf(root.viewCommand) === -1)
+            exec.connectSource(root.viewCommand);
     }
 
-    function refreshSamples() {
-        if (exec.connectedSources.indexOf(root.samplesCommand) === -1)
-            exec.connectSource(root.samplesCommand);
-    }
-
-    function commandError(exitCode, stderr) {
-        return (stderr && stderr.trim().length > 0) ? stderr.trim().split("\n")[0] : ("command exited " + exitCode);
-    }
-
-    function handleEstimates(exitCode, stdout, stderr) {
-        loading = false;
+    function handleView(exitCode, stdout, stderr) {
         if (exitCode !== 0) {
-            lastError = commandError(exitCode, stderr);
+            lastError = (stderr && stderr.trim().length > 0) ? stderr.trim().split("\n")[0] : ("command exited " + exitCode);
             return;
         }
-        let snap;
+        let v;
         try {
-            snap = JSON.parse(stdout);
+            v = JSON.parse(stdout);
         } catch (e) {
             lastError = "parse error: " + e.message;
             return;
         }
-        const now = snap.generatedAt || Date.now();
-        const rank = p => {
-            const i = providerOrder.indexOf(p.provider);
-            return i < 0 ? providerOrder.length : i;
-        };
-        pools = (snap.providers || []).filter(p => (p.windows || []).length > 0)
-            .sort((p, q) => rank(p) - rank(q))
-            .map(p => normalizePool(p, now));
-        generatedAt = snap.generatedAt || 0;
-        pollError = snap.pollError || "";
-        historyError = snap.historyError || "";
-        lastError = "";
-        nowMs = Date.now();
-    }
-
-    function handleSamples(exitCode, stdout, stderr) {
-        if (exitCode !== 0) {
-            lastError = commandError(exitCode, stderr);
+        if (!v || typeof v.generatedAt !== "number" || !Array.isArray(v.providers)) {
+            lastError = "unexpected view from the estimator";
             return;
         }
-        // Current windows start at most 30 d ago; keep a little slack for the window start.
-        const since = Date.now() - 30 * dayMs - hourMs;
-        const out = ({});
-        const lines = stdout.split("\n");
-        for (const line of lines) {
-            if (line.length === 0)
-                continue;
-            let s;
-            try {
-                s = JSON.parse(line);
-            } catch (e) {
-                continue;
-            }
-            if (s.t < since)
-                continue;
-            const key = s.account + "|" + s.limit;
-            if (out[key] === undefined)
-                out[key] = [];
-            out[key].push([s.t, s.used]);
-        }
-        for (const key in out)
-            out[key].sort((p, q) => p[0] - q[0]);
-        samples = out;
+        view = v;
+        lastError = "";
     }
 
     Plasma5Support.DataSource {
@@ -576,10 +437,7 @@ PlasmoidItem {
         connectedSources: []
         onNewData: (source, data) => {
             exec.disconnectSource(source);
-            if (source === root.samplesCommand)
-                root.handleSamples(data["exit code"], data.stdout, data.stderr);
-            else
-                root.handleEstimates(data["exit code"], data.stdout, data.stderr);
+            root.handleView(data["exit code"], data.stdout, data.stderr);
         }
     }
 
@@ -592,19 +450,9 @@ PlasmoidItem {
         onTriggered: root.refresh()
     }
 
-    // Refresh only the countdowns and the stale check between polls.
-    Timer {
-        interval: 30000
-        running: true
-        repeat: true
-        onTriggered: root.nowMs = Date.now()
-    }
-
     onExpandedChanged: {
-        if (root.expanded) {
+        if (root.expanded)
             refresh();
-            refreshSamples();
-        }
     }
 
     toolTipMainText: "AI usage"
@@ -624,7 +472,7 @@ PlasmoidItem {
             id: tip
             x: parent.hPad
             y: parent.vPad
-            width: 280
+            width: 300
         }
     }
 
@@ -639,8 +487,10 @@ PlasmoidItem {
         // height Qt would round up.
         readonly property real shift: Math.round(metrics.ascent) - metrics.ascent
             + (lh > 0 ? (lh - Math.round(metrics.ascent) - Math.round(metrics.descent)) / 2 : 0)
-        height: lh > 0 ? lineCount * lh : implicitHeight
-        Layout.preferredHeight: lh > 0 ? lineCount * lh : -1
+        // At least one line: an eliding label squeezed to no width reports no lines, and a
+        // height of 0 would then keep it elided away for good.
+        height: lh > 0 ? Math.max(1, lineCount) * lh : implicitHeight
+        Layout.preferredHeight: lh > 0 ? Math.max(1, lineCount) * lh : -1
         font.pointSize: root.pt(px)
         font.features: ({ "tnum": 1 })
         lineHeightMode: lh > 0 ? Text.FixedHeight : Text.ProportionalHeight
@@ -657,9 +507,9 @@ PlasmoidItem {
     // The tooltip: the popup's answer, then the next three events.
     component TooltipContent: ColumnLayout {
         id: tipContent
-        readonly property var next: root.events.filter(e => e.kind !== "now").slice(0, 3)
+        readonly property var next: root.events.slice(0, 3)
         // One time column for every row, at least the design's 38 px.
-        readonly property real timeWidth: Math.max(38, ...next.map(e => timeMetrics.advanceWidth(root.shortTime(e.t, root.nowMs))))
+        readonly property real timeWidth: Math.max(38, ...next.map(e => timeMetrics.advanceWidth(root.shortTime(e.t))))
         spacing: 8
 
         FontMetrics {
@@ -693,6 +543,7 @@ PlasmoidItem {
         Repeater {
             model: tipContent.next
             delegate: RowLayout {
+                id: tipRow
                 required property var modelData
                 Layout.fillWidth: true
                 spacing: 10
@@ -700,20 +551,20 @@ PlasmoidItem {
                     Layout.preferredWidth: tipContent.timeWidth
                     px: 12
                     font.weight: Font.DemiBold
-                    color: root.eventColor(parent.modelData.kind)
-                    text: root.shortTime(parent.modelData.t, root.nowMs)
+                    color: root.eventColor(tipRow.modelData.kind)
+                    text: root.shortTime(tipRow.modelData.t)
                 }
                 Txt {
                     Layout.fillWidth: true
                     px: 12
                     elide: Text.ElideRight
-                    text: parent.modelData.title
+                    text: root.eventTitle(tipRow.modelData)
                 }
             }
         }
     }
 
-    // A panel ring: how full the pool's binding window is.
+    // A panel ring: how full a provider's binding window is.
     component Ring: Canvas {
         property real used: 0
         property color tone: root.textColor
@@ -733,23 +584,21 @@ PlasmoidItem {
                 return;
             ctx.strokeStyle = tone;
             ctx.beginPath();
-            ctx.arc(12, 12, 10, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * used);
+            ctx.arc(12, 12, 10, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * Math.min(1, used));
             ctx.stroke();
         }
     }
 
-    // Burn-up chart of one window: x = window start → reset, y = 0 → 100 %. Usage so far as
-    // a neutral step curve (straight line until samples load), the neutral forecast band
-    // (10th–90th percentile) and dashed median, and in pink only the predicted outage.
-    component BurnChart: Canvas {
+    // A pool window's chart, y = 0 → 100 %: the view's pooled history as a neutral step curve
+    // (pink once exhausted), then its forecast fan as a neutral p10–p90 band and a dashed
+    // median, pink only where the median sits at 100 %.
+    component Sparkline: Canvas {
         id: chart
         property var win: null
-        property var points: []
         property bool dimmed: false
-        readonly property double now: root.nowMs
+        readonly property double now: root.now
 
         onWinChanged: requestPaint()
-        onPointsChanged: requestPaint()
         onDimmedChanged: requestPaint()
         onNowChanged: requestPaint()
         onWidthChanged: requestPaint()
@@ -772,29 +621,23 @@ PlasmoidItem {
             ctx.setLineDash([]);
             ctx.globalAlpha = 1;
             const win = chart.win;
-            if (!win || win.start === null || win.resetsAt === null || w <= 0 || h <= 0)
+            if (!win || w <= 0 || h <= 0)
                 return;
-            const now = Math.min(chart.now, win.resetsAt);
-            // A pooled window can report a start after now; the axis then begins at now.
-            const start = Math.min(win.start, now);
-            const tx = t => w * (t - start) / (win.resetsAt - start);
-            const uy = u => h - (h - 1.5) * Math.min(1, u);
+            const hist = win.history || [];
+            const fan = win.fan && win.fan.t.length > 1 ? win.fan : null;
+            const x0 = hist.length > 0 ? Math.min(hist[0][0], now) : now;
+            const x1 = fan !== null ? fan.t[fan.t.length - 1]
+                : (root.present(win.nextReset) && win.nextReset > now ? win.nextReset : now);
+            if (x1 <= x0)
+                return;
+            const tx = t => w * (t - x0) / (x1 - x0);
+            const uy = u => h - (h - 1.5) * Math.max(0, Math.min(1, u));
 
-            // History.
-            if (now > start) {
-                const pts = chart.points.filter(p => p[0] >= start && p[0] <= now);
-                // History that begins well into the window, already above zero, was not
-                // recorded rather than unused: start the curve at the first sample.
-                const gap = pts.length > 0 && pts[0][1] > 0 && pts[0][0] - start > 0.02 * (win.resetsAt - start);
-                const t0 = gap ? pts[0][0] : start;
+            if (hist.length > 0) {
                 const path = () => {
-                    let prev = gap ? pts[0][1] : 0;
-                    ctx.moveTo(tx(t0), uy(prev));
-                    if (pts.length === 0) {
-                        ctx.lineTo(tx(now), uy(win.used));
-                        return;
-                    }
-                    for (const p of gap ? pts.slice(1) : pts) {
+                    let prev = hist[0][1];
+                    ctx.moveTo(tx(hist[0][0]), uy(prev));
+                    for (const p of hist.slice(1)) {
                         ctx.lineTo(tx(p[0]), uy(prev));
                         ctx.lineTo(tx(p[0]), uy(p[1]));
                         prev = p[1];
@@ -802,15 +645,14 @@ PlasmoidItem {
                     ctx.lineTo(tx(now), uy(prev));
                     ctx.lineTo(tx(now), uy(win.used));
                 };
-                // What happened is neutral, pink only once exhausted.
                 const hc = chart.dimmed ? root.dimTextColor.toString()
-                    : (win.state === "exhausted" ? root.verdictColors.bad : fg);
+                    : (win.state === "exhausted" ? root.badColor.toString() : fg);
                 ctx.fillStyle = hc;
                 ctx.globalAlpha = 0.16;
                 ctx.beginPath();
                 path();
                 ctx.lineTo(tx(now), uy(0));
-                ctx.lineTo(tx(t0), uy(0));
+                ctx.lineTo(tx(hist[0][0]), uy(0));
                 ctx.closePath();
                 ctx.fill();
                 ctx.strokeStyle = hc;
@@ -819,46 +661,44 @@ PlasmoidItem {
                 ctx.beginPath();
                 path();
                 ctx.stroke();
+                ctx.globalAlpha = 1;
             }
 
-            // Forecast, neutral: the 10th–90th percentile band and the dashed median.
-            ctx.fillStyle = fg;
-            ctx.strokeStyle = fg;
-            const f = win.state === "active" ? win.forecast : null;
-            if (f) {
-                const edge = (outT, atReset) => root.present(outT)
-                    ? [[tx(outT), uy(1)], [tx(win.resetsAt), uy(1)]]
-                    : [[tx(win.resetsAt), uy(atReset)]];
-                const upper = edge(f.emptyAt.p10, f.atReset.p90);
-                const lower = edge(f.emptyAt.p90, f.atReset.p10).reverse();
+            if (fan !== null) {
+                const n = fan.t.length;
+                ctx.fillStyle = fg;
+                ctx.strokeStyle = fg;
                 ctx.globalAlpha = 0.1;
                 ctx.beginPath();
-                ctx.moveTo(tx(now), uy(win.used));
-                for (const p of upper.concat(lower))
-                    ctx.lineTo(p[0], p[1]);
+                ctx.moveTo(tx(fan.t[0]), uy(fan.p90[0]));
+                for (let i = 1; i < n; i++)
+                    ctx.lineTo(tx(fan.t[i]), uy(fan.p90[i]));
+                for (let i = n - 1; i >= 0; i--)
+                    ctx.lineTo(tx(fan.t[i]), uy(fan.p10[i]));
                 ctx.closePath();
                 ctx.fill();
                 ctx.globalAlpha = 0.6;
                 ctx.lineWidth = 1.2;
                 ctx.setLineDash([2.5, 5 / 3]);
                 ctx.beginPath();
-                ctx.moveTo(tx(now), uy(win.used));
-                const mid = edge(f.emptyAt.p50, f.atReset.p50);
-                ctx.lineTo(mid[0][0], mid[0][1]);
+                ctx.moveTo(tx(fan.t[0]), uy(fan.p50[0]));
+                for (let i = 1; i < n; i++)
+                    ctx.lineTo(tx(fan.t[i]), uy(fan.p50[i]));
                 ctx.stroke();
                 ctx.setLineDash([]);
                 ctx.globalAlpha = 1;
-            }
-
-            // The predicted outage, the only colour on the chart: from the median run-out
-            // along the ceiling to the reset.
-            if (win.runsOut && !chart.dimmed) {
-                ctx.strokeStyle = root.verdictColors.bad;
-                ctx.lineWidth = 2.5;
-                ctx.beginPath();
-                ctx.moveTo(tx(win.forecast.emptyAt.p50), uy(1) + 1.5);
-                ctx.lineTo(w, uy(1) + 1.5);
-                ctx.stroke();
+                // Where the median forecast is full: the only colour on the chart.
+                if (!chart.dimmed) {
+                    ctx.strokeStyle = root.badColor.toString();
+                    ctx.lineWidth = 2.5;
+                    for (let i = 0; i < n - 1; i++)
+                        if (fan.p50[i] >= 0.999 && fan.p50[i + 1] >= 0.999) {
+                            ctx.beginPath();
+                            ctx.moveTo(tx(fan.t[i]), uy(1) + 1.5);
+                            ctx.lineTo(tx(fan.t[i + 1]), uy(1) + 1.5);
+                            ctx.stroke();
+                        }
+                }
             }
         }
     }
@@ -878,14 +718,17 @@ PlasmoidItem {
             anchors.leftMargin: 4
             anchors.rightMargin: 4
             spacing: 8
-            opacity: compactRoot.view.opacity
+            opacity: root.stale ? 0.5 : 1
 
             Row {
                 Layout.alignment: Qt.AlignVCenter
+                Layout.minimumWidth: implicitWidth
+                visible: root.ringCount > 0
                 spacing: 4
                 Repeater {
-                    model: compactRoot.view.rings
+                    model: root.ringProviders
                     delegate: Column {
+                        id: ring
                         required property var modelData
                         width: 32
                         spacing: 1
@@ -895,28 +738,32 @@ PlasmoidItem {
                             height: 24
                             Ring {
                                 anchors.fill: parent
-                                used: modelData.used
-                                tone: modelData.color
+                                used: ring.modelData.ring.used
+                                tone: root.statusColor(ring.modelData.status)
                             }
                             Txt {
                                 anchors.centerIn: parent
                                 px: 8.5
                                 font.weight: Font.DemiBold
-                                text: modelData.text
+                                text: String(Math.round(ring.modelData.ring.used * 100))
                             }
                         }
                         Txt {
-                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width
                             px: 9
                             lh: 10
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                             color: root.dimTextColor
-                            text: modelData.label
+                            text: ring.modelData.short
                         }
                     }
                 }
             }
             ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                Layout.preferredWidth: root.textWidth
                 Layout.alignment: Qt.AlignVCenter
                 spacing: 0
                 Txt {
@@ -942,7 +789,7 @@ PlasmoidItem {
                 Layout.alignment: Qt.AlignVCenter
                 Layout.preferredWidth: 16
                 Layout.preferredHeight: 16
-                visible: compactRoot.view.warn
+                visible: root.trouble
                 source: "data-warning"
             }
         }
@@ -1014,14 +861,16 @@ PlasmoidItem {
     }
 
     fullRepresentation: Item {
+        id: full
         // The design's insets (border + padding) less the Plasma dialog's own margins.
         readonly property real hPad: 13
         readonly property real topPad: 15
         readonly property real bottomPad: 13
-        // Sized to the content: nothing scrolls and nothing stretches. One column until
-        // there is data, then the agenda and the pools side by side.
-        implicitWidth: (root.pools.length > 0 ? 2 * content.columnWidth + content.gutter : content.columnWidth) + 2 * hPad
-        implicitHeight: content.implicitHeight + topPad + bottomPad
+        // Sized to the content up to most of the screen's height; past that the agenda and
+        // the provider sections scroll under the fixed answer.
+        readonly property real maxHeight: Math.max(360, Screen.desktopAvailableHeight * 0.85)
+        implicitWidth: content.outerWidth + 2 * hPad
+        implicitHeight: Math.min(content.implicitHeight + topPad + bottomPad, maxHeight)
         Layout.minimumWidth: implicitWidth
         Layout.preferredWidth: implicitWidth
         Layout.maximumWidth: implicitWidth
@@ -1031,9 +880,10 @@ PlasmoidItem {
 
         PopupContent {
             id: content
-            x: parent.hPad
-            y: parent.topPad
-            width: parent.width - 2 * parent.hPad
+            x: full.hPad
+            y: full.topPad
+            width: full.width - 2 * full.hPad
+            height: full.height - full.topPad - full.bottomPad
         }
     }
 
@@ -1058,32 +908,38 @@ PlasmoidItem {
         }
     }
 
-    // The popup: daemon trouble and the answer across the top, then the agenda on the left
-    // and one section per pool on the right, each with a tile per window and a row per
-    // account.
+    // The popup: trouble and the answer across the top, then the agenda on the left and one
+    // section per provider on the right, scrolling together when taller than the screen.
     component PopupContent: ColumnLayout {
         id: popup
         spacing: 18
         readonly property real dimmed: root.stale ? 0.55 : 1
-        readonly property real columnWidth: 366
+        readonly property real agendaWidth: 366
+        // Wider when a provider has many windows, so its tiles and account columns fit.
+        readonly property real providersWidth: Math.max(366, 140 + 76 * Math.max(0, ...root.providers.map(p => p.windows.length)))
         // Between the columns: a hairline with this much room around it.
         readonly property real gutter: 33
+        readonly property real bodyWidth: root.providers.length > 0 ? agendaWidth + gutter + providersWidth : agendaWidth
+        // The agenda and provider sections, only once there is a provider to show.
+        readonly property real bodyHeight: root.providers.length > 0 ? body.implicitHeight : 0
+        readonly property bool scrolls: bodyHeight > flick.height + 1
+        readonly property real outerWidth: bodyWidth + (scrolls ? 14 : 0)
 
         Notice {
             Layout.fillWidth: true
             visible: root.lastError !== ""
             icon: "dialog-error"
-            color: root.verdictColors.bad
-            text: root.lastError
+            color: root.badColor
+            text: root.lastError + (root.view !== null ? " · showing the view of " + root.longTime(root.now) : "")
         }
         Notice {
             Layout.fillWidth: true
-            visible: root.unhealthy
+            visible: root.stale || root.daemonError !== ""
             icon: "data-warning"
-            color: root.verdictColors.warn
-            text: (root.stale ? "Estimates are " + root.duration(root.nowMs - root.generatedAt) + " old"
-                    : root.pollError !== "" ? "Last poll failed" : "Last history read failed")
-                + " · the daemon isn't updating"
+            color: root.warnColor
+            text: root.daemonError !== ""
+                ? root.daemonError + (root.stale ? " · estimates may be outdated" : "")
+                : "Estimates are " + root.duration(Date.now() - root.now) + " old · the daemon isn't updating"
         }
 
         ColumnLayout {
@@ -1112,147 +968,206 @@ PlasmoidItem {
             }
         }
 
-        RowLayout {
+        // Always in the layout, empty without providers: it takes up any height the popup has
+        // to spare, which keeps the answer at the top.
+        Flickable {
+            id: flick
             Layout.fillWidth: true
-            visible: root.pools.length > 0
-            spacing: 0
+            Layout.fillHeight: true
+            Layout.preferredHeight: popup.bodyHeight
+            Layout.minimumHeight: Math.min(popup.bodyHeight, 120)
+            contentWidth: width
+            contentHeight: popup.bodyHeight
+            clip: popup.scrolls
+            interactive: popup.scrolls
+            boundsBehavior: Flickable.StopAtBounds
+            QQC2.ScrollBar.vertical: PlasmaComponents3.ScrollBar {
+                policy: popup.scrolls ? QQC2.ScrollBar.AlwaysOn : QQC2.ScrollBar.AlwaysOff
+            }
 
-            // Agenda: time | rail and dot | what happens.
-            Column {
-                Layout.preferredWidth: popup.columnWidth
-                Layout.alignment: Qt.AlignTop
-                opacity: popup.dimmed
-                readonly property real railX: 44 + 10 + 6
-                readonly property real textX: 44 + 10 + 14 + 10
+            RowLayout {
+                id: body
+                visible: root.providers.length > 0
+                width: popup.bodyWidth
+                spacing: 0
 
-                Repeater {
-                    model: root.agendaRows
-                    delegate: Item {
-                        id: agendaRow
-                        required property var modelData
-                        readonly property var ev: modelData.event || null
-                        width: parent.width
-                        height: ev ? evText.height + 12 : dayLabel.height + 14
-
-                        // Day rows: the rail runs through, the date beside it.
-                        Rectangle {
-                            visible: !agendaRow.ev
-                            x: agendaRow.parent.railX
-                            width: 2
-                            height: parent.height
-                            color: agendaRow.modelData.rail || "transparent"
-                        }
-                        Txt {
-                            id: dayLabel
-                            visible: !agendaRow.ev
-                            x: agendaRow.parent.textX
-                            y: 8
-                            px: 11
-                            font.weight: Font.DemiBold
-                            font.letterSpacing: 0.22
-                            color: root.dimTextColor
-                            text: agendaRow.modelData.day || ""
-                        }
-
-                        // Event rows.
-                        Txt {
-                            visible: !!agendaRow.ev
-                            width: 44
-                            px: 13
-                            lh: 18
-                            horizontalAlignment: Text.AlignRight
-                            font.weight: Font.DemiBold
-                            color: agendaRow.ev ? root.eventColor(agendaRow.ev.kind) : "transparent"
-                            text: agendaRow.ev ? root.hm(agendaRow.ev.t) : ""
-                        }
-                        Rectangle {
-                            visible: !!agendaRow.ev
-                            x: agendaRow.parent.railX
-                            width: 2
-                            height: 9
-                            color: agendaRow.modelData.railIn || "transparent"
-                        }
-                        Rectangle {
-                            visible: !!agendaRow.ev
-                            x: agendaRow.parent.railX
-                            y: 9
-                            width: 2
-                            height: parent.height - 9
-                            color: agendaRow.modelData.railOut || "transparent"
-                        }
-                        Rectangle {
-                            readonly property string kind: agendaRow.ev ? agendaRow.ev.kind : ""
-                            readonly property bool hollow: kind === "risk" || kind === "reset"
-                            visible: !!agendaRow.ev
-                            x: agendaRow.parent.railX - 4
-                            y: 4
-                            width: 10
-                            height: 10
-                            radius: 5
-                            color: hollow ? Kirigami.Theme.backgroundColor : root.eventColor(kind)
-                            border.width: 2
-                            border.color: kind === "reset" ? root.textAlpha(0.45) : root.eventColor(kind)
-                        }
-                        Column {
-                            id: evText
-                            visible: !!agendaRow.ev
-                            x: agendaRow.parent.textX
-                            width: parent.width - x
-                            Txt {
-                                width: parent.width
-                                px: 13.5
-                                lh: 18
-                                font.weight: Font.Medium
-                                wrapMode: Text.WordWrap
-                                text: agendaRow.ev ? agendaRow.ev.title : ""
-                            }
-                            Txt {
-                                width: parent.width
-                                px: 12
-                                lh: 17
-                                wrapMode: Text.WordWrap
-                                color: root.dimTextColor
-                                text: agendaRow.ev ? agendaRow.ev.detail : ""
-                            }
-                        }
-                    }
+                Agenda {
+                    Layout.preferredWidth: popup.agendaWidth
+                    Layout.alignment: Qt.AlignTop
+                    opacity: popup.dimmed
                 }
-            }
 
-            Rectangle {
-                Layout.fillHeight: true
-                Layout.preferredWidth: 1
-                Layout.leftMargin: (popup.gutter - 1) / 2
-                Layout.rightMargin: (popup.gutter - 1) / 2
-                color: root.textAlpha(0.1)
-            }
+                Rectangle {
+                    visible: root.providers.length > 0
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 1
+                    Layout.leftMargin: (popup.gutter - 1) / 2
+                    Layout.rightMargin: (popup.gutter - 1) / 2
+                    color: root.textAlpha(0.1)
+                }
 
-            ColumnLayout {
-                Layout.preferredWidth: popup.columnWidth
-                Layout.alignment: Qt.AlignTop
-                spacing: 18
-                Repeater {
-                    model: root.pools
-                    delegate: PoolSection {
-                        Layout.fillWidth: true
-                        opacity: popup.dimmed
+                ColumnLayout {
+                    visible: root.providers.length > 0
+                    Layout.preferredWidth: popup.providersWidth
+                    Layout.alignment: Qt.AlignTop
+                    spacing: 18
+                    Repeater {
+                        model: root.providers
+                        delegate: ProviderSection {
+                            Layout.fillWidth: true
+                            opacity: popup.dimmed
+                        }
                     }
                 }
             }
         }
     }
 
-    // One pool in the popup: name and status, a tile per window, a row per account.
-    component PoolSection: ColumnLayout {
+    // The agenda: time | rail and dot | what happens.
+    component Agenda: Column {
+        id: agenda
+        readonly property real railX: 44 + 10 + 6
+        readonly property real textX: 44 + 10 + 14 + 10
+
+        Repeater {
+            model: root.agendaRows
+            delegate: Item {
+                id: agendaRow
+                required property var modelData
+                readonly property var ev: modelData.event || null
+                readonly property string kind: ev ? ev.kind : ""
+                width: agenda.width
+                height: ev ? evText.height + 12 : dayLabel.height + 14
+
+                // Day rows: the rail runs through, the date beside it.
+                Rectangle {
+                    visible: !agendaRow.ev
+                    x: agenda.railX
+                    width: 2
+                    height: parent.height
+                    color: agendaRow.modelData.rail || "transparent"
+                }
+                Txt {
+                    id: dayLabel
+                    visible: !agendaRow.ev
+                    x: agenda.textX
+                    y: 8
+                    px: 11
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: 0.22
+                    color: root.dimTextColor
+                    text: agendaRow.modelData.day || ""
+                }
+
+                // Event rows.
+                Txt {
+                    visible: !!agendaRow.ev
+                    width: 44
+                    px: 13
+                    lh: 18
+                    horizontalAlignment: Text.AlignRight
+                    font.weight: Font.DemiBold
+                    color: root.eventColor(agendaRow.kind)
+                    text: agendaRow.ev ? root.hm(agendaRow.ev.t) : ""
+                }
+                Rectangle {
+                    visible: !!agendaRow.ev
+                    x: agenda.railX
+                    width: 2
+                    height: 9
+                    color: agendaRow.modelData.railIn || "transparent"
+                }
+                Rectangle {
+                    visible: !!agendaRow.ev
+                    x: agenda.railX
+                    y: 9
+                    width: 2
+                    height: parent.height - 9
+                    color: agendaRow.modelData.railOut || "transparent"
+                }
+                Rectangle {
+                    // Hollow for what may happen or changes little; filled for the rest.
+                    readonly property bool hollow: agendaRow.kind === "runs_out" || agendaRow.kind === "reset"
+                    visible: !!agendaRow.ev
+                    x: agenda.railX - 4
+                    y: 4
+                    width: 10
+                    height: 10
+                    radius: 5
+                    color: hollow ? Kirigami.Theme.backgroundColor
+                        : agendaRow.kind === "back" ? root.textAlpha(0.7) : root.eventColor(agendaRow.kind)
+                    border.width: 2
+                    border.color: agendaRow.kind === "reset" ? root.textAlpha(0.45)
+                        : agendaRow.kind === "back" ? root.textAlpha(0.7) : root.eventColor(agendaRow.kind)
+                }
+                Column {
+                    id: evText
+                    visible: !!agendaRow.ev
+                    x: agenda.textX
+                    width: parent.width - x
+                    Txt {
+                        width: parent.width
+                        px: 13.5
+                        lh: 18
+                        font.weight: Font.Medium
+                        wrapMode: Text.WordWrap
+                        text: agendaRow.ev ? agendaRow.ev.title : ""
+                    }
+                    Txt {
+                        width: parent.width
+                        visible: text !== ""
+                        px: 12
+                        lh: 17
+                        wrapMode: Text.WordWrap
+                        color: root.dimTextColor
+                        text: agendaRow.ev ? agendaRow.ev.detail : ""
+                    }
+                }
+            }
+        }
+    }
+
+    // One provider in the popup: name and status, a tile per window, a row per account and a
+    // line per balance.
+    component ProviderSection: ColumnLayout {
         id: section
         required property var modelData
         required property int index
-        readonly property var pool: modelData
-        readonly property var status: root.poolStatus(pool, root.nowMs)
-        readonly property bool shares: pool.accounts.some(a => a.share !== null)
+        readonly property var provider: modelData
+        readonly property var status: root.sectionStatus(provider)
+        readonly property var windows: provider.windows
+        readonly property bool shares: provider.accounts.some(a => root.present(a.share))
+        // Tiles at least this wide; rows balanced so no row is much shorter than another.
+        readonly property real minTileWidth: 108
+        readonly property int maxColumns: Math.max(1, Math.floor((width + 8) / (minTileWidth + 8)))
+        readonly property int tileRows: Math.ceil(windows.length / maxColumns)
+        readonly property int tileColumns: Math.max(1, Math.ceil(windows.length / Math.max(1, tileRows)))
+        // The account table, flattened row by row for the grid: a header row of window labels,
+        // then name | share | one cell per window.
+        readonly property var cells: {
+            const out = [{ "kind": "head", "text": "" }];
+            if (shares)
+                out.push({ "kind": "head", "text": "" });
+            for (const w of windows)
+                out.push({ "kind": "head", "text": w.label });
+            for (const a of provider.accounts) {
+                out.push({ "kind": "name", "text": a.account, "color": a.blocked ? root.badColor : root.dimTextColor });
+                if (shares)
+                    out.push({ "kind": "share", "text": root.present(a.share) ? root.pct(a.share) + " cap" : "–", "color": root.dimTextColor });
+                for (const w of windows) {
+                    const own = a.windows.find(x => x.limit === w.limit);
+                    out.push({
+                        "kind": "value",
+                        "text": own ? root.pct(own.used) : "–",
+                        "color": own && own.state === "exhausted" ? root.badColor : own ? root.textColor : root.dimTextColor
+                    });
+                }
+            }
+            return out;
+        }
         spacing: 8
 
-        // Between pools; the column's top needs none.
+        // Between providers; the column's top needs none.
         Rectangle {
             visible: section.index > 0
             Layout.fillWidth: true
@@ -1267,7 +1182,7 @@ PlasmoidItem {
                 Layout.alignment: Qt.AlignBaseline
                 px: 13
                 font.weight: Font.DemiBold
-                text: section.pool.label
+                text: section.provider.label
             }
             Txt {
                 Layout.fillWidth: true
@@ -1279,88 +1194,84 @@ PlasmoidItem {
                 text: section.status[0]
             }
         }
-        RowLayout {
+        GridLayout {
             Layout.fillWidth: true
-            spacing: 8
+            visible: section.windows.length > 0
+            columns: section.tileColumns
+            columnSpacing: 8
+            rowSpacing: 8
             Repeater {
-                model: section.pool.windows
+                model: section.windows
                 delegate: WindowTile {
+                    provider: section.provider
                     Layout.fillWidth: true
-                    Layout.preferredWidth: 1
+                    Layout.preferredWidth: (section.width - 8 * (section.tileColumns - 1)) / section.tileColumns
                     Layout.alignment: Qt.AlignTop
-                    points: root.poolPoints(section.pool, modelData)
                 }
             }
         }
-        ColumnLayout {
+        GridLayout {
             Layout.fillWidth: true
             Layout.topMargin: 2
-            spacing: 4
+            visible: section.provider.accounts.length > 0
+            columns: 1 + (section.shares ? 1 : 0) + section.windows.length
+            columnSpacing: 12
+            rowSpacing: 4
             Repeater {
-                model: section.pool.accounts
-                delegate: RowLayout {
-                    id: acct
+                model: section.cells
+                delegate: Txt {
+                    id: cell
                     required property var modelData
+                    readonly property bool isName: modelData.kind === "name"
+                    readonly property bool isHead: modelData.kind === "head"
+                    Layout.fillWidth: isName
+                    Layout.preferredWidth: isName ? 60 : -1
+                    Layout.maximumWidth: isHead ? 110 : -1
+                    Layout.alignment: Qt.AlignBaseline | (isName ? Qt.AlignLeft : Qt.AlignRight)
+                    px: isHead ? 11 : 12
+                    font.weight: modelData.kind === "value" ? Font.Medium : Font.Normal
+                    horizontalAlignment: isName ? Text.AlignLeft : Text.AlignRight
+                    elide: Text.ElideRight
+                    color: isHead ? root.dimTextColor : modelData.color
+                    text: modelData.text
+                }
+            }
+        }
+        Repeater {
+            model: section.provider.balances || []
+            delegate: RowLayout {
+                id: balance
+                required property var modelData
+                Layout.fillWidth: true
+                spacing: 10
+                Txt {
                     Layout.fillWidth: true
-                    spacing: 10
-                    Txt {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignBaseline
-                        px: 12
-                        elide: Text.ElideRight
-                        color: root.dimTextColor
-                        text: acct.modelData.name
-                    }
-                    Txt {
-                        visible: section.shares
-                        Layout.preferredWidth: 52
-                        Layout.alignment: Qt.AlignBaseline
-                        px: 12
-                        horizontalAlignment: Text.AlignRight
-                        color: root.dimTextColor
-                        text: acct.modelData.share !== null ? root.pct(acct.modelData.share) + " cap" : "–"
-                    }
-                    Repeater {
-                        model: section.pool.windows
-                        delegate: Item {
-                            id: cell
-                            required property var modelData
-                            readonly property var own: acct.modelData.windows.find(w => w.limit === modelData.limit) || null
-                            readonly property bool out: own !== null && (own.state === "exhausted" || own.used >= 1)
-                            Layout.preferredWidth: 56
-                            Layout.preferredHeight: cellValue.height
-                            Layout.alignment: Qt.AlignBaseline
-                            baselineOffset: cellValue.baselineOffset
-                            Row {
-                                anchors.right: parent.right
-                                Txt {
-                                    anchors.baseline: cellValue.baseline
-                                    px: 11
-                                    color: root.dimTextColor
-                                    text: cell.modelData.key + " "
-                                }
-                                Txt {
-                                    id: cellValue
-                                    px: 12
-                                    font.weight: Font.Medium
-                                    color: cell.out ? root.verdictColors.bad : root.textColor
-                                    text: cell.own !== null ? root.pct(cell.own.used) : "–"
-                                }
-                            }
-                        }
-                    }
+                    Layout.alignment: Qt.AlignBaseline
+                    px: 12
+                    elide: Text.ElideRight
+                    color: root.dimTextColor
+                    text: balance.modelData.label
+                        + (section.provider.accounts.length > 1 ? " · " + balance.modelData.account : "")
+                }
+                Txt {
+                    Layout.alignment: Qt.AlignBaseline
+                    px: 12
+                    font.weight: Font.Medium
+                    text: root.amount(balance.modelData.remaining) + " " + balance.modelData.unit
                 }
             }
         }
     }
 
-    // One window of a pool: share used, pace, burn chart and what comes next.
+    // One pool window: pooled used, pace, chart and what comes next.
     component WindowTile: Rectangle {
         id: tile
         required property var modelData
+        property var provider: null
         readonly property var win: modelData
-        property var points: []
-        readonly property var f: win.forecast
+        // The window the provider's outage binds on, when it has one.
+        readonly property bool binding: provider !== null && provider.status !== "ok" && root.present(provider.outage)
+            && provider.outage.limit === win.limit
         implicitHeight: tileContent.implicitHeight + 9 + 10
         radius: 8
         color: root.textAlpha(0.05)
@@ -1377,27 +1288,27 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     px: 11.5
                     font.weight: Font.DemiBold
+                    elide: Text.ElideRight
                     color: root.dimTextColor
-                    text: tile.win.key
+                    text: tile.win.label
                 }
                 Txt {
                     px: 11.5
                     color: root.dimTextColor
-                    text: tile.f ? root.pace(tile.f) : ""
+                    text: root.present(tile.win.pace) ? tile.win.pace.toFixed(1) + "×" : ""
                 }
             }
             Txt {
                 px: 20
                 lh: 24
                 font.weight: Font.DemiBold
-                color: tile.win.state === "exhausted" ? root.verdictColors.bad : root.textColor
+                color: tile.win.state === "exhausted" ? root.badColor : root.textColor
                 text: root.pct(tile.win.used)
             }
-            BurnChart {
+            Sparkline {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 28
                 win: tile.win
-                points: tile.points
                 dimmed: root.stale
             }
             Txt {
@@ -1405,16 +1316,31 @@ PlasmoidItem {
                 px: 11.5
                 elide: Text.ElideRight
                 readonly property var w: tile.win
-                color: w.state === "exhausted" || w.runsOut ? root.verdictColors.bad
-                    : w.verdict === "warn" ? root.verdictColors.warn : root.dimTextColor
+                readonly property var o: tile.binding ? tile.provider.outage : null
+                color: o !== null ? root.statusColor(tile.provider.status)
+                    : w.state === "exhausted" ? root.badColor : root.dimTextColor
                 text: {
-                    if (w.resetsAt === null)
-                        return w.state === "not_started" ? "not started" : "no data";
-                    if (w.state === "exhausted")
-                        return "back " + root.shortTime(w.resetsAt, root.nowMs);
-                    if (w.runsOut)
-                        return "out " + root.shortTime(w.outAt, root.nowMs) + " · back " + root.shortTime(w.resetsAt, root.nowMs);
-                    return "resets " + root.shortTime(w.resetsAt, root.nowMs);
+                    if (w.state === "no_data")
+                        return "no data";
+                    if (w.state === "not_started")
+                        return "not started";
+                    if (w.state === "expired")
+                        return "expired";
+                    const until = o !== null && root.present(o.until) ? "back " + root.shortTime(o.until) : "";
+                    if (o !== null && tile.provider.status === "out")
+                        return until !== "" ? until : "out";
+                    if (o !== null && tile.provider.status === "runs_out")
+                        return "out " + (root.present(o.until) ? root.span(o.from, o.until) : root.shortTime(o.from));
+                    if (o !== null)
+                        return root.pct(o.p) + " risk · " + root.shortTime(o.from);
+                    const parts = [];
+                    if (w.blocked > 0)
+                        parts.push(w.blocked + "/" + w.accounts + " out");
+                    if (root.present(w.nextReset))
+                        parts.push("resets " + root.shortTime(w.nextReset));
+                    if (parts.length < 2 && root.present(w.pEmpty) && w.pEmpty >= 0.05)
+                        parts.push(root.pct(w.pEmpty) + " risk");
+                    return parts.length > 0 ? parts.join(" · ") : "–";
                 }
             }
         }

@@ -2,11 +2,11 @@
   "KPlugin": {
     "Id": "org.nelieru.claudeusage",
     "Name": "AI Usage",
-    "Description": "Pooled Claude and OpenCode Go usage forecasts from claude-usage-estimator",
+    "Description": "Pooled usage forecasts of every AI provider tracked by claude-usage-estimator",
     "Icon": "office-chart-bar",
     "Authors": [{ "Name": "nelieru" }],
     "Category": "System Information",
-    "Version": "5.0.0",
+    "Version": "6.0.0",
     "License": "MIT"
   },
   "KPackageStructure": "Plasma/Applet",

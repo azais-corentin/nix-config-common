@@ -1,7 +1,7 @@
 { lib, stdenvNoCC }:
 stdenvNoCC.mkDerivation {
   pname = "claude-usage-widget";
-  version = "5.0.0";
+  version = "6.0.0";
 
   src = ./org.nelieru.claudeusage;
 
@@ -16,7 +16,7 @@ stdenvNoCC.mkDerivation {
   '';
 
   meta = {
-    description = "Plasma 6 applet showing pooled Claude and OpenCode Go usage forecasts from claude-usage-estimator";
+    description = "Plasma 6 applet showing pooled usage forecasts of every AI provider tracked by claude-usage-estimator";
     license = lib.licenses.mit;
     platforms = lib.platforms.linux;
   };
