@@ -1,1 +1,7 @@
-{ "generatedAt": 1794161520000, "stale": false, "providers": [], "events": [] }
+{
+  "generatedAt": 1794161520000,
+  "stale": false,
+  "providers": [],
+  "events": [],
+  "horizon": 1794766320000
+}

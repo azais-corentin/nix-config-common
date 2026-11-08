@@ -273,7 +273,11 @@ PlasmoidItem {
             };
         if (p.status === "warn")
             return {
-                "title": [{ "t": p.label + " may run out (", "c": T }, { "t": pct(o.p) + " chance", "c": warnColor }, { "t": ").", "c": T }],
+                "title": [
+                    { "t": p.label + " may run out (", "c": T },
+                    { "t": pct(o.p) + (present(view.horizon) ? " before " + longTime(view.horizon) : " chance"), "c": warnColor },
+                    { "t": ").", "c": T }
+                ],
                 "sub": "If it does, around " + longTime(o.from) + " on the " + o.windowLabel + " window"
                     + (present(o.until) ? ", back " + longTime(o.until) : "") + "." + tail
             };
@@ -330,7 +334,9 @@ PlasmoidItem {
                 "pool_out": badColor,
                 "pool_back": goodColor,
                 "runs_out": warnColor,
-                "back": textColor
+                "group_out": warnColor,
+                "back": textColor,
+                "group_back": textColor
             })[kind] || dimTextColor;
     }
 
@@ -344,6 +350,10 @@ PlasmoidItem {
             return label + " account runs out";
         if (e.kind === "back")
             return label + " account back";
+        if (e.kind === "group_out")
+            return label + " " + e.windowLabel + " out on all accounts";
+        if (e.kind === "group_back")
+            return label + " " + e.windowLabel + " back";
         return label + " " + e.windowLabel + " resets";
     }
 
@@ -351,8 +361,9 @@ PlasmoidItem {
         const p = providerById[e.provider], parts = [];
         if (present(e.account) && (e.kind !== "reset" || (p && p.accounts.length > 1)))
             parts.push(e.account);
-        if (e.kind === "pool_out" || e.kind === "runs_out") {
-            parts.push(e.windowLabel);
+        if (e.kind === "pool_out" || e.kind === "runs_out" || e.kind === "group_out") {
+            if (e.kind !== "group_out")
+                parts.push(e.windowLabel);
             if (present(e.early) && present(e.late))
                 parts.push("likely " + span(e.early, e.late));
             if (present(e.until))
@@ -1086,19 +1097,20 @@ PlasmoidItem {
                     color: agendaRow.modelData.railOut || "transparent"
                 }
                 Rectangle {
-                    // Hollow for what may happen or changes little; filled for the rest.
-                    readonly property bool hollow: agendaRow.kind === "runs_out" || agendaRow.kind === "reset"
+                    // Hollow for what touches one account or one model group, or changes
+                    // little; filled for the provider as a whole.
+                    readonly property string kind: agendaRow.kind
+                    readonly property bool hollow: kind === "runs_out" || kind === "group_out" || kind === "reset"
+                    readonly property bool muted: kind === "back" || kind === "group_back"
                     visible: !!agendaRow.ev
                     x: agenda.railX - 4
                     y: 4
                     width: 10
                     height: 10
                     radius: 5
-                    color: hollow ? Kirigami.Theme.backgroundColor
-                        : agendaRow.kind === "back" ? root.textAlpha(0.7) : root.eventColor(agendaRow.kind)
+                    color: hollow ? Kirigami.Theme.backgroundColor : muted ? root.textAlpha(0.7) : root.eventColor(kind)
                     border.width: 2
-                    border.color: agendaRow.kind === "reset" ? root.textAlpha(0.45)
-                        : agendaRow.kind === "back" ? root.textAlpha(0.7) : root.eventColor(agendaRow.kind)
+                    border.color: kind === "reset" ? root.textAlpha(0.45) : muted ? root.textAlpha(0.7) : root.eventColor(kind)
                 }
                 Column {
                     id: evText
@@ -1159,7 +1171,7 @@ PlasmoidItem {
                     out.push({
                         "kind": "value",
                         "text": own ? root.pct(own.used) : "–",
-                        "color": own && own.state === "exhausted" ? root.badColor : own ? root.textColor : root.dimTextColor
+                        "color": own && (own.blocked || own.state === "exhausted") ? root.badColor : own ? root.textColor : root.dimTextColor
                     });
                 }
             }
@@ -1203,7 +1215,6 @@ PlasmoidItem {
             Repeater {
                 model: section.windows
                 delegate: WindowTile {
-                    provider: section.provider
                     Layout.fillWidth: true
                     Layout.preferredWidth: (section.width - 8 * (section.tileColumns - 1)) / section.tileColumns
                     Layout.alignment: Qt.AlignTop
@@ -1263,18 +1274,18 @@ PlasmoidItem {
         }
     }
 
-    // One pool window: pooled used, pace, chart and what comes next.
+    // One pool window: pooled used, pace, chart and what comes next. Windows of one model
+    // group (scope "group") sit lighter, outlined: they never make an account out alone.
     component WindowTile: Rectangle {
         id: tile
         required property var modelData
-        property var provider: null
         readonly property var win: modelData
-        // The window the provider's outage binds on, when it has one.
-        readonly property bool binding: provider !== null && provider.status !== "ok" && root.present(provider.outage)
-            && provider.outage.limit === win.limit
+        readonly property bool group: win.scope === "group"
         implicitHeight: tileContent.implicitHeight + 9 + 10
         radius: 8
-        color: root.textAlpha(0.05)
+        color: root.textAlpha(group ? 0.025 : 0.05)
+        border.width: group ? 1 : 0
+        border.color: root.textAlpha(0.09)
 
         ColumnLayout {
             id: tileContent
@@ -1316,9 +1327,7 @@ PlasmoidItem {
                 px: 11.5
                 elide: Text.ElideRight
                 readonly property var w: tile.win
-                readonly property var o: tile.binding ? tile.provider.outage : null
-                color: o !== null ? root.statusColor(tile.provider.status)
-                    : w.state === "exhausted" ? root.badColor : root.dimTextColor
+                color: w.verdict === "bad" ? root.badColor : w.verdict === "warn" ? root.warnColor : root.dimTextColor
                 text: {
                     if (w.state === "no_data")
                         return "no data";
@@ -1326,20 +1335,16 @@ PlasmoidItem {
                         return "not started";
                     if (w.state === "expired")
                         return "expired";
-                    const until = o !== null && root.present(o.until) ? "back " + root.shortTime(o.until) : "";
-                    if (o !== null && tile.provider.status === "out")
-                        return until !== "" ? until : "out";
-                    if (o !== null && tile.provider.status === "runs_out")
-                        return "out " + (root.present(o.until) ? root.span(o.from, o.until) : root.shortTime(o.from));
-                    if (o !== null)
-                        return root.pct(o.p) + " risk · " + root.shortTime(o.from);
+                    // Every member blocked: the earliest member reset is when the window is back.
+                    if (w.blocked > 0 && w.blocked === w.accounts && root.present(w.nextReset))
+                        return "back " + root.shortTime(w.nextReset);
                     const parts = [];
-                    if (w.blocked > 0)
-                        parts.push(w.blocked + "/" + w.accounts + " out");
+                    if (w.verdict !== "ok" && root.present(w.pEmpty))
+                        parts.push(root.pct(w.pEmpty) + " risk");
+                    else if (w.blocked > 0)
+                        parts.push(w.blocked + "/" + w.accounts + " blocked");
                     if (root.present(w.nextReset))
                         parts.push("resets " + root.shortTime(w.nextReset));
-                    if (parts.length < 2 && root.present(w.pEmpty) && w.pEmpty >= 0.05)
-                        parts.push(root.pct(w.pEmpty) + " risk");
                     return parts.length > 0 ? parts.join(" · ") : "–";
                 }
             }

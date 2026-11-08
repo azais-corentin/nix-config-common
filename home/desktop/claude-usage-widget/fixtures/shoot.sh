@@ -69,4 +69,12 @@ for fixture in "$@"; do
     fi
   done
 done
+# Every rendered panel stacked in one image, and every tooltip side by side.
+panels=() tooltips=()
+for fixture in "$@"; do
+  [[ -s $out/$fixture-panel.png ]] && panels+=("$out/$fixture-panel.png")
+  [[ -s $out/$fixture-tooltip.png ]] && tooltips+=("$out/$fixture-tooltip.png")
+done
+((${#panels[@]})) && "$magick" "${panels[@]}" -background "$bg" -append "$out/panels.png"
+((${#tooltips[@]})) && "$magick" "${tooltips[@]}" -background "$bg" -gravity north +append "$out/tooltips.png"
 ls "$out"/*.png
