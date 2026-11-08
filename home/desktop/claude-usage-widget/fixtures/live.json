@@ -2070,7 +2070,7 @@
       ],
       "accounts": [
         {
-          "account": "haellsigh@gmail.com",
+          "account": "personal@example.com",
           "blocked": false,
           "windows": [
             {
@@ -5085,7 +5085,7 @@
       ],
       "accounts": [
         {
-          "account": "haellsigh@gmail.com",
+          "account": "personal@example.com",
           "share": 0.6509521004252417,
           "blocked": false,
           "windows": [
@@ -5116,7 +5116,7 @@
           ]
         },
         {
-          "account": "c.azais@ikalogic.com",
+          "account": "work@example.com",
           "share": 0.34904789957475835,
           "blocked": true,
           "windows": [
@@ -7289,7 +7289,7 @@
       ],
       "accounts": [
         {
-          "account": "azaiscorentin@gmail.com",
+          "account": "cc@example.com",
           "blocked": false,
           "windows": [
             {
@@ -7313,7 +7313,7 @@
       ],
       "balances": [
         {
-          "account": "azaiscorentin@gmail.com",
+          "account": "cc@example.com",
           "limit": "commandcode:balance",
           "label": "Credit balance",
           "remaining": 56.0506459996,
@@ -9379,7 +9379,7 @@
       ],
       "accounts": [
         {
-          "account": "azaiscorentin@gmail.com",
+          "account": "cc@example.com",
           "blocked": false,
           "windows": [
             {
@@ -9400,7 +9400,7 @@
           ]
         },
         {
-          "account": "c.azais@ikalogic.com",
+          "account": "work@example.com",
           "blocked": false,
           "windows": [
             {
@@ -9420,7 +9420,7 @@
           ]
         },
         {
-          "account": "haellsigh@gmail.com",
+          "account": "personal@example.com",
           "blocked": false,
           "windows": [
             {
@@ -9441,7 +9441,7 @@
           ]
         },
         {
-          "account": "n.nelieru@gmail.com",
+          "account": "ag3@example.com",
           "blocked": false,
           "windows": [
             {
@@ -9469,7 +9469,7 @@
       "t": 1794179755334,
       "kind": "reset",
       "provider": "commandcode",
-      "account": "azaiscorentin@gmail.com",
+      "account": "cc@example.com",
       "limit": "commandcode:5h",
       "windowLabel": "5h",
       "p": 1.0,
@@ -9479,7 +9479,7 @@
       "t": 1794189600000,
       "kind": "reset",
       "provider": "anthropic",
-      "account": "haellsigh@gmail.com",
+      "account": "personal@example.com",
       "limit": "anthropic:5h",
       "windowLabel": "5h",
       "p": 1.0,
@@ -9489,7 +9489,7 @@
       "t": 1794221999670,
       "kind": "back",
       "provider": "anthropic",
-      "account": "c.azais@ikalogic.com",
+      "account": "work@example.com",
       "limit": "anthropic:7d",
       "windowLabel": "7d",
       "p": 1.0
@@ -9511,7 +9511,7 @@
       "late": 1794465356117,
       "kind": "runs_out",
       "provider": "anthropic",
-      "account": "haellsigh@gmail.com",
+      "account": "personal@example.com",
       "limit": "anthropic:7d",
       "windowLabel": "7d",
       "p": 0.847,
@@ -9523,7 +9523,7 @@
       "late": 1794485032436,
       "kind": "runs_out",
       "provider": "anthropic",
-      "account": "c.azais@ikalogic.com",
+      "account": "work@example.com",
       "limit": "anthropic:5h",
       "windowLabel": "5h",
       "p": 0.895,
@@ -9533,7 +9533,7 @@
       "t": 1794348000000,
       "kind": "back",
       "provider": "anthropic",
-      "account": "c.azais@ikalogic.com",
+      "account": "work@example.com",
       "limit": "anthropic:5h",
       "windowLabel": "5h",
       "p": 0.895
@@ -9580,7 +9580,7 @@
       "t": 1794520800000,
       "kind": "back",
       "provider": "anthropic",
-      "account": "haellsigh@gmail.com",
+      "account": "personal@example.com",
       "limit": "anthropic:7d",
       "windowLabel": "7d",
       "p": 0.847
@@ -9597,7 +9597,7 @@
       "t": 1794665547000,
       "kind": "reset",
       "provider": "google-antigravity",
-      "account": "haellsigh@gmail.com",
+      "account": "personal@example.com",
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1.0,
@@ -9607,7 +9607,7 @@
       "t": 1794669739000,
       "kind": "reset",
       "provider": "google-antigravity",
-      "account": "azaiscorentin@gmail.com",
+      "account": "cc@example.com",
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1.0,
