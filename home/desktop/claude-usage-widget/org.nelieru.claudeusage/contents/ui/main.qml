@@ -91,9 +91,9 @@ PlasmoidItem {
         return Math.round(f * 100) + "%";
     }
 
-    /** A pace: "1.3×" from 1 up, two significant digits below ("0.43×", "0.06×"). */
+    /** A pace: "<0.1×" below 0.1, one decimal up to 10 ("0.4×", "6.6×"), whole above ("12×"). */
     function pace(x) {
-        return (x >= 1 ? x.toFixed(1) : String(Number(x.toPrecision(2)))) + "×";
+        return (x < 0.1 ? "<0.1" : x < 10 ? x.toFixed(1) : String(Math.round(x))) + "×";
     }
 
     /** 56.74, 12 or 0.5: at most two decimals. */
