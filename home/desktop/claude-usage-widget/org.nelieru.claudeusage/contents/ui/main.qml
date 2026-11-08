@@ -91,6 +91,11 @@ PlasmoidItem {
         return Math.round(f * 100) + "%";
     }
 
+    /** A pace: "1.3×" from 1 up, two significant digits below ("0.43×", "0.06×"). */
+    function pace(x) {
+        return (x >= 1 ? x.toFixed(1) : String(Number(x.toPrecision(2)))) + "×";
+    }
+
     /** 56.74, 12 or 0.5: at most two decimals. */
     function amount(x) {
         return String(Math.round(x * 100) / 100);
@@ -1208,6 +1213,9 @@ PlasmoidItem {
         }
         GridLayout {
             Layout.fillWidth: true
+            // The tiles fill their row's height; the grid itself keeps its natural height
+            // (a layout would otherwise pass their fillHeight up to the section).
+            Layout.fillHeight: false
             visible: section.windows.length > 0
             columns: section.tileColumns
             columnSpacing: 8
@@ -1218,6 +1226,8 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     Layout.preferredWidth: (section.width - 8 * (section.tileColumns - 1)) / section.tileColumns
                     Layout.alignment: Qt.AlignTop
+                    // Tiles of a row share its height when one footer wraps.
+                    Layout.fillHeight: true
                 }
             }
         }
@@ -1306,7 +1316,7 @@ PlasmoidItem {
                 Txt {
                     px: 11.5
                     color: root.dimTextColor
-                    text: root.present(tile.win.pace) ? tile.win.pace.toFixed(1) + "×" : ""
+                    text: root.present(tile.win.pace) ? root.pace(tile.win.pace) : ""
                 }
             }
             Txt {
@@ -1325,6 +1335,9 @@ PlasmoidItem {
             Txt {
                 Layout.fillWidth: true
                 px: 11.5
+                // Up to two lines, broken only after a "·", so narrow tiles never elide.
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
                 elide: Text.ElideRight
                 readonly property var w: tile.win
                 color: w.verdict === "bad" ? root.badColor : w.verdict === "warn" ? root.warnColor : root.dimTextColor
@@ -1335,17 +1348,18 @@ PlasmoidItem {
                         return "not started";
                     if (w.state === "expired")
                         return "expired";
+                    const nb = s => s.replace(/ /g, "\u00a0");
                     // Every member blocked: the earliest member reset is when the window is back.
                     if (w.blocked > 0 && w.blocked === w.accounts && root.present(w.nextReset))
-                        return "back " + root.shortTime(w.nextReset);
+                        return nb("back " + root.shortTime(w.nextReset));
                     const parts = [];
                     if (w.verdict !== "ok" && root.present(w.pEmpty))
                         parts.push(root.pct(w.pEmpty) + " risk");
                     else if (w.blocked > 0)
-                        parts.push(w.blocked + "/" + w.accounts + " blocked");
+                        parts.push(w.blocked + "/" + w.accounts + " out");
                     if (root.present(w.nextReset))
                         parts.push("resets " + root.shortTime(w.nextReset));
-                    return parts.length > 0 ? parts.join(" · ") : "–";
+                    return parts.length > 0 ? parts.map(nb).join("\u00a0· ") : "–";
                 }
             }
         }
