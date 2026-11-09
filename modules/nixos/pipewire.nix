@@ -1,4 +1,5 @@
-# PipeWire + WirePlumber, replacing PulseAudio. JACK shim on.
+# PipeWire + WirePlumber, replacing PulseAudio. JACK apps: run via `pw-jack`
+# (from `pipewire.jack`); the global `jack.enable` shim is deprecated.
 {
   security.rtkit.enable = true;
   services.pulseaudio.enable = false;
@@ -7,7 +8,6 @@
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    jack.enable = true;
     wireplumber.enable = true;
   };
 }
