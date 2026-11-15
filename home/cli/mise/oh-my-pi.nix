@@ -20,8 +20,8 @@ let
     anthropics = pkgs.fetchFromGitHub {
       owner = "anthropics";
       repo = "skills";
-      rev = "2c5958ecac7cee2b583967a2c4981d0f4a75c579";
-      hash = "sha256-dRCZrNarCCJFuvATgfW6qmwwVS5HGFXNVGOhbVZd7LA=";
+      rev = "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064";
+      hash = "sha256-pEKTL8YlOAem5QfNzLkjJaEDTp7PhtG/uyzjPzOL7Jo=";
     };
     wshobson = pkgs.fetchFromGitHub {
       owner = "wshobson";
@@ -38,8 +38,8 @@ let
     antfu = pkgs.fetchFromGitHub {
       owner = "antfu";
       repo = "skills";
-      rev = "f63e9ec7bc85f67364b6596c2d29da87e83ce445";
-      hash = "sha256-qtvL8YxS6KLsSFDJ99FuQPO6ielrJcyoIxfaX6azVNs=";
+      rev = "d524ed287eef22757297827ce42e3cad88abd20c";
+      hash = "sha256-l9UVOtOmJYrJ9G5movhv9CA8tHbzlEcQ3VkpkyfZ61U=";
     };
   };
   skill = source: subdir: {
