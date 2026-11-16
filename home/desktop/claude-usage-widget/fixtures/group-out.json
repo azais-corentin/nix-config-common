@@ -611,7 +611,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "anthropic:7d",
@@ -1690,7 +1691,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "anthropic:7d:fable",
@@ -2188,7 +2190,8 @@
             ]
           ],
           "scope": "group",
-          "verdict": "bad"
+          "verdict": "bad",
+          "atRisk": true
         }
       ],
       "accounts": [
@@ -2785,7 +2788,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "openai-codex:secondary",
@@ -3624,7 +3628,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -3663,7 +3668,8 @@
       "limit": "anthropic:5h",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.14
+      "usedBefore": 0.14,
+      "atRisk": false
     },
     {
       "t": 1794173400000,
@@ -3673,7 +3679,8 @@
       "limit": "openai-codex:primary",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.12
+      "usedBefore": 0.12,
+      "atRisk": false
     },
     {
       "t": 1794175500000,
@@ -3683,7 +3690,8 @@
       "limit": "anthropic:5h",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.2
+      "usedBefore": 0.2,
+      "atRisk": false
     },
     {
       "t": 1794222000000,
@@ -3693,7 +3701,8 @@
       "limit": "anthropic:7d",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.37
+      "usedBefore": 0.37,
+      "atRisk": false
     },
     {
       "t": 1794222000000,
@@ -3711,7 +3720,8 @@
       "limit": "openai-codex:secondary",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.41
+      "usedBefore": 0.41,
+      "atRisk": false
     },
     {
       "t": 1794567600000,
@@ -3721,7 +3731,8 @@
       "limit": "anthropic:7d",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.28
+      "usedBefore": 0.28,
+      "atRisk": false
     },
     {
       "t": 1794567600000,
@@ -3731,7 +3742,8 @@
       "limit": "anthropic:7d:fable",
       "windowLabel": "7d Fable",
       "p": 1,
-      "usedBefore": 1
+      "usedBefore": 1,
+      "atRisk": true
     }
   ]
 }

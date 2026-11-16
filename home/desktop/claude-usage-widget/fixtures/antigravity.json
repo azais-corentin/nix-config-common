@@ -610,7 +610,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "anthropic:7d",
@@ -1689,7 +1690,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "anthropic:7d:fable",
@@ -2522,7 +2524,8 @@
             ]
           },
           "scope": "group",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -3559,7 +3562,8 @@
             ]
           },
           "scope": "group",
-          "verdict": "warn"
+          "verdict": "warn",
+          "atRisk": true
         },
         {
           "limit": "google-antigravity:google:default:gemini-weekly",
@@ -4518,7 +4522,8 @@
             ]
           },
           "scope": "group",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -4623,7 +4628,8 @@
       "limit": "anthropic:5h",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.14
+      "usedBefore": 0.14,
+      "atRisk": false
     },
     {
       "t": 1794175500000,
@@ -4633,7 +4639,8 @@
       "limit": "anthropic:5h",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.2
+      "usedBefore": 0.2,
+      "atRisk": false
     },
     {
       "t": 1794222000000,
@@ -4643,7 +4650,8 @@
       "limit": "anthropic:7d",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.37
+      "usedBefore": 0.37,
+      "atRisk": false
     },
     {
       "t": 1794222000000,
@@ -4653,7 +4661,8 @@
       "limit": "anthropic:7d:fable",
       "windowLabel": "7d Fable",
       "p": 1,
-      "usedBefore": 0.09
+      "usedBefore": 0.09,
+      "atRisk": false
     },
     {
       "t": 1794294000000,
@@ -4663,7 +4672,8 @@
       "limit": "google-antigravity:3p-weekly:weekly",
       "windowLabel": "7d Claude & GPT",
       "p": 1,
-      "usedBefore": 1
+      "usedBefore": 1,
+      "atRisk": true
     },
     {
       "t": 1794294000000,
@@ -4673,7 +4683,8 @@
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1,
-      "usedBefore": 0.35
+      "usedBefore": 0.35,
+      "atRisk": false
     },
     {
       "t": 1794488400000,
@@ -4694,7 +4705,8 @@
       "limit": "google-antigravity:3p-weekly:weekly",
       "windowLabel": "7d Claude & GPT",
       "p": 1,
-      "usedBefore": 0.72
+      "usedBefore": 0.72,
+      "atRisk": true
     },
     {
       "t": 1794492000000,
@@ -4704,7 +4716,8 @@
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1,
-      "usedBefore": 0.12
+      "usedBefore": 0.12,
+      "atRisk": false
     },
     {
       "t": 1794492000000,
@@ -4722,7 +4735,8 @@
       "limit": "google-antigravity:3p-weekly:weekly",
       "windowLabel": "7d Claude & GPT",
       "p": 1,
-      "usedBefore": 0.55
+      "usedBefore": 0.55,
+      "atRisk": true
     },
     {
       "t": 1794556800000,
@@ -4732,7 +4746,8 @@
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1,
-      "usedBefore": 0.6
+      "usedBefore": 0.6,
+      "atRisk": false
     },
     {
       "t": 1794567600000,
@@ -4742,7 +4757,8 @@
       "limit": "anthropic:7d",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.28
+      "usedBefore": 0.28,
+      "atRisk": false
     },
     {
       "t": 1794567600000,
@@ -4752,7 +4768,8 @@
       "limit": "anthropic:7d:fable",
       "windowLabel": "7d Fable",
       "p": 1,
-      "usedBefore": 0.06
+      "usedBefore": 0.06,
+      "atRisk": false
     },
     {
       "t": 1794682800000,
@@ -4762,7 +4779,8 @@
       "limit": "google-antigravity:3p-weekly:weekly",
       "windowLabel": "7d Claude & GPT",
       "p": 1,
-      "usedBefore": 0.4
+      "usedBefore": 0.4,
+      "atRisk": true
     },
     {
       "t": 1794682800000,
@@ -4772,7 +4790,8 @@
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1,
-      "usedBefore": 0.05
+      "usedBefore": 0.05,
+      "atRisk": false
     }
   ],
   "horizon": 1794766320000

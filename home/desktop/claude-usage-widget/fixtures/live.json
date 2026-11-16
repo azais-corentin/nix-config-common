@@ -834,7 +834,8 @@
               1794175898326,
               0.0
             ]
-          ]
+          ],
+          "atRisk": false
         },
         {
           "limit": "openai-codex:secondary",
@@ -2065,7 +2066,8 @@
               1.0,
               1.0
             ]
-          }
+          },
+          "atRisk": true
         }
       ],
       "accounts": [
@@ -2618,7 +2620,8 @@
               1.0,
               1.0
             ]
-          }
+          },
+          "atRisk": true
         },
         {
           "limit": "anthropic:7d",
@@ -3849,7 +3852,8 @@
               1.0,
               1.0
             ]
-          }
+          },
+          "atRisk": true
         },
         {
           "limit": "anthropic:7d:fable",
@@ -5080,7 +5084,8 @@
               1.0,
               1.0
             ]
-          }
+          },
+          "atRisk": true
         }
       ],
       "accounts": [
@@ -6053,7 +6058,8 @@
               0.11,
               0.10755373272009935
             ]
-          }
+          },
+          "atRisk": false
         },
         {
           "limit": "commandcode:7d",
@@ -7284,7 +7290,8 @@
               1.0,
               1.0
             ]
-          }
+          },
+          "atRisk": true
         }
       ],
       "accounts": [
@@ -8143,7 +8150,8 @@
               1794175898326,
               0.0
             ]
-          ]
+          ],
+          "atRisk": false
         },
         {
           "limit": "google-antigravity:google:default:gemini-weekly",
@@ -9374,7 +9382,8 @@
               0.46,
               0.475925
             ]
-          }
+          },
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -9473,7 +9482,8 @@
       "limit": "commandcode:5h",
       "windowLabel": "5h",
       "p": 1.0,
-      "usedBefore": 0.0490398045
+      "usedBefore": 0.0490398045,
+      "atRisk": false
     },
     {
       "t": 1794189600000,
@@ -9483,7 +9493,8 @@
       "limit": "anthropic:5h",
       "windowLabel": "5h",
       "p": 1.0,
-      "usedBefore": 0.12
+      "usedBefore": 0.12,
+      "atRisk": true
     },
     {
       "t": 1794221999670,
@@ -9601,7 +9612,8 @@
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1.0,
-      "usedBefore": 0.03080320000000003
+      "usedBefore": 0.03080320000000003,
+      "atRisk": false
     },
     {
       "t": 1794669739000,
@@ -9611,7 +9623,8 @@
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1.0,
-      "usedBefore": 0.0991592
+      "usedBefore": 0.0991592,
+      "atRisk": false
     }
   ]
 }

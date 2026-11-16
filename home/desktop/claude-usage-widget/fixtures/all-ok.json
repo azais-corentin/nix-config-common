@@ -610,7 +610,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "anthropic:7d",
@@ -1689,7 +1690,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "anthropic:7d:fable",
@@ -2522,7 +2524,8 @@
             ]
           },
           "scope": "group",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -3119,7 +3122,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "openai-codex:secondary",
@@ -3958,7 +3962,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -4475,7 +4480,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "commandcode:7d",
@@ -5154,7 +5160,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -6159,7 +6166,8 @@
             ]
           },
           "scope": "group",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "google-antigravity:google:default:gemini-weekly",
@@ -7118,7 +7126,8 @@
             ]
           },
           "scope": "group",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -7223,7 +7232,8 @@
       "limit": "anthropic:5h",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.14
+      "usedBefore": 0.14,
+      "atRisk": false
     },
     {
       "t": 1794173400000,
@@ -7233,7 +7243,8 @@
       "limit": "openai-codex:primary",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.12
+      "usedBefore": 0.12,
+      "atRisk": false
     },
     {
       "t": 1794175500000,
@@ -7243,7 +7254,8 @@
       "limit": "anthropic:5h",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.2
+      "usedBefore": 0.2,
+      "atRisk": false
     },
     {
       "t": 1794175800000,
@@ -7253,7 +7265,8 @@
       "limit": "commandcode:5h",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.08
+      "usedBefore": 0.08,
+      "atRisk": false
     },
     {
       "t": 1794222000000,
@@ -7263,7 +7276,8 @@
       "limit": "anthropic:7d",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.37
+      "usedBefore": 0.37,
+      "atRisk": false
     },
     {
       "t": 1794222000000,
@@ -7273,7 +7287,8 @@
       "limit": "anthropic:7d:fable",
       "windowLabel": "7d Fable",
       "p": 1,
-      "usedBefore": 0.09
+      "usedBefore": 0.09,
+      "atRisk": false
     },
     {
       "t": 1794294000000,
@@ -7283,7 +7298,8 @@
       "limit": "google-antigravity:3p-weekly:weekly",
       "windowLabel": "7d Claude & GPT",
       "p": 1,
-      "usedBefore": 0.3
+      "usedBefore": 0.3,
+      "atRisk": false
     },
     {
       "t": 1794294000000,
@@ -7293,7 +7309,8 @@
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1,
-      "usedBefore": 0.35
+      "usedBefore": 0.35,
+      "atRisk": false
     },
     {
       "t": 1794470400000,
@@ -7303,7 +7320,8 @@
       "limit": "openai-codex:secondary",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.41
+      "usedBefore": 0.41,
+      "atRisk": false
     },
     {
       "t": 1794492000000,
@@ -7313,7 +7331,8 @@
       "limit": "google-antigravity:3p-weekly:weekly",
       "windowLabel": "7d Claude & GPT",
       "p": 1,
-      "usedBefore": 0.2
+      "usedBefore": 0.2,
+      "atRisk": false
     },
     {
       "t": 1794492000000,
@@ -7323,7 +7342,8 @@
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1,
-      "usedBefore": 0.12
+      "usedBefore": 0.12,
+      "atRisk": false
     },
     {
       "t": 1794556800000,
@@ -7333,7 +7353,8 @@
       "limit": "google-antigravity:3p-weekly:weekly",
       "windowLabel": "7d Claude & GPT",
       "p": 1,
-      "usedBefore": 0.15
+      "usedBefore": 0.15,
+      "atRisk": false
     },
     {
       "t": 1794556800000,
@@ -7343,7 +7364,8 @@
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1,
-      "usedBefore": 0.6
+      "usedBefore": 0.6,
+      "atRisk": false
     },
     {
       "t": 1794567600000,
@@ -7353,7 +7375,8 @@
       "limit": "anthropic:7d",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.28
+      "usedBefore": 0.28,
+      "atRisk": false
     },
     {
       "t": 1794567600000,
@@ -7363,7 +7386,8 @@
       "limit": "anthropic:7d:fable",
       "windowLabel": "7d Fable",
       "p": 1,
-      "usedBefore": 0.06
+      "usedBefore": 0.06,
+      "atRisk": false
     },
     {
       "t": 1794646800000,
@@ -7373,7 +7397,8 @@
       "limit": "commandcode:7d",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.22
+      "usedBefore": 0.22,
+      "atRisk": false
     },
     {
       "t": 1794682800000,
@@ -7383,7 +7408,8 @@
       "limit": "google-antigravity:3p-weekly:weekly",
       "windowLabel": "7d Claude & GPT",
       "p": 1,
-      "usedBefore": 0.1
+      "usedBefore": 0.1,
+      "atRisk": false
     },
     {
       "t": 1794682800000,
@@ -7393,7 +7419,8 @@
       "limit": "google-antigravity:google:default:gemini-weekly",
       "windowLabel": "7d Gemini",
       "p": 1,
-      "usedBefore": 0.05
+      "usedBefore": 0.05,
+      "atRisk": false
     }
   ],
   "horizon": 1794766320000

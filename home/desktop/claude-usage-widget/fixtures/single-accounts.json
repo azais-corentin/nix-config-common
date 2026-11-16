@@ -539,7 +539,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "warn"
+          "verdict": "warn",
+          "atRisk": true
         },
         {
           "limit": "openai-codex:secondary",
@@ -1378,7 +1379,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "warn"
+          "verdict": "warn",
+          "atRisk": true
         },
         {
           "limit": "openai-codex:spark:primary",
@@ -1811,7 +1813,8 @@
             ]
           },
           "scope": "group",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "openai-codex:spark:secondary",
@@ -1823,7 +1826,8 @@
           "blocked": 0,
           "history": [],
           "scope": "group",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -2355,7 +2359,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "commandcode:7d",
@@ -3034,7 +3039,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -3081,7 +3087,8 @@
       "limit": "openai-codex:primary",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.62
+      "usedBefore": 0.62,
+      "atRisk": true
     },
     {
       "t": 1794175500000,
@@ -3091,7 +3098,8 @@
       "limit": "openai-codex:spark:primary",
       "windowLabel": "5h Spark",
       "p": 1,
-      "usedBefore": 0.05
+      "usedBefore": 0.05,
+      "atRisk": false
     },
     {
       "t": 1794175800000,
@@ -3101,7 +3109,8 @@
       "limit": "commandcode:5h",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.08
+      "usedBefore": 0.08,
+      "atRisk": false
     },
     {
       "t": 1794445200000,
@@ -3130,7 +3139,8 @@
       "limit": "commandcode:7d",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.22
+      "usedBefore": 0.22,
+      "atRisk": false
     }
   ],
   "horizon": 1794766320000

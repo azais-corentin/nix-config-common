@@ -276,7 +276,8 @@
             ]
           ],
           "scope": "full",
-          "verdict": "bad"
+          "verdict": "bad",
+          "atRisk": true
         },
         {
           "limit": "anthropic:7d",
@@ -1355,7 +1356,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "warn"
+          "verdict": "warn",
+          "atRisk": true
         }
       ],
       "accounts": [
@@ -1935,7 +1937,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "openai-codex:secondary",
@@ -2774,7 +2777,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -3291,7 +3295,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         },
         {
           "limit": "commandcode:7d",
@@ -3970,7 +3975,8 @@
             ]
           },
           "scope": "full",
-          "verdict": "ok"
+          "verdict": "ok",
+          "atRisk": false
         }
       ],
       "accounts": [
@@ -4025,7 +4031,8 @@
       "limit": "openai-codex:primary",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.12
+      "usedBefore": 0.12,
+      "atRisk": false
     },
     {
       "t": 1794175800000,
@@ -4035,7 +4042,8 @@
       "limit": "commandcode:5h",
       "windowLabel": "5h",
       "p": 1,
-      "usedBefore": 0.08
+      "usedBefore": 0.08,
+      "atRisk": false
     },
     {
       "t": 1794222000000,
@@ -4066,7 +4074,8 @@
       "limit": "openai-codex:secondary",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.41
+      "usedBefore": 0.41,
+      "atRisk": false
     },
     {
       "t": 1794646800000,
@@ -4076,7 +4085,8 @@
       "limit": "commandcode:7d",
       "windowLabel": "7d",
       "p": 1,
-      "usedBefore": 0.22
+      "usedBefore": 0.22,
+      "atRisk": false
     }
   ],
   "horizon": 1794766320000

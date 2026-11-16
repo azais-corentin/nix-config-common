@@ -1,7 +1,7 @@
 { lib, stdenvNoCC }:
 stdenvNoCC.mkDerivation {
   pname = "claude-usage-widget";
-  version = "6.0.0";
+  version = "6.1.0";
 
   src = ./org.nelieru.claudeusage;
 

@@ -217,6 +217,33 @@ PlasmoidItem {
         return p.windows.find(w => w.limit === limit) || null;
     }
 
+    /** A window not worth a tile unless at risk: unused, or a model group's of a provider that
+     *  also has a full-scope window. */
+    function secondary(p, w) {
+        return w.atRisk !== true && (w.state === "not_started" || w.state === "no_data" || w.state === "expired"
+            || (w.scope === "group" && p.windows.some(x => x.scope === "full")));
+    }
+
+    /** A provider's windows with a tile: all but the secondary ones, at least the ring's. */
+    function tileWindows(p) {
+        const ws = p.windows.filter(w => !secondary(p, w));
+        if (ws.length > 0)
+            return ws;
+        const r = p.ring ? ringWindow(p) : null;
+        return r !== null ? [r] : p.windows.slice(0, 1);
+    }
+
+    /** A secondary window in a few words: "7d Fable 11%, resets Thu 22:59". */
+    function windowLine(w) {
+        if (w.state === "not_started")
+            return w.label + " not started";
+        if (w.state === "no_data")
+            return w.label + " no data";
+        if (w.state === "expired")
+            return w.label + " expired";
+        return w.label + " " + pct(w.used) + (present(w.nextReset) ? ", resets " + shortTime(w.nextReset) : "");
+    }
+
     /** The window behind a provider's ring. */
     function ringWindow(p) {
         return windowOf(p, p.ring.limit);
@@ -345,38 +372,59 @@ PlasmoidItem {
             })[kind] || dimTextColor;
     }
 
-    function eventTitle(e) {
-        const p = providerById[e.provider], label = p ? p.label : e.provider;
-        if (e.kind === "pool_out")
-            return label + " runs out";
-        if (e.kind === "pool_back")
-            return label + " back";
-        if (e.kind === "runs_out")
-            return label + " account runs out";
-        if (e.kind === "back")
-            return label + " account back";
-        if (e.kind === "group_out")
-            return label + " " + e.windowLabel + " out on all accounts";
-        if (e.kind === "group_back")
-            return label + " " + e.windowLabel + " back";
-        return label + " " + e.windowLabel + " resets";
+    /** Shows every reset in the agenda, not only those at risk (the agenda's toggle row). */
+    property bool showAllResets: false
+    /** Events this close to the first of a run merge into one agenda element. */
+    readonly property double mergeMs: 5 * minuteMs
+    /** Resets whose limit is not at risk for their account: hidden unless showAllResets. */
+    readonly property int routineResets: events.filter(e => e.kind === "reset" && e.atRisk !== true).length
+    readonly property var shownEvents: events.filter(e => showAllResets || e.kind !== "reset" || e.atRisk === true)
+    /** Most urgent first: the kind that colours a merged element. */
+    readonly property var kindOrder: ["pool_out", "runs_out", "group_out", "pool_back", "back", "group_back", "reset"]
+
+    function providerLabel(id) {
+        const p = providerById[id];
+        return p ? p.label : id;
     }
 
-    function eventDetail(e) {
-        const p = providerById[e.provider], parts = [];
-        if (present(e.account) && (e.kind !== "reset" || (p && p.accounts.length > 1)))
-            parts.push(e.account);
-        if (e.kind === "pool_out" || e.kind === "runs_out" || e.kind === "group_out") {
-            if (e.kind !== "group_out")
-                parts.push(e.windowLabel);
+    /** "7d resets", "7d & 7d Fable reset". */
+    function resetsText(windows) {
+        return windows.join(" & ") + (windows.length > 1 ? " reset" : " resets");
+    }
+
+    /** One agenda item: { kind, provider, accounts, windows, used, e } (`e` its first event). */
+    function itemTitle(it) {
+        const label = providerLabel(it.provider);
+        if (it.kind === "pool_out")
+            return label + " runs out";
+        if (it.kind === "pool_back")
+            return label + " back";
+        if (it.kind === "runs_out")
+            return label + " account runs out";
+        if (it.kind === "back")
+            return label + " account back";
+        if (it.kind === "group_out")
+            return label + " " + it.windows.join(" & ") + " out on all accounts";
+        if (it.kind === "group_back")
+            return label + " " + it.windows.join(" & ") + " back";
+        return label + " " + resetsText(it.windows);
+    }
+
+    function itemDetail(it) {
+        const p = providerById[it.provider], e = it.e, parts = [];
+        if (it.accounts.length > 0 && (it.kind !== "reset" || (p && p.accounts.length > 1)))
+            parts.push(it.accounts.join(", "));
+        if (it.kind === "pool_out" || it.kind === "runs_out" || it.kind === "group_out") {
+            if (it.kind !== "group_out")
+                parts.push(it.windows.join(" & "));
             if (present(e.early) && present(e.late))
                 parts.push("likely " + span(e.early, e.late));
             if (present(e.until))
                 parts.push("back " + shortTime(e.until));
-        } else if (e.kind === "pool_back" || e.kind === "back") {
-            parts.push(e.windowLabel + " resets");
-        } else if (present(e.usedBefore)) {
-            parts.push("from " + pct(e.usedBefore));
+        } else if (it.kind === "pool_back" || it.kind === "back") {
+            parts.push(resetsText(it.windows));
+        } else if (it.used.length > 0 && it.accounts.length < 2) {
+            parts.push("from " + it.used.map(u => pct(u)).join(" & "));
         }
         if (e.p < 0.9)
             parts.push(pct(e.p) + " chance");
@@ -384,10 +432,76 @@ PlasmoidItem {
         return parts.join("\u00a0· ");
     }
 
-    /** The popup agenda: a Now row, the view's events and a day row wherever the day changes.
-     *  The rail between rows is pink while a provider is out (yellow while only an unlikely
-     *  outage is), following the view's pool_out/pool_back events.
-     *  rows: { day, rail } | { event: { t, kind, title, detail }, railIn, railOut }. */
+    /** What one agenda element's events tell, as [{ title, detail }]: events alike but for
+     *  the window join their windows, a reset folds into its account's comeback, and resets
+     *  alike but for the account join their accounts. */
+    function clusterItems(evs) {
+        const items = [];
+        for (const e of evs) {
+            const account = e.account || null;
+            const it = items.find(x => x.kind === e.kind && x.provider === e.provider && x.account === account);
+            if (it === undefined) {
+                items.push({
+                    "kind": e.kind,
+                    "provider": e.provider,
+                    "account": account,
+                    "accounts": account !== null ? [account] : [],
+                    "windows": [e.windowLabel],
+                    "used": present(e.usedBefore) ? [e.usedBefore] : [],
+                    "e": e
+                });
+            } else if (!it.windows.includes(e.windowLabel)) {
+                it.windows.push(e.windowLabel);
+                if (present(e.usedBefore))
+                    it.used.push(e.usedBefore);
+            }
+        }
+        const unfolded = items.filter(r => {
+            const back = r.kind === "reset" && r.account !== null
+                && items.find(b => b.kind === "back" && b.provider === r.provider && b.account === r.account);
+            if (!back)
+                return true;
+            for (const w of r.windows)
+                if (!back.windows.includes(w))
+                    back.windows.push(w);
+            return false;
+        });
+        const merged = [];
+        for (const r of unfolded) {
+            const m = r.kind === "reset"
+                && merged.find(x => x.kind === "reset" && x.provider === r.provider && x.windows.join("\n") === r.windows.join("\n"));
+            if (m)
+                m.accounts.push(...r.accounts);
+            else
+                merged.push(r);
+        }
+        return merged.map(it => ({ "title": itemTitle(it), "detail": itemDetail(it) }));
+    }
+
+    /** The agenda's elements, by time: the shown events, each within mergeMs of its run's
+     *  first merged into one { t (the first's), kind (the most urgent), events, items }. */
+    readonly property var clusters: {
+        const out = [];
+        for (const e of shownEvents) {
+            const c = out.length > 0 ? out[out.length - 1] : null;
+            if (c !== null && e.t - c.t <= mergeMs)
+                c.events.push(e);
+            else
+                out.push({ "t": e.t, "events": [e] });
+        }
+        for (const c of out) {
+            c.kind = kindOrder.find(k => c.events.some(e => e.kind === k)) || c.events[0].kind;
+            c.items = clusterItems(c.events);
+        }
+        return out;
+    }
+
+    /** The popup agenda: a Now row, the merged events, a day row wherever the day changes, and
+     *  a row toggling the resets not at risk. The rail between rows is pink while a provider is
+     *  out (yellow while only an unlikely outage is), following the view's pool_out/pool_back
+     *  events.
+     *  rows: { day, rail } | { event: { t, kind, items: [{ title, detail }] }, railIn, railOut }
+     *  | { toggle }. */
     readonly property var agendaRows: {
         if (view === null)
             return [];
@@ -401,24 +515,28 @@ PlasmoidItem {
                 return textAlpha(0.14);
             return ps.some(x => x >= 0.5) ? badColor : warnColor;
         };
-        const items = [{ "t": now, "kind": "now", "title": "Now", "detail": providers.map(ringSummary).join("\u00a0· ") }]
-            .concat(events.map(e => ({ "t": e.t, "kind": e.kind, "provider": e.provider, "p": e.p, "title": eventTitle(e), "detail": eventDetail(e) })));
+        const nowRow = { "t": now, "kind": "now", "events": [], "items": [{ "title": "Now", "detail": providers.map(ringSummary).join("\u00a0· ") }] };
+        const items = [nowRow].concat(clusters);
         const rows = [];
         let prevDay = 0, rail = "transparent";
-        items.forEach((e, i) => {
-            if (e.kind === "pool_out")
-                open[e.provider] = e.p;
-            else if (e.kind === "pool_back")
-                delete open[e.provider];
-            const dd = dayDelta(e.t);
+        items.forEach((c, i) => {
+            for (const e of c.events) {
+                if (e.kind === "pool_out")
+                    open[e.provider] = e.p;
+                else if (e.kind === "pool_back")
+                    delete open[e.provider];
+            }
+            const dd = dayDelta(c.t);
             if (dd !== prevDay) {
-                rows.push({ "day": dayHeading(e.t), "rail": rail });
+                rows.push({ "day": dayHeading(c.t), "rail": rail });
                 prevDay = dd;
             }
             const railOut = i < items.length - 1 ? railColor() : "transparent";
-            rows.push({ "event": e, "railIn": i === 0 ? "transparent" : rail, "railOut": railOut });
+            rows.push({ "event": c, "railIn": i === 0 ? "transparent" : rail, "railOut": railOut });
             rail = railOut;
         });
+        if (routineResets > 0)
+            rows.push({ "toggle": true });
         return rows;
     }
 
@@ -520,12 +638,12 @@ PlasmoidItem {
         }
     }
 
-    // The tooltip: the popup's answer, then the next three events.
+    // The tooltip: the popup's answer, then the agenda's next three elements.
     component TooltipContent: ColumnLayout {
         id: tipContent
-        readonly property var next: root.events.slice(0, 3)
+        readonly property var next: root.clusters.slice(0, 3)
         // One time column for every row, at least the design's 38 px.
-        readonly property real timeWidth: Math.max(38, ...next.map(e => timeMetrics.advanceWidth(root.shortTime(e.t))))
+        readonly property real timeWidth: Math.max(38, ...next.map(c => timeMetrics.advanceWidth(root.shortTime(c.t))))
         spacing: 8
 
         FontMetrics {
@@ -574,7 +692,7 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     px: 12
                     elide: Text.ElideRight
-                    text: root.eventTitle(tipRow.modelData)
+                    text: tipRow.modelData.items.map(it => it.title).join(" · ")
                 }
             }
         }
@@ -932,7 +1050,7 @@ PlasmoidItem {
         readonly property real dimmed: root.stale ? 0.55 : 1
         readonly property real agendaWidth: 366
         // Wider when a provider has many windows, so its tiles and account columns fit.
-        readonly property real providersWidth: Math.max(366, 140 + 76 * Math.max(0, ...root.providers.map(p => p.windows.length)))
+        readonly property real providersWidth: Math.max(366, 140 + 76 * Math.max(0, ...root.providers.map(p => root.tileWindows(p).length)))
         // Between the columns: a hairline with this much room around it.
         readonly property real gutter: 33
         readonly property real bodyWidth: root.providers.length > 0 ? agendaWidth + gutter + providersWidth : agendaWidth
@@ -1051,13 +1169,15 @@ PlasmoidItem {
                 id: agendaRow
                 required property var modelData
                 readonly property var ev: modelData.event || null
+                readonly property bool toggle: modelData.toggle === true
+                readonly property bool day: !ev && !toggle
                 readonly property string kind: ev ? ev.kind : ""
                 width: agenda.width
-                height: ev ? evText.height + 12 : dayLabel.height + 14
+                height: ev ? evText.height + 12 : toggle ? toggleLabel.height + 16 : dayLabel.height + 14
 
                 // Day rows: the rail runs through, the date beside it.
                 Rectangle {
-                    visible: !agendaRow.ev
+                    visible: agendaRow.day
                     x: agenda.railX
                     width: 2
                     height: parent.height
@@ -1065,7 +1185,7 @@ PlasmoidItem {
                 }
                 Txt {
                     id: dayLabel
-                    visible: !agendaRow.ev
+                    visible: agendaRow.day
                     x: agenda.textX
                     y: 8
                     px: 11
@@ -1073,6 +1193,27 @@ PlasmoidItem {
                     font.letterSpacing: 0.22
                     color: root.dimTextColor
                     text: agendaRow.modelData.day || ""
+                }
+
+                // The last row: shows or hides the resets not at risk.
+                Txt {
+                    id: toggleLabel
+                    visible: agendaRow.toggle
+                    x: agenda.textX
+                    y: 8
+                    px: 12
+                    font.underline: toggleMouse.containsMouse
+                    color: root.dimTextColor
+                    text: root.showAllResets ? "Hide resets not at risk"
+                        : "Show " + root.routineResets + (root.routineResets === 1 ? " reset" : " resets")
+                    MouseArea {
+                        id: toggleMouse
+                        anchors.fill: parent
+                        enabled: agendaRow.toggle
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.showAllResets = !root.showAllResets
+                    }
                 }
 
                 // Event rows.
@@ -1117,42 +1258,54 @@ PlasmoidItem {
                     border.width: 2
                     border.color: kind === "reset" ? root.textAlpha(0.45) : muted ? root.textAlpha(0.7) : root.eventColor(kind)
                 }
+                // One title and detail per item the element merges.
                 Column {
                     id: evText
                     visible: !!agendaRow.ev
                     x: agenda.textX
                     width: parent.width - x
-                    Txt {
-                        width: parent.width
-                        px: 13.5
-                        lh: 18
-                        font.weight: Font.Medium
-                        wrapMode: Text.WordWrap
-                        text: agendaRow.ev ? agendaRow.ev.title : ""
-                    }
-                    Txt {
-                        width: parent.width
-                        visible: text !== ""
-                        px: 12
-                        lh: 17
-                        wrapMode: Text.WordWrap
-                        color: root.dimTextColor
-                        text: agendaRow.ev ? agendaRow.ev.detail : ""
+                    spacing: 4
+                    Repeater {
+                        model: agendaRow.ev ? agendaRow.ev.items : []
+                        delegate: Column {
+                            id: item
+                            required property var modelData
+                            width: evText.width
+                            Txt {
+                                width: parent.width
+                                px: 13.5
+                                lh: 18
+                                font.weight: Font.Medium
+                                wrapMode: Text.WordWrap
+                                text: item.modelData.title
+                            }
+                            Txt {
+                                width: parent.width
+                                visible: text !== ""
+                                px: 12
+                                lh: 17
+                                wrapMode: Text.WordWrap
+                                color: root.dimTextColor
+                                text: item.modelData.detail
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    // One provider in the popup: name and status, a tile per window, a row per account and a
-    // line per balance.
+    // One provider in the popup: name and status, a tile per window but the secondary ones
+    // (a dim line for those), a row per account and a line per balance.
     component ProviderSection: ColumnLayout {
         id: section
         required property var modelData
         required property int index
         readonly property var provider: modelData
         readonly property var status: root.sectionStatus(provider)
-        readonly property var windows: provider.windows
+        readonly property var windows: root.tileWindows(provider)
+        // The secondary windows: one dim line under the tiles instead of tiles of their own.
+        readonly property var lineWindows: provider.windows.filter(w => !windows.includes(w))
         readonly property bool shares: provider.accounts.some(a => root.present(a.share))
         // Tiles at least this wide; rows balanced so no row is much shorter than another.
         readonly property real minTileWidth: 108
@@ -1230,6 +1383,15 @@ PlasmoidItem {
                     Layout.fillHeight: true
                 }
             }
+        }
+        Txt {
+            Layout.fillWidth: true
+            visible: section.lineWindows.length > 0
+            px: 11.5
+            wrapMode: Text.WordWrap
+            color: root.dimTextColor
+            // Broken only between windows.
+            text: section.lineWindows.map(w => root.windowLine(w).replace(/ /g, "\u00a0")).join("\u00a0· ")
         }
         GridLayout {
             Layout.fillWidth: true
