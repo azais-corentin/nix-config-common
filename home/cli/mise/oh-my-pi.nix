@@ -142,7 +142,7 @@ in
       composer.recallClearedDrafts = false;
       compaction.dropUseless = true;
       compaction.thresholdPercent = 50;
-      # GPT's 272K window would compact at ~136K under the global 50%.
+      # Give Codex models more of their context window before compacting.
       compaction.modelThresholds."openai-codex/*" = "80%";
       terminal.showImages = true;
       terminal.showProgress = true;
@@ -197,26 +197,26 @@ in
       modelPresets = {
         claude.modelRoles = claudeRoles;
         gpt.modelRoles = sharedRoles // {
-          default = "openai-codex/gpt-6.1-sol:high";
-          slow = "openai-codex/gpt-6.1-sol:high";
-          plan = "openai-codex/gpt-6.1-sol:high";
-          advisor = "openai-codex/gpt-6.1-sol:high";
-          task = "openai-codex/gpt-6.1-sol:medium";
-          vision = "openai-codex/gpt-6.1-sol:medium";
+          default = "openai-codex/gpt-6.2-sol:high";
+          slow = "openai-codex/gpt-6.2-sol:high";
+          plan = "openai-codex/gpt-6.2-sol:high";
+          advisor = "openai-codex/gpt-6.2-sol:high";
+          task = "openai-codex/gpt-6.2-sol:medium";
+          vision = "openai-codex/gpt-6.2-sol:medium";
           smol = "openai-codex/gpt-6-luna:medium";
           tiny = "openai-codex/gpt-6-luna:low";
           commit = "openai-codex/gpt-6-luna:low";
         };
         gemini.modelRoles = sharedRoles // {
-          default = "google-antigravity/gemini-3.8-flash:high";
-          slow = "google-antigravity/gemini-3.8-flash:high";
-          plan = "google-antigravity/gemini-3.8-flash:high";
-          advisor = "google-antigravity/gemini-3.8-flash:high";
-          task = "google-antigravity/gemini-3.8-flash:high";
-          vision = "google-antigravity/gemini-3.8-flash:high";
-          smol = "google-antigravity/gemini-3.8-flash:low";
-          commit = "google-antigravity/gemini-3.8-flash:low";
-          tiny = "google-antigravity/gemini-3.8-flash:minimal";
+          default = "google-antigravity/gemini-4-hydrogen:high";
+          slow = "google-antigravity/gemini-4-hydrogen:high";
+          plan = "google-antigravity/gemini-4-hydrogen:high";
+          advisor = "google-antigravity/gemini-4-hydrogen:high";
+          task = "google-antigravity/gemini-4-hydrogen:high";
+          vision = "google-antigravity/gemini-4-hydrogen:high";
+          smol = "google-antigravity/gemini-4-hydrogen:low";
+          commit = "google-antigravity/gemini-4-hydrogen:low";
+          tiny = "google-antigravity/gemini-4-hydrogen:low";
         };
         deepseek.modelRoles = sharedRoles // {
           slow = "commandcode/deepseek/deepseek-v4.1-flash:max";
