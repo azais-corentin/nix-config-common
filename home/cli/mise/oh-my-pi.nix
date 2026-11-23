@@ -54,21 +54,25 @@ let
 
   # `/modelpreset switch` replaces the whole modelRoles set (omitted roles are
   # cleared), so every preset restates the provider-independent roles.
+  # `web` stays unset: omp's built-in search chain (Parallel, hosted, Exa, ...)
+  # needs no credentials. The judge runs on Command Code credits.
   sharedRoles = {
     image = "openai-codex/gpt-image-2";
-    web = "google-antigravity/gemini-3.8-flash";
+    judge = "commandcode/typesafe/jev";
   };
 
   # Startup roles, also published as the `claude` preset so a switch back
   # restores them without a rebuild.
   claudeRoles = sharedRoles // {
     default = "anthropic/claude-opus-5-5:high";
-    slow = "anthropic/claude-opus-5-5:high";
-    plan = "anthropic/claude-opus-5-5:high";
-    advisor = "anthropic/claude-opus-5-5:high";
+    slow = "anthropic/claude-opus-5-5:xhigh";
+    plan = "anthropic/claude-fable-5-2:high";
+    advisor = "anthropic/claude-fable-5-2:high";
     task = "anthropic/claude-opus-5-5:medium";
-    vision = "anthropic/claude-opus-5-5:medium";
-    smol = "anthropic/claude-sonnet-5-5:medium";
+    vision = "anthropic/claude-fable-5-2:medium";
+    # Backs the bundled scout and sonic agents. Sonnet 5.5 only pulls ahead at
+    # high/max effort, where it spends more tokens than Opus.
+    smol = "anthropic/claude-haiku-5-5:medium";
     tiny = "anthropic/claude-haiku-5-5:low";
     commit = "anthropic/claude-haiku-5-5:low";
     widget = "anthropic/claude-haiku-5-5";
@@ -162,7 +166,11 @@ in
 
   oh-my-pi = {
     enable = true;
-    models.providers = claudeApiProviders;
+    models.providers = claudeApiProviders // {
+      # omp's catalog caps Haiku 5.5 at 100k, the pricing-tier boundary; the
+      # model accepts 1M. Without this, smol compacts at 50k tokens.
+      anthropic.modelOverrides."claude-haiku-5-5".contextWindow = 1000000;
+    };
 
     settings = {
       providers.anthropic.serverSideFallback = true;
@@ -250,15 +258,15 @@ in
           commit = "openai-codex/gpt-6-luna:low";
         };
         gemini.modelRoles = sharedRoles // {
-          default = "google-antigravity/gemini-4-hydrogen:high";
-          slow = "google-antigravity/gemini-4-hydrogen:high";
-          plan = "google-antigravity/gemini-4-hydrogen:high";
-          advisor = "google-antigravity/gemini-4-hydrogen:high";
-          task = "google-antigravity/gemini-4-hydrogen:high";
-          vision = "google-antigravity/gemini-4-hydrogen:high";
-          smol = "google-antigravity/gemini-4-hydrogen:low";
-          commit = "google-antigravity/gemini-4-hydrogen:low";
-          tiny = "google-antigravity/gemini-4-hydrogen:low";
+          default = "antigravity-cli/gemini-4-hydrogen:high";
+          slow = "antigravity-cli/gemini-4-hydrogen:high";
+          plan = "antigravity-cli/gemini-4-hydrogen:high";
+          advisor = "antigravity-cli/gemini-4-hydrogen:high";
+          task = "antigravity-cli/gemini-4-hydrogen:high";
+          vision = "antigravity-cli/gemini-4-hydrogen:high";
+          smol = "antigravity-cli/gemini-4-hydrogen:low";
+          commit = "antigravity-cli/gemini-4-hydrogen:low";
+          tiny = "antigravity-cli/gemini-4-hydrogen:low";
         };
         deepseek.modelRoles = sharedRoles // {
           slow = "commandcode/deepseek/deepseek-v4.1-flash:max";
@@ -271,7 +279,6 @@ in
           tiny = "commandcode/deepseek/deepseek-v4.1-flash:low";
           commit = "commandcode/deepseek/deepseek-v4.1-flash:low";
         };
-        muse.modelRoles = lib.mapAttrs (_: _: "opencode-go/muse-spark-1.3-contributor") claudeRoles;
       };
       personality = "pragmatic";
       memory.backend = "mnemopi";
