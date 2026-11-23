@@ -90,8 +90,8 @@ integration is mise's activation (`cli.mise`).
 `deepseek` presets. Select one with `/modelpreset switch <name>`.
 The `claude` preset runs Opus 5.5 as the main and `task` model (`slow` at
 `xhigh`), Fable 5.2 for `plan`, `advisor`, and `vision`, and Haiku 5.5 for
-`smol`, `tiny`, `commit`, and `widget`. Haiku's context window is raised to
-its real 1M in `models.yml`; omp's catalog lists the 100k pricing tier.
+`smol`, `tiny`, `commit`, and `widget`. Haiku keeps omp's 100k window, the
+boundary of its 5x long-prompt price tier, and compacts at 90% of it.
 The `gpt` preset uses GPT 6.2 Sol for its main roles and GPT 6 Luna for
 `smol`, `tiny`, and `commit`. The `gemini` preset uses Gemini 4 Hydrogen
 through `antigravity-cli` (`/login antigravity-cli`).

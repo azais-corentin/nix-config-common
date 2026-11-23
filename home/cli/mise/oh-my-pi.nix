@@ -166,11 +166,7 @@ in
 
   oh-my-pi = {
     enable = true;
-    models.providers = claudeApiProviders // {
-      # omp's catalog caps Haiku 5.5 at 100k, the pricing-tier boundary; the
-      # model accepts 1M. Without this, smol compacts at 50k tokens.
-      anthropic.modelOverrides."claude-haiku-5-5".contextWindow = 1000000;
-    };
+    models.providers = claudeApiProviders;
 
     settings = {
       providers.anthropic.serverSideFallback = true;
@@ -194,6 +190,9 @@ in
       compaction.thresholdPercent = 50;
       # Give Codex models more of their context window before compacting.
       compaction.modelThresholds."openai-codex/*" = "80%";
+      # Haiku 5.5's 100k window is its pricing-tier boundary (prompts past it
+      # cost 5x): compact just under it instead of at 50k.
+      compaction.modelThresholds."anthropic/claude-haiku-5-5" = "90%";
       terminal.showImages = true;
       terminal.showProgress = true;
       images = {
