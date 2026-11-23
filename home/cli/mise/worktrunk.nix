@@ -27,9 +27,9 @@
     # `omp -p` reads the prompt from an ARGUMENT, not stdin; worktrunk pipes the
     # templated prompt to stdin, so bridge it with "$(cat)". Flags keep the run
     # fast + hermetic: no session/tools/LSP/skills/rules/extensions/title/system
-    # prompt; gemini flash-lite with no thinking suffix keeps it fast.
+    # prompt; Haiku at low effort keeps it fast.
     [commit.generation]
-    command = "omp -p --no-session --no-tools --no-lsp --no-skills --no-rules --no-extensions --no-title --system-prompt='You write git commit messages. Explain WHY the change was made, not what changed: the diff already shows what changed, so capture the motivation, intent, or problem being solved. If the prompt tells you to describe the change and not the intent or benefit, disregard that and explain the reason instead. Use an imperative subject under 50 chars, then a body paragraph giving the rationale.' --model google-antigravity/gemini-3.1-flash-lite \"$(cat)\""
+    command = "omp -p --no-session --no-tools --no-lsp --no-skills --no-rules --no-extensions --no-title --system-prompt='You write git commit messages. Explain WHY the change was made, not what changed: the diff already shows what changed, so capture the motivation, intent, or problem being solved. If the prompt tells you to describe the change and not the intent or benefit, disregard that and explain the reason instead. Use an imperative subject under 50 chars, then a body paragraph giving the rationale.' --model anthropic/claude-haiku-5-5 --thinking low \"$(cat)\""
   '';
 
   xdg.configFile."fish/functions/wt.fish" = lib.mkIf config.programs.fish.enable {
