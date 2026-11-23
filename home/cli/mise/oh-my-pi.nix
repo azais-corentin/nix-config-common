@@ -73,9 +73,50 @@ let
     commit = "anthropic/claude-haiku-5-5:low";
     widget = "anthropic/claude-haiku-5-5";
   };
+
+  claudeApiProvider = name: "claude-${name}";
+  claudeApiProviders = lib.mapAttrs' (
+    name: path:
+    lib.nameValuePair (claudeApiProvider name) {
+      baseUrl = "https://api.anthropic.com";
+      api = "anthropic-messages";
+      auth = "apiKey";
+      apiKey = "!${lib.getExe' pkgs.coreutils "cat"} ${lib.escapeShellArg path}";
+      # Discovery sends the resolved key as a bearer. The Messages client
+      # uses its normal API-key auth.
+      headers."anthropic-version" = "2026-10-21";
+      discovery.type = "openai-models-list";
+      models = map (id: { inherit id; }) [
+        "claude-opus-5-5"
+        "claude-sonnet-5-5"
+        "claude-haiku-5-5"
+      ];
+    }
+  ) config.oh-my-pi.claudeApiKeyFiles;
+  claudeApiPresets = lib.mapAttrs' (
+    name: _:
+    lib.nameValuePair (claudeApiProvider name) {
+      modelRoles = lib.mapAttrs (
+        _: role:
+        if lib.hasPrefix "anthropic/" role then
+          "${claudeApiProvider name}/${lib.removePrefix "anthropic/" role}"
+        else
+          role
+      ) claudeRoles;
+    }
+  ) config.oh-my-pi.claudeApiKeyFiles;
 in
 {
-  imports = [ ../../../modules/home-manager/oh-my-pi ];
+  imports = [
+    ../../../modules/home-manager/oh-my-pi
+    {
+      options.oh-my-pi.claudeApiKeyFiles = lib.mkOption {
+        type = lib.types.attrsOf lib.types.str;
+        default = { };
+        description = "Claude API preset suffixes mapped to private runtime secret file paths.";
+      };
+    }
+  ];
 
   programs.mise.globalConfig.tools."github:can1357/oh-my-pi".version = "latest";
   programs.mise.globalConfig.settings.minimum_release_age_excludes = [ "github:can1357/oh-my-pi" ];
@@ -121,6 +162,7 @@ in
 
   oh-my-pi = {
     enable = true;
+    models.providers = claudeApiProviders;
 
     settings = {
       providers.anthropic.serverSideFallback = true;
@@ -194,7 +236,7 @@ in
       modelRoles = claudeRoles;
       # Switch with `/modelpreset switch <name>`; the next rebuild restores
       # the claude roles above.
-      modelPresets = {
+      modelPresets = claudeApiPresets // {
         claude.modelRoles = claudeRoles;
         gpt.modelRoles = sharedRoles // {
           default = "openai-codex/gpt-6.2-sol:high";
