@@ -131,9 +131,11 @@ in
       surface_diffs = "Split";
       expand_thoughts = true;
       prompt_style = "lean";
+      # One ring of tabs through every session of every connected host,
+      # wrapping at both ends.
       keybinds = {
-        "ctrl+page_up" = "previous_tab";
-        "ctrl+page_down" = "next_tab";
+        "ctrl+page_up" = "previous_tab_across_sessions";
+        "ctrl+page_down" = "next_tab_across_sessions";
       };
     }
     // lib.optionalAttrs config.stylix.enable {
