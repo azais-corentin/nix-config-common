@@ -26,8 +26,8 @@ let
     wshobson = pkgs.fetchFromGitHub {
       owner = "wshobson";
       repo = "agents";
-      rev = "42203085cfc5736204bf0f6d436dff7e1da0bf3f";
-      hash = "sha256-Azub9g+GEohos2XocajDJPAiQbdbfQFrn76AiDEGXmk=";
+      rev = "34e50fee32114afd9475f25d81492712f08cb71c";
+      hash = "sha256-0n1ik5gvA6StjWv6l0mQgC5S1iEA9W1aN4pBYdcgFQY=";
     };
     apollographql = pkgs.fetchFromGitHub {
       owner = "apollographql";
