@@ -92,6 +92,13 @@
           command = "spotifast";
         };
 
+        programs.plasma.hotkeys.commands."launch-zapfast" = {
+          name = "Launch ZapFast";
+          comment = "Open ZapFast";
+          key = "Meta+X";
+          command = "zapfast";
+        };
+
         # Open each launcher target maximized on first show. `apply = "initially"`
         # (the plasma-manager default) lets the user unmaximize later.
         programs.plasma.window-rules = [

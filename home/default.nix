@@ -41,6 +41,7 @@
     spotifast = ./desktop/spotifast;
     tern = ./desktop/tern;
     vscode = ./desktop/vscode.nix;
+    zapfast = ./desktop/zapfast.nix;
   };
   stylix-theme = ./stylix-theme.nix;
 }
