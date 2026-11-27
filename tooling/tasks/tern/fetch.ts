@@ -19,12 +19,13 @@ if (!root) {
 }
 
 // A consumer builds the nix-config-common revision its flake.lock pins;
-// nix-config-common itself builds its working tree.
+// nix-config-common itself builds its working tree. `flake archive` without
+// `--dry-run` fetches the inputs, so a freshly bumped pin is readable.
 async function pinFile(): Promise<string> {
   const lock = object(await Bun.file(join(root!, "flake.lock")).json(), "flake.lock");
   if (!Object.hasOwn(object(lock.nodes, "flake.lock nodes"), "nix-config-common"))
     return join(root!, pinPath);
-  const { stdout } = await command(root!, ["nix", "flake", "archive", "--json", "--dry-run", "."]);
+  const { stdout } = await command(root!, ["nix", "flake", "archive", "--json", "."]);
   const inputs = object(object(JSON.parse(stdout), "flake archive").inputs, "flake inputs");
   const common = object(inputs["nix-config-common"], "nix-config-common input");
   return join(text(common.path, "nix-config-common store path", /^\/nix\/store\//), pinPath);
