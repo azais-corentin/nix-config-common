@@ -16,7 +16,11 @@
       drag-and-drop = "replace";
       cache = "yes";
     };
-    bindings.r = "cycle-values video-rotate 90 180 270 0";
+    bindings = {
+      r = "cycle-values video-rotate 90 180 270 0";
+      # mpv 0.42 moved right-click to the context menu
+      MBTN_RIGHT = "cycle pause";
+    };
     profiles.mpi = {
       # Disable audio entirely
       audio = false;
